@@ -200,6 +200,7 @@
             <span class="auth-user-name" id="topbarUserName">Drissa Ouattara</span>
             <span class="auth-switch-link">Changer ▾</span>
           </div>
+          <span class="badge badge-success" style="cursor: pointer; font-size: 11px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 4px;" onclick="testSupabaseCloudConnection()" title="Projet Supabase connecté : quxnhuelshtaflsxedoi">☁️ Supabase</span>
           <button class="logout-btn" id="topbarLogoutBtn" onclick="logoutAuthUser()" title="Se déconnecter de la mutuelle">
             <span>🚪</span> Déconnexion
           </button>
@@ -703,6 +704,55 @@
                 <button type="button" class="btn btn-primary" id="btnSaveConfig" onclick="enregistrerParametres(event);">💾 Enregistrer les Paramètres</button>
               </div>
             </form>
+          </div>
+
+          <!-- Connexion Cloud Supabase -->
+          <div class="card-panel" style="margin-bottom: 24px; border: 1px solid rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(17, 24, 39, 0.8) 100%);">
+            <div class="card-header-flex">
+              <div>
+                <h2>☁️ Connexion Cloud Supabase</h2>
+                <p style="font-size: 13px; color: var(--text-muted);">
+                  Base de données PostgreSQL Cloud en temps réel liée au projet <strong>quxnhuelshtaflsxedoi</strong>
+                </p>
+              </div>
+              <span class="badge badge-success" id="supabaseStatusBadge">🟢 Connecté à Supabase</span>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); padding: 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 18px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; font-size: 13px;">
+                <div>
+                  <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Projet Supabase</span>
+                  <strong style="color: var(--emerald-400);">quxnhuelshtaflsxedoi</strong>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Endpoint REST API</span>
+                  <code style="font-size: 12px; color: var(--text-main);">https://quxnhuelshtaflsxedoi.supabase.co</code>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Clé Publique</span>
+                  <span class="badge" style="background: rgba(139,92,246,0.15); color: var(--purple-400); font-size: 11px;">sb_publishable_NFs2E7...</span>
+                </div>
+              </div>
+              <div id="supabaseStatusDetails" style="margin-top: 12px; font-size: 12px; color: var(--text-muted);"></div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+              <button type="button" class="btn btn-primary" onclick="pushAllDataToSupabase()">
+                <span>☁️</span> Synchroniser vers Supabase (Push)
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="pullAllDataFromSupabase()">
+                <span>📥</span> Charger depuis Supabase (Pull)
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="testSupabaseCloudConnection()">
+                <span>🔄</span> Tester Connexion
+              </button>
+              <button type="button" class="btn btn-gold" onclick="openSupabaseSQLEditor()">
+                <span>⚡</span> Ouvrir Supabase SQL Editor
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="copySupabaseSQLScript()">
+                <span>📋</span> Copier Script SQL des Tables
+              </button>
+            </div>
           </div>
 
           <!-- Sauvegarde, Export et Réinitialisation -->
@@ -1294,7 +1344,9 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/data.js"></script>
+  <script src="js/supabase.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
