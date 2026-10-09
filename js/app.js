@@ -70,11 +70,23 @@ const AUTH_USERS = {
     email: 'ibrahim.kone@tagba.ci',
     matricule: 'TAGBA-2026-001',
     name: 'Ibrahim Koné',
-    initials: 'IK',
     title: 'Président du Bureau',
     level: 3,
     levelName: 'Niveau 3 : Président (Lecture Seule)',
     passwords: ['1234', 'president123', 'tagba2026'],
+    canWriteAll: false,
+    canCreateCeremonies: false
+  },
+  'usr-membre': {
+    id: 'usr-membre',
+    login: 'membre',
+    email: 'adherent@tagba.ci',
+    matricule: 'TAGBA-2026-099',
+    name: 'Parent / Adhérent Famille',
+    title: 'Parent & Membre Adhérent',
+    level: 3,
+    levelName: 'Niveau 3 : Adhérent (Lecture Seule)',
+    passwords: ['1234', 'membre123', 'tagba2026'],
     canWriteAll: false,
     canCreateCeremonies: false
   }
@@ -196,12 +208,83 @@ function logoutAuthUser() {
   showToast('Vous avez été déconnecté de la mutuelle.');
 }
 
+function selectRoleTab(roleKey) {
+  const tabIds = {
+    'admin': 'roleTabAdmin',
+    'speaker': 'roleTabSpeaker',
+    'president': 'roleTabPres',
+    'member': 'roleTabMember'
+  };
+
+  Object.values(tabIds).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+
+  const activeEl = document.getElementById(tabIds[roleKey]);
+  if (activeEl) activeEl.classList.add('active');
+
+  const roleConfigs = {
+    'admin': {
+      heroTitle: 'Direction &<br>Administration !',
+      heroDesc: 'Pilotez l\'ensemble des activités, cotisations, familles et cérémonies de votre mutuelle.',
+      subtitle: 'connexion en tant que administration',
+      sectionTitle: 'Espace Administration',
+      sectionDesc: 'Accès Direction, Secrétariat, Comptabilité et Supervision',
+      defaultLogin: 'commissaire'
+    },
+    'speaker': {
+      heroTitle: 'Communication &<br>Cérémonies !',
+      heroDesc: 'Organisez les cérémonies officielles, mariages, baptêmes et annonces de la mutuelle.',
+      subtitle: 'connexion en tant que porte-parole',
+      sectionTitle: 'Espace Porte-Parole',
+      sectionDesc: 'Création & Gestion des Cérémonies, Événements et Annonces',
+      defaultLogin: 'porteparole'
+    },
+    'president': {
+      heroTitle: 'Présidence &<br>Supervision !',
+      heroDesc: 'Supervisez la conformité, consultez les bilans financiers et l\'état de la trésorerie.',
+      subtitle: 'connexion en tant que président',
+      sectionTitle: 'Espace Présidence',
+      sectionDesc: 'Consultation globale de la Mutuelle, rapports et états financiers (Lecture Seule)',
+      defaultLogin: 'president'
+    },
+    'member': {
+      heroTitle: 'Famille &<br>Adhérents !',
+      heroDesc: 'Consultez les versements familiaux, les cotisations mensuelles et les actions de solidarité.',
+      subtitle: 'connexion en tant que parent d\'élève / membre',
+      sectionTitle: 'Espace Parent / Membre',
+      sectionDesc: 'Accès Consultation, suivi des cotisations et situation familiale (Lecture Seule)',
+      defaultLogin: 'membre'
+    }
+  };
+
+  const cfg = roleConfigs[roleKey] || roleConfigs['admin'];
+
+  const heroTitle = document.getElementById('authHeroTitle');
+  const heroDesc = document.getElementById('authHeroDesc');
+  const roleSubtitle = document.getElementById('authRoleSubtitle');
+  const sectionTitle = document.getElementById('authSectionTitle');
+  const sectionDesc = document.getElementById('authSectionDesc');
+  const identInput = document.getElementById('loginIdentifier');
+  const pwdInput = document.getElementById('loginPassword');
+
+  if (heroTitle) heroTitle.innerHTML = cfg.heroTitle;
+  if (heroDesc) heroDesc.textContent = cfg.heroDesc;
+  if (roleSubtitle) roleSubtitle.textContent = cfg.subtitle;
+  if (sectionTitle) sectionTitle.textContent = cfg.sectionTitle;
+  if (sectionDesc) sectionDesc.textContent = cfg.sectionDesc;
+  if (identInput) identInput.value = cfg.defaultLogin;
+  if (pwdInput && !pwdInput.value) pwdInput.value = '1234';
+}
+
 function initSessionState() {
   const isAuth = localStorage.getItem('tagba_session_authenticated');
   if (isAuth === 'true') {
     hideAuthFullscreen();
   } else {
     showAuthFullscreen();
+    selectRoleTab('admin');
   }
 }
 
