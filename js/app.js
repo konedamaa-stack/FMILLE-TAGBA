@@ -38,31 +38,43 @@ function showToast(message, type = 'success') {
 const AUTH_USERS = {
   'usr-commissaire': {
     id: 'usr-commissaire',
+    login: 'commissaire',
+    email: 'drissa.ouattara@tagba.ci',
+    matricule: 'TAGBA-2026-007',
     name: 'Drissa Ouattara',
     initials: 'DO',
     title: 'Commissaire aux Comptes',
     level: 1,
     levelName: 'Niveau 1 : Commissaire (Tous Droits)',
+    passwords: ['1234', 'commissaire123', 'tagba2026'],
     canWriteAll: true,
     canCreateCeremonies: true
   },
   'usr-porteparole': {
     id: 'usr-porteparole',
+    login: 'porteparole',
+    email: 'salif.kone@tagba.ci',
+    matricule: 'TAGBA-2026-015',
     name: 'Salif Koné',
     initials: 'SK',
     title: 'Porte-Parole',
     level: 2,
     levelName: 'Niveau 2 : Porte-Parole (Cérémonies)',
+    passwords: ['1234', 'porteparole123', 'tagba2026'],
     canWriteAll: false,
     canCreateCeremonies: true
   },
   'usr-president': {
     id: 'usr-president',
+    login: 'president',
+    email: 'ibrahim.kone@tagba.ci',
+    matricule: 'TAGBA-2026-001',
     name: 'Ibrahim Koné',
     initials: 'IK',
     title: 'Président du Bureau',
     level: 3,
     levelName: 'Niveau 3 : Président (Lecture Seule)',
+    passwords: ['1234', 'president123', 'tagba2026'],
     canWriteAll: false,
     canCreateCeremonies: false
   }
@@ -73,9 +85,131 @@ function getActiveAuthUser() {
   return AUTH_USERS[savedId] || AUTH_USERS['usr-commissaire'];
 }
 
+function findUserByIdentifier(identifier) {
+  if (!identifier) return null;
+  const idLower = identifier.trim().toLowerCase();
+  for (const key in AUTH_USERS) {
+    const u = AUTH_USERS[key];
+    if (
+      u.id.toLowerCase() === idLower ||
+      u.login.toLowerCase() === idLower ||
+      u.email.toLowerCase() === idLower ||
+      u.matricule.toLowerCase() === idLower ||
+      u.name.toLowerCase().includes(idLower)
+    ) {
+      return u;
+    }
+  }
+  return null;
+}
+
+function handleFullscreenLogin(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const identInput = document.getElementById('loginIdentifier');
+  const pwdInput = document.getElementById('loginPassword');
+  const errBox = document.getElementById('loginErrorMessage');
+
+  if (errBox) {
+    errBox.style.display = 'none';
+    errBox.textContent = '';
+  }
+
+  const identifier = identInput ? identInput.value.trim() : '';
+  const password = pwdInput ? pwdInput.value.trim() : '';
+
+  if (!identifier) {
+    showLoginError('Veuillez entrer votre identifiant de connexion.');
+    return false;
+  }
+
+  const user = findUserByIdentifier(identifier);
+  if (!user) {
+    showLoginError(`Identifiant "${identifier}" introuvable. Utilisez: commissaire, porteparole ou president.`);
+    return false;
+  }
+
+  // Vérification mot de passe
+  const isValidPwd = user.passwords.includes(password) || password === '1234';
+  if (!isValidPwd) {
+    showLoginError('Mot de passe incorrect. Le code d\'accès par défaut est : 1234');
+    return false;
+  }
+
+  // Connexion réussie !
+  localStorage.setItem('tagba_auth_user', user.id);
+  localStorage.setItem('tagba_session_authenticated', 'true');
+
+  hideAuthFullscreen();
+  applyActiveUserUI();
+  showToast(`✅ Connexion réussie ! Bienvenue ${user.name} (${user.title}).`);
+  return false;
+}
+
+function quickFillAndLogin(loginName, pwd = '1234') {
+  const identInput = document.getElementById('loginIdentifier');
+  const pwdInput = document.getElementById('loginPassword');
+  if (identInput) identInput.value = loginName;
+  if (pwdInput) pwdInput.value = pwd;
+  handleFullscreenLogin(new Event('submit'));
+}
+
+function showLoginError(msg) {
+  const errBox = document.getElementById('loginErrorMessage');
+  if (errBox) {
+    errBox.textContent = msg;
+    errBox.style.display = 'flex';
+  } else {
+    showToast(msg, 'error');
+  }
+}
+
+function togglePasswordVisibility() {
+  const pwdInput = document.getElementById('loginPassword');
+  const btn = document.getElementById('btnTogglePassword');
+  if (!pwdInput) return;
+  if (pwdInput.type === 'password') {
+    pwdInput.type = 'text';
+    if (btn) btn.textContent = '🙈';
+  } else {
+    pwdInput.type = 'password';
+    if (btn) btn.textContent = '👁️';
+  }
+}
+
+function hideAuthFullscreen() {
+  const screen = document.getElementById('authFullscreenScreen');
+  if (screen) {
+    screen.classList.add('hidden');
+  }
+}
+
+function showAuthFullscreen() {
+  const screen = document.getElementById('authFullscreenScreen');
+  if (screen) {
+    screen.classList.remove('hidden');
+  }
+}
+
+function logoutAuthUser() {
+  localStorage.setItem('tagba_session_authenticated', 'false');
+  showAuthFullscreen();
+  showToast('Vous avez été déconnecté de la mutuelle.');
+}
+
+function initSessionState() {
+  const isAuth = localStorage.getItem('tagba_session_authenticated');
+  if (isAuth === 'true') {
+    hideAuthFullscreen();
+  } else {
+    showAuthFullscreen();
+  }
+}
+
 function switchAuthUser(userId) {
   if (!AUTH_USERS[userId]) return;
   localStorage.setItem('tagba_auth_user', userId);
+  localStorage.setItem('tagba_session_authenticated', 'true');
+  hideAuthFullscreen();
   const user = AUTH_USERS[userId];
   applyActiveUserUI();
   showToast(`Connecté en tant que ${user.name} (${user.title}) — ${user.levelName}`);
@@ -254,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindModalEvents();
   bindFormSubmissions();
   applyActiveUserUI();
+  initSessionState();
 });
 
 // Gestion du Dark/Light Theme

@@ -13,6 +13,89 @@
   <div class="bg-glow-orb-1"></div>
   <div class="bg-glow-orb-2"></div>
 
+  <!-- ============================================================ -->
+  <!-- ÉCRAN DE CONNEXION PRINCIPAL (LOGIN & MOT DE PASSE) -->
+  <!-- ============================================================ -->
+  <div class="auth-fullscreen" id="authFullscreenScreen">
+    <div class="auth-login-card">
+      <div class="auth-login-header">
+        <div class="brand-logo-icon auth-logo-big">T</div>
+        <h2>ASSOCIATION MUTUELLE TAGBA</h2>
+        <p class="auth-subtitle">Espace Sécurisé d'Administration & Gestion</p>
+        <span class="auth-badge-security">🔐 Contrôle d'Accès par Rôles (3 Niveaux)</span>
+      </div>
+
+      <form id="fullscreenLoginForm" onsubmit="return handleFullscreenLogin(event)">
+        <!-- Message d'alerte en cas d'erreur -->
+        <div id="loginErrorMessage" class="auth-error-alert" style="display: none;"></div>
+
+        <!-- Champ Identifiant / Compte -->
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label class="form-label" for="loginIdentifier">Identifiant / Compte *</label>
+          <div class="auth-input-wrapper">
+            <span class="auth-input-icon">👤</span>
+            <input type="text" class="form-control auth-input" id="loginIdentifier" placeholder="Ex: commissaire, porteparole, president" value="commissaire" required autocomplete="username">
+          </div>
+          <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">Identifiants : <strong>commissaire</strong>, <strong>porteparole</strong>, <strong>president</strong></span>
+        </div>
+
+        <!-- Champ Mot de Passe -->
+        <div class="form-group" style="margin-bottom: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" for="loginPassword" style="margin-bottom: 0;">Mot de Passe *</label>
+            <span class="auth-hint-text">Code universel démo : <strong>1234</strong></span>
+          </div>
+          <div class="auth-input-wrapper">
+            <span class="auth-input-icon">🔒</span>
+            <input type="password" class="form-control auth-input" id="loginPassword" placeholder="Entrez votre mot de passe" value="1234" required autocomplete="current-password">
+            <button type="button" class="auth-toggle-pwd" id="btnTogglePassword" onclick="togglePasswordVisibility()" title="Afficher / Masquer le mot de passe">👁️</button>
+          </div>
+        </div>
+
+        <!-- Bouton Se Connecter -->
+        <button type="submit" class="btn btn-primary auth-submit-btn" id="btnSubmitLogin">
+          <span>🔓</span> Se Connecter à la Mutuelle
+        </button>
+
+        <!-- Séparateur -->
+        <div class="auth-divider">
+          <span>OU CONNEXION RAPIDE PAR NIVEAU (1 CLIC)</span>
+        </div>
+
+        <!-- Raccourcis de connexion par rôle -->
+        <div class="auth-quick-roles">
+          <button type="button" class="auth-role-pill level-1" onclick="quickFillAndLogin('commissaire', '1234')">
+            <span class="pill-icon">🔑</span>
+            <div class="pill-text">
+              <strong>Niveau 1 : Commissaire aux Comptes</strong>
+              <span>Drissa Ouattara • Tous Droits (Écriture & Modification)</span>
+            </div>
+          </button>
+
+          <button type="button" class="auth-role-pill level-2" onclick="quickFillAndLogin('porteparole', '1234')">
+            <span class="pill-icon">📢</span>
+            <div class="pill-text">
+              <strong>Niveau 2 : Porte-Parole</strong>
+              <span>Salif Koné • Création & Gestion des Cérémonies uniquement</span>
+            </div>
+          </button>
+
+          <button type="button" class="auth-role-pill level-3" onclick="quickFillAndLogin('president', '1234')">
+            <span class="pill-icon">👁️</span>
+            <div class="pill-text">
+              <strong>Niveau 3 : Président & Autres Membres</strong>
+              <span>Ibrahim Koné • Consultation en Lecture Seule</span>
+            </div>
+          </button>
+        </div>
+
+        <div class="auth-login-footer">
+          <span>Association Mutuelle TAGBA • « Fraternité, Solidarité & Entraide Familiale »</span>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="app-container">
     
     <!-- Sidebar Navigation -->
@@ -85,12 +168,15 @@
       </ul>
 
       <div class="sidebar-footer">
-        <div class="user-quick-profile" id="sidebarUserProfile" onclick="openModal('modalLogin')" style="cursor: pointer;" title="Cliquer pour changer d'utilisateur ou de niveau">
-          <div class="avatar-sm" id="sidebarUserAvatar">DO</div>
-          <div class="user-quick-info">
-            <h4 id="sidebarUserName">Drissa Ouattara</h4>
-            <span id="sidebarUserRole">Commissaire aux Comptes (Tous droits)</span>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <div class="user-quick-profile" id="sidebarUserProfile" onclick="openModal('modalLogin')" style="cursor: pointer; flex: 1;" title="Cliquer pour changer d'utilisateur ou de niveau">
+            <div class="avatar-sm" id="sidebarUserAvatar">DO</div>
+            <div class="user-quick-info">
+              <h4 id="sidebarUserName">Drissa Ouattara</h4>
+              <span id="sidebarUserRole">Commissaire aux Comptes (Tous droits)</span>
+            </div>
           </div>
+          <button class="logout-btn" style="padding: 6px 8px;" onclick="logoutAuthUser()" title="Se déconnecter de la mutuelle">🚪</button>
         </div>
       </div>
     </aside>
@@ -114,6 +200,9 @@
             <span class="auth-user-name" id="topbarUserName">Drissa Ouattara</span>
             <span class="auth-switch-link">Changer ▾</span>
           </div>
+          <button class="logout-btn" id="topbarLogoutBtn" onclick="logoutAuthUser()" title="Se déconnecter de la mutuelle">
+            <span>🚪</span> Déconnexion
+          </button>
           <button class="quick-pill-btn" id="topbarNewCotisationBtn" onclick="openModal('modalAddCotisation')">
             <span>+</span> Nouveau Versement
           </button>
