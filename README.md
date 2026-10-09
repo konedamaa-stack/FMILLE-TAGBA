@@ -4,19 +4,30 @@ Plateforme Web moderne et responsive dédiée à la gestion intégrale de l'**As
 
 ---
 
-## 🏛️ 1. Composition du Bureau Exécutif (11 Postes Officiels)
-Conformément aux directives, les **11 postes officiels** sont intégrés :
-1. **Président** : Représentation légale, vision et arbitrage.
+## 🏛️ 1. Composition du Bureau Exécutif (13 Postes Officiels)
+Conformément aux statuts mis à jour, les **13 postes officiels** sont intégrés :
+1. **Président** : Représentation légale, vision et arbitrage (Consultation en Lecture Seule).
 2. **Vice-Président** : Coordination générale et suppléance.
 3. **Secrétaire Général** : Registres, correspondances et procès-verbaux.
 4. **Vice-Secrétaire** : Secrétariat de séance et registre des membres.
 5. **Trésorier Général** : Caisse centrale, perception et ordonnancement.
 6. **Vice-Trésorier** : Émission des reçus officiels et livre de caisse.
-7. **Commissaire aux Comptes** : Audit financier et contrôle de régularité.
-8. **Vice-Commissaire aux Comptes** : Assistance au contrôle et inventaires.
+7. **Commissaire aux Comptes** : Audit financier, tous les droits d'écriture et de modification (Niveau 1).
+8. **Vice-Commissaire aux Comptes** : Assistance au contrôle, audit et plein pouvoir d'administration.
 9. **Conseiller 1 (Sagesse & Médiation)** : Doyen, réconciliation et médiation.
-10. **Conseiller 2 (Organisation & Protocole)** : Logistique et délégations cérémonies.
+10. **Conseiller 2 (Organisation & Protocole)** : Logistique et accueil.
 11. **Conseiller 3 (Jeunesse & Projets)** : Dynamisation et insertion des jeunes.
+12. **Porte-Parole** : Voix officielle, allocutions et rôle exclusif de gestion des cérémonies (Niveau 2).
+13. **Porte-Parole Adjoint** : Relaie la communication officielle et co-gestion des cérémonies.
+
+---
+
+## 🔐 2. Page de Connexion & Sécurité à 3 Niveaux (RBAC)
+Système de gestion des droits d'accès strict :
+- **Niveau 1 — Commissaire aux Comptes (et son Adjoint)** : **Plein Pouvoir** (Écrire, modifier, supprimer, cotisations, aides, membres, configuration).
+- **Niveau 2 — Porte-Parole (et son Adjoint)** : **Gestion des Cérémonies** (Créer et organiser les événements, lecture seule sur tout le reste).
+- **Niveau 3 — Autres Membres & Président du Bureau** : **Lecture Seule Stricte** (Même le Président est en consultation seule).
+- **Connexion rapide** : Basculement de rôle en 1 clic ou formulaire avec code PIN pour tester chaque profil.
 
 ---
 
