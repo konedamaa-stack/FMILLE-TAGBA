@@ -98,6 +98,45 @@ CREATE TABLE IF NOT EXISTS public.app_config (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 8. Table: depenses (Dépenses prélevées sur caisse ou couvertes par dons)
+CREATE TABLE IF NOT EXISTS public.depenses (
+    id TEXT PRIMARY KEY,
+    recu_num TEXT,
+    titre TEXT NOT NULL,
+    categorie TEXT NOT NULL,
+    cible_type TEXT,
+    cible_id TEXT,
+    cible_titre TEXT,
+    beneficiaire TEXT NOT NULL,
+    montant_total NUMERIC NOT NULL,
+    part_caisse NUMERIC DEFAULT 0,
+    part_volontaire NUMERIC DEFAULT 0,
+    date_paiement DATE NOT NULL,
+    mode_paiement TEXT,
+    justificatif TEXT,
+    valide_par TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 9. Table: contributions_volontaires (Dons nominatifs des membres)
+CREATE TABLE IF NOT EXISTS public.contributions_volontaires (
+    id TEXT PRIMARY KEY,
+    recu_num TEXT,
+    member_id TEXT REFERENCES public.members(id) ON DELETE SET NULL,
+    member_name TEXT NOT NULL,
+    family_id TEXT REFERENCES public.families(id) ON DELETE SET NULL,
+    family_chef TEXT,
+    cible_type TEXT NOT NULL,
+    cible_id TEXT,
+    cible_titre TEXT,
+    montant NUMERIC NOT NULL,
+    mode_paiement TEXT,
+    date_paiement DATE NOT NULL,
+    note TEXT,
+    agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================================
 -- ACTIVATION DU ROW LEVEL SECURITY (RLS) & POLITIQUES OUVERTES
 -- ============================================================
@@ -108,6 +147,8 @@ ALTER TABLE public.cotisations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entraide ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ceremonies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.depenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contributions_volontaires ENABLE ROW LEVEL SECURITY;
 
 -- Politiques publiques pour lecture et écriture via le client (anon)
 CREATE POLICY "Allow public read-write families" ON public.families FOR ALL USING (true) WITH CHECK (true);
@@ -117,3 +158,6 @@ CREATE POLICY "Allow public read-write cotisations" ON public.cotisations FOR AL
 CREATE POLICY "Allow public read-write entraide" ON public.entraide FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write ceremonies" ON public.ceremonies FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write app_config" ON public.app_config FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write depenses" ON public.depenses FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write contributions_volontaires" ON public.contributions_volontaires FOR ALL USING (true) WITH CHECK (true);
+

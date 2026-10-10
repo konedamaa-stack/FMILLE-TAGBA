@@ -207,7 +207,52 @@ async function pushAllDataToSupabase() {
       if (errCer) throw errCer;
     }
 
-    // 7. Config
+    // 7. Dépenses
+    if (localData.depenses && localData.depenses.length > 0) {
+      const depRows = localData.depenses.map(d => ({
+        id: d.id,
+        recu_num: d.recuNum,
+        titre: d.titre,
+        categorie: d.categorie,
+        cible_type: d.cibleType,
+        cible_id: d.cibleId,
+        cible_titre: d.cibleTitre,
+        beneficiaire: d.beneficiaire,
+        montant_total: Number(d.montantTotal || 0),
+        part_caisse: Number(d.partCaisse || 0),
+        part_volontaire: Number(d.partVolontaire || 0),
+        date_paiement: d.datePaiement,
+        mode_paiement: d.modePaiement,
+        justificatif: d.justificatif,
+        valide_par: d.validePar
+      }));
+      const { error: errDep } = await client.from('depenses').upsert(depRows);
+      if (errDep) throw errDep;
+    }
+
+    // 8. Contributions Volontaires (Dons nominatifs)
+    if (localData.contributionsVolontaires && localData.contributionsVolontaires.length > 0) {
+      const donRows = localData.contributionsVolontaires.map(don => ({
+        id: don.id,
+        recu_num: don.recuNum,
+        member_id: don.memberId,
+        member_name: don.memberName,
+        family_id: don.familyId,
+        family_chef: don.familyChef,
+        cible_type: don.cibleType,
+        cible_id: don.cibleId,
+        cible_titre: don.cibleTitre,
+        montant: Number(don.montant || 0),
+        mode_paiement: don.modePaiement,
+        date_paiement: don.datePaiement,
+        note: don.note,
+        agent: don.agent
+      }));
+      const { error: errDon } = await client.from('contributions_volontaires').upsert(donRows);
+      if (errDon) throw errDon;
+    }
+
+    // 9. Config
     if (localData.config) {
       await client.from('app_config').upsert({
         key: 'main_config',
@@ -239,20 +284,24 @@ async function pullAllDataFromSupabase() {
   showToast('⏳ Téléchargement depuis Supabase en cours...', 'info');
 
   try {
-    const [famRes, memRes, burRes, cotRes, entRes, cerRes, cfgRes] = await Promise.all([
+    const [famRes, memRes, burRes, cotRes, entRes, cerRes, depRes, donRes, cfgRes] = await Promise.all([
       client.from('families').select('*'),
       client.from('members').select('*'),
       client.from('bureau').select('*'),
       client.from('cotisations').select('*'),
       client.from('entraide').select('*'),
       client.from('ceremonies').select('*'),
+      client.from('depenses').select('*'),
+      client.from('contributions_volontaires').select('*'),
       client.from('app_config').select('*').eq('key', 'main_config').maybeSingle()
     ]);
 
     if (famRes.error) throw famRes.error;
 
+    const currentLocal = TAGBA_DB.get();
+
     const cloudData = {
-      config: cfgRes.data && cfgRes.data.value ? cfgRes.data.value : TAGBA_DB.get().config,
+      config: cfgRes.data && cfgRes.data.value ? cfgRes.data.value : currentLocal.config,
       bureau: burRes.data && burRes.data.length > 0 ? burRes.data.map(b => ({
         id: b.id,
         role: b.role,
@@ -262,7 +311,7 @@ async function pullAllDataFromSupabase() {
         bio: b.bio,
         photoInitial: b.photo_initial,
         level: b.level
-      })) : TAGBA_DB.get().bureau,
+      })) : currentLocal.bureau,
       families: famRes.data ? famRes.data.map(f => ({
         id: f.id,
         code: f.code,
@@ -322,7 +371,40 @@ async function pullAllDataFromSupabase() {
         delegationBureau: c.delegation_bureau,
         description: c.description,
         statut: c.statut
-      })) : []
+      })) : [],
+      depenses: depRes.data ? depRes.data.map(d => ({
+        id: d.id,
+        recuNum: d.recu_num,
+        titre: d.titre,
+        categorie: d.categorie,
+        cibleType: d.cible_type,
+        cibleId: d.cible_id,
+        cibleTitre: d.cible_titre,
+        beneficiaire: d.beneficiaire,
+        montantTotal: Number(d.montant_total),
+        partCaisse: Number(d.part_caisse),
+        partVolontaire: Number(d.part_volontaire),
+        datePaiement: d.date_paiement,
+        modePaiement: d.mode_paiement,
+        justificatif: d.justificatif,
+        validePar: d.valide_par
+      })) : (currentLocal.depenses || []),
+      contributionsVolontaires: donRes.data ? donRes.data.map(don => ({
+        id: don.id,
+        recuNum: don.recu_num,
+        memberId: don.member_id,
+        memberName: don.member_name,
+        familyId: don.family_id,
+        familyChef: don.family_chef,
+        cibleType: don.cible_type,
+        cibleId: don.cible_id,
+        cibleTitre: don.cible_titre,
+        montant: Number(don.montant),
+        modePaiement: don.mode_paiement,
+        datePaiement: don.date_paiement,
+        note: don.note,
+        agent: don.agent
+      })) : (currentLocal.contributionsVolontaires || [])
     };
 
     TAGBA_DB.save(cloudData);
@@ -435,6 +517,43 @@ CREATE TABLE IF NOT EXISTS public.app_config (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS public.depenses (
+    id TEXT PRIMARY KEY,
+    recu_num TEXT,
+    titre TEXT NOT NULL,
+    categorie TEXT NOT NULL,
+    cible_type TEXT,
+    cible_id TEXT,
+    cible_titre TEXT,
+    beneficiaire TEXT NOT NULL,
+    montant_total NUMERIC NOT NULL,
+    part_caisse NUMERIC DEFAULT 0,
+    part_volontaire NUMERIC DEFAULT 0,
+    date_paiement DATE NOT NULL,
+    mode_paiement TEXT,
+    justificatif TEXT,
+    valide_par TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.contributions_volontaires (
+    id TEXT PRIMARY KEY,
+    recu_num TEXT,
+    member_id TEXT REFERENCES public.members(id) ON DELETE SET NULL,
+    member_name TEXT NOT NULL,
+    family_id TEXT REFERENCES public.families(id) ON DELETE SET NULL,
+    family_chef TEXT,
+    cible_type TEXT NOT NULL,
+    cible_id TEXT,
+    cible_titre TEXT,
+    montant NUMERIC NOT NULL,
+    mode_paiement TEXT,
+    date_paiement DATE NOT NULL,
+    note TEXT,
+    agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 ALTER TABLE public.families ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bureau ENABLE ROW LEVEL SECURITY;
@@ -442,6 +561,8 @@ ALTER TABLE public.cotisations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entraide ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ceremonies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.depenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contributions_volontaires ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read-write families" ON public.families FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write members" ON public.members FOR ALL USING (true) WITH CHECK (true);
@@ -450,6 +571,8 @@ CREATE POLICY "Allow public read-write cotisations" ON public.cotisations FOR AL
 CREATE POLICY "Allow public read-write entraide" ON public.entraide FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write ceremonies" ON public.ceremonies FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow public read-write app_config" ON public.app_config FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write depenses" ON public.depenses FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read-write contributions_volontaires" ON public.contributions_volontaires FOR ALL USING (true) WITH CHECK (true);
 `;
 
   navigator.clipboard.writeText(sql).then(() => {
@@ -458,3 +581,4 @@ CREATE POLICY "Allow public read-write app_config" ON public.app_config FOR ALL 
     showToast('Erreur lors de la copie du script', 'error');
   });
 }
+
