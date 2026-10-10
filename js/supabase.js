@@ -90,14 +90,14 @@ async function testSupabaseCloudConnection() {
 }
 
 // Envoi complet des données locales vers Supabase (Push)
-async function pushAllDataToSupabase() {
+async function pushAllDataToSupabase(silent = false) {
   const client = getSupabaseClient();
   if (!client) {
-    showToast('SDK Supabase introuvable', 'error');
+    if (!silent) showToast('SDK Supabase introuvable', 'error');
     return;
   }
 
-  showToast('⏳ Synchronisation vers Supabase en cours...', 'info');
+  if (!silent) showToast('⏳ Synchronisation vers Supabase en cours...', 'info');
   const localData = TAGBA_DB.get();
 
   try {
@@ -274,14 +274,14 @@ async function pushAllDataToSupabase() {
 }
 
 // Récupération des données depuis Supabase vers le local (Pull)
-async function pullAllDataFromSupabase() {
+async function pullAllDataFromSupabase(silent = false) {
   const client = getSupabaseClient();
   if (!client) {
-    showToast('SDK Supabase introuvable', 'error');
+    if (!silent) showToast('SDK Supabase introuvable', 'error');
     return;
   }
 
-  showToast('⏳ Téléchargement depuis Supabase en cours...', 'info');
+  if (!silent) showToast('⏳ Téléchargement depuis Supabase en cours...', 'info');
 
   try {
     const [famRes, memRes, burRes, cotRes, entRes, cerRes, depRes, donRes, cfgRes] = await Promise.all([
@@ -407,13 +407,18 @@ async function pullAllDataFromSupabase() {
       })) : (currentLocal.contributionsVolontaires || [])
     };
 
-    TAGBA_DB.save(cloudData);
-    renderAllViews();
-    loadConfigForm();
-    showToast('✅ Données mises à jour avec succès depuis le Cloud Supabase !');
+    // Mettre à jour en local seulement si le Cloud contient des données
+    if ((memRes.data && memRes.data.length > 0) || (famRes.data && famRes.data.length > 0)) {
+      TAGBA_DB.save(cloudData);
+      renderAllViews();
+      loadConfigForm();
+      if (!silent) showToast('✅ Données mises à jour avec succès depuis le Cloud Supabase !');
+    } else {
+      if (!silent) showToast('ℹ️ Le Cloud Supabase est vide ou les tables ne contiennent pas encore de données.', 'info');
+    }
   } catch (err) {
     console.error('Erreur pull Supabase:', err);
-    showToast(`Erreur de récupération : ${err.message}`, 'error');
+    if (!silent) showToast(`Erreur de récupération : ${err.message}`, 'error');
   }
 }
 
@@ -581,4 +586,16 @@ CREATE POLICY "Allow public read-write contributions_volontaires" ON public.cont
     showToast('Erreur lors de la copie du script', 'error');
   });
 }
+
+// ============================================================
+// AUTO-SYNCHRONISATION AU CHARGEMENT DE L'APPLICATION
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    if (navigator.onLine && typeof pullAllDataFromSupabase === 'function') {
+      pullAllDataFromSupabase(true);
+    }
+  }, 1000);
+});
+
 
