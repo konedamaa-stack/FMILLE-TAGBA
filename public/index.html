@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TAGBA - Association Mutuelle & Entraide Familiale</title>
+  <meta name="description" content="Plateforme SaaS de gestion pour la Mutuelle TAGBA : Bureau exécutif, familles, membres rattachés, cotisations mensuelles/trimestrielles, entraide sociale et cérémonies.">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Ambient Glow Effects -->
+  <div class="bg-glow-orb-1"></div>
+  <div class="bg-glow-orb-2"></div>
+
+  <!-- ============================================================ -->
+  <!-- ÉCRAN DE CONNEXION PRINCIPAL (DESIGN 2 COLONNES INSPIRÉ DU MODÈLE) -->
+  <!-- ============================================================ -->
+  <div class="auth-fullscreen" id="authFullscreenScreen">
+    <div class="auth-split-card">
+      
+      <!-- Colonne Gauche : Panneau Visuel Vert -->
+      <div class="auth-split-left">
+        <div class="auth-hero-pill">
+          <span>🏛️</span> جمعية تاغبا • Mutuelle TAGBA
+        </div>
+        <h1 class="auth-hero-title" id="authHeroTitle">
+          Direction &<br>Administration !
+        </h1>
+        <p class="auth-hero-desc" id="authHeroDesc">
+          Pilotez l'ensemble des activités, cotisations, familles et cérémonies de votre mutuelle.
+        </p>
+        <div style="margin-top: auto; padding-top: 30px; font-size: 13px; opacity: 0.85; position: relative; z-index: 2;">
+          « Fraternité • Solidarité • Entraide Familiale »
+        </div>
+      </div>
+
+      <!-- Colonne Droite : Formulaire & Sélecteur de Rôles -->
+      <div class="auth-split-right">
+        
+        <div class="auth-top-badge">
+          <span>🏛️</span> جمعية تاغبا للتعاون • Mutuelle TAGBA
+        </div>
+
+        <h2 class="auth-form-title">Se connecter</h2>
+        <p class="auth-form-subtitle" id="authRoleSubtitle">connexion en tant que administration</p>
+
+        <!-- Sélecteur de Rôles Interactif (4 Cartes comme le modèle) -->
+        <div class="auth-roles-grid">
+          
+          <!-- Rôle 1 : Administration / Commissaire -->
+          <div class="auth-role-item active" id="roleTabAdmin" onclick="selectRoleTab('admin')">
+            <div class="auth-role-icon-box icon-box-admin">👑</div>
+            <span class="auth-role-label">Administration</span>
+          </div>
+
+          <!-- Rôle 2 : Porte-Parole -->
+          <div class="auth-role-item" id="roleTabSpeaker" onclick="selectRoleTab('speaker')">
+            <div class="auth-role-icon-box icon-box-speaker">📢</div>
+            <span class="auth-role-label">Porte-Parole</span>
+          </div>
+
+          <!-- Rôle 3 : Président -->
+          <div class="auth-role-item" id="roleTabPres" onclick="selectRoleTab('president')">
+            <div class="auth-role-icon-box icon-box-pres">🏛️</div>
+            <span class="auth-role-label">Président</span>
+          </div>
+
+          <!-- Rôle 4 : Membre / Famille -->
+          <div class="auth-role-item" id="roleTabMember" onclick="selectRoleTab('member')">
+            <div class="auth-role-icon-box icon-box-member">👥</div>
+            <span class="auth-role-label">Parent / Membre</span>
+          </div>
+
+        </div>
+
+        <!-- Titre Dynamique de l'Espace Sélectionné -->
+        <h3 class="auth-section-title" id="authSectionTitle">Espace Administration</h3>
+        <p class="auth-section-desc" id="authSectionDesc">Accès Direction, Secrétariat, Comptabilité et Supervision</p>
+
+        <!-- Formulaire de Connexion -->
+        <form id="fullscreenLoginForm" onsubmit="return handleFullscreenLogin(event)">
+          <!-- Message d'erreur -->
+          <div id="loginErrorMessage" class="auth-error-alert" style="display: none;"></div>
+
+          <!-- Champ Identifiant -->
+          <label class="auth-field-label" for="loginIdentifier">identifiant / login ou mail</label>
+          <div class="auth-custom-input-box">
+            <input type="text" class="auth-custom-input" id="loginIdentifier" placeholder="camara" value="commissaire" required autocomplete="username">
+          </div>
+
+          <!-- Champ Mot de Passe -->
+          <label class="auth-field-label" for="loginPassword">mot de passe</label>
+          <div class="auth-custom-input-box">
+            <input type="password" class="auth-custom-input" id="loginPassword" placeholder="••••••••" value="1234" required autocomplete="current-password">
+            <button type="button" class="auth-toggle-pwd-btn" id="btnTogglePassword" onclick="togglePasswordVisibility()" title="Afficher / Masquer">👁️</button>
+          </div>
+
+          <!-- Bouton Connexion -->
+          <button type="submit" class="auth-submit-green" id="btnSubmitLogin">
+            Se connecter
+          </button>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 11px; color: #64748b;">
+            <span>Code PIN universel démo : <strong style="color: #10b981;">1234</strong></span>
+            <span style="opacity: 0.8;">Plateforme SaaS v1.0</span>
+          </div>
+        </form>
+
+      </div>
+
+    </div>
+  </div>
+
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-section">
+        <div class="brand-logo-icon">T</div>
+        <div class="brand-text">
+          <h2>TAGBA</h2>
+          <p>Mutuelle & Solidarité</p>
+        </div>
+        <button class="sidebar-mobile-close" id="sidebarMobileClose" aria-label="Fermer le menu">&times;</button>
+      </div>
+
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <button class="nav-btn active" data-tab="tab-dashboard" data-title="Tableau de Bord" data-subtitle="Vue globale des activités et finances de la mutuelle">
+            <span class="icon">📊</span>
+            <span>Tableau de bord</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-bureau" data-title="Bureau Exécutif" data-subtitle="Les 13 membres officiels du bureau dirigeant">
+            <span class="icon">🏛️</span>
+            <span>Bureau Exécutif</span>
+            <span class="badge-pill" id="bureauCountBadge">13</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-familles" data-title="Familles & Membres" data-subtitle="Identification et rattachement des membres à leur chef de famille">
+            <span class="icon">👨‍👩‍👧‍👦</span>
+            <span>Se Connaître</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-cotisations" data-title="Cotisations & Versements" data-subtitle="Versements mensuels ou trimestriels et reçus de paiement">
+            <span class="icon">💳</span>
+            <span>Versements</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-entraide" data-title="Entraide & Cas Sociaux" data-subtitle="Prise en charge des problèmes, urgences et santé des membres">
+            <span class="icon">🤝</span>
+            <span>Entraide Membres</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-ceremonies" data-title="Cérémonies & Événements" data-subtitle="Mariages, baptêmes, funérailles et présence de la mutuelle">
+            <span class="icon">🎉</span>
+            <span>Cérémonies</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-finances" data-title="Caisse, Dépenses & Dons" data-subtitle="Solde net de caisse, dépenses décaissées et contributions volontaires nominatives">
+            <span class="icon">💰</span>
+            <span>Caisse & Dépenses</span>
+            <span class="badge-pill" id="caisseBadgePill" style="background: rgba(16,185,129,0.2); color: var(--emerald-400);">Trésor</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-statuts" data-title="Statuts & Règlement" data-subtitle="Textes officiels, droits, devoirs et organisation juridique">
+            <span class="icon">📜</span>
+            <span>Statuts Officiels</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-data" data-title="Gestion des Données" data-subtitle="Sauvegarde, exportation et réinitialisation de la plateforme">
+            <span class="icon">⚙️</span>
+            <span>Sauvegarde & Paramètres</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-auth" data-title="Connexion & Droits d'Accès" data-subtitle="3 niveaux : Commissaire aux comptes, Porte-parole, Lecture seule">
+            <span class="icon">🔐</span>
+            <span>Connexion & Rôles</span>
+            <span class="badge-pill" id="sidebarAuthBadge" style="background: rgba(16,185,129,0.2); color: var(--emerald-400);">Niv. 1</span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <div class="user-quick-profile" id="sidebarUserProfile" onclick="openModal('modalLogin')" style="cursor: pointer; flex: 1;" title="Cliquer pour changer d'utilisateur ou de niveau">
+            <div class="avatar-sm" id="sidebarUserAvatar">DO</div>
+            <div class="user-quick-info">
+              <h4 id="sidebarUserName">Drissa Ouattara</h4>
+              <span id="sidebarUserRole">Commissaire aux Comptes (Tous droits)</span>
+            </div>
+          </div>
+          <button class="logout-btn" style="padding: 6px 8px;" onclick="logoutAuthUser()" title="Se déconnecter de la mutuelle">🚪</button>
+        </div>
+      </div>
+    </aside>
+    
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Wrapper -->
+    <main class="main-wrapper">
+      
+      <!-- Topbar Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-toggle-btn" id="mobileToggleBtn" aria-label="Menu Mobile">☰</button>
+          <div class="page-title-box">
+            <h1 id="currentPageTitle">Tableau de Bord</h1>
+            <p id="currentPageSubtitle">Vue globale des activités et finances de la mutuelle</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="auth-topbar-widget" id="authTopbarWidget" onclick="openModal('modalLogin')" title="Changer d'utilisateur">
+            <div class="auth-badge-pill" id="topbarRoleBadge">🔑 Niveau 1 : Tous droits</div>
+            <span class="auth-user-name" id="topbarUserName">Drissa Ouattara</span>
+            <span class="auth-switch-link">Changer ▾</span>
+          </div>
+          <button class="quick-pill-btn" style="background: rgba(16,185,129,0.18); color: var(--emerald-400); border: 1px solid var(--emerald-500); cursor: pointer; font-weight: 700;" onclick="pushAllDataToSupabase()" title="Envoyer vos modifications vers le Cloud Supabase">
+            <span>☁️</span> Synchroniser (Push)
+          </button>
+          <button class="quick-pill-btn" style="background: rgba(6,182,212,0.15); color: var(--cyan-400); border: 1px solid rgba(6,182,212,0.4); cursor: pointer; font-weight: 700;" onclick="pullAllDataFromSupabase()" title="Télécharger les données à jour depuis le Cloud Supabase">
+            <span>📥</span> Charger (Pull)
+          </button>
+          <button class="logout-btn" id="topbarLogoutBtn" onclick="logoutAuthUser()" title="Se déconnecter de la mutuelle">
+            <span>🚪</span> Déconnexion
+          </button>
+          <button class="quick-pill-btn" id="topbarNewCotisationBtn" onclick="openModal('modalAddCotisation')">
+            <span>+</span> Nouveau Versement
+          </button>
+          <button class="theme-toggle-btn" id="themeToggleBtn" title="Basculer thème clair/sombre">☀️</button>
+        </div>
+      </header>
+
+      <!-- Content Area -->
+      <section class="content-area">
+
+        <!-- ============================================================ -->
+        <!-- TAB 1 : DASHBOARD -->
+        <!-- ============================================================ -->
+        <div class="tab-pane active" id="tab-dashboard">
+          
+          <!-- Hero Banner -->
+          <div class="welcome-hero">
+            <div>
+              <div class="hero-text">
+                <h2>Bienvenue sur l'espace officiel de la Mutuelle TAGBA</h2>
+                <p>Favoriser la cohésion fraternelle, assurer la solidarité face aux épreuves et célébrer ensemble les heureux événements de chaque famille.</p>
+              </div>
+              <div class="hero-badges">
+                <span class="hero-badge highlight">✨ Objectif n°1 : Se Connaître</span>
+                <span class="hero-badge highlight">💳 Versements Mensuels & Trimestriels</span>
+                <span class="hero-badge highlight">🤝 Soutien & Entraide Active</span>
+                <span class="hero-badge highlight">🎉 Honneur aux Cérémonies</span>
+              </div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-gold" onclick="openModal('modalAddMember')">+ Inscrire un Membre</button>
+            </div>
+          </div>
+
+          <!-- KPI Grid -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Membres Inscrits</span>
+                <div class="kpi-icon-box icon-emerald">👥</div>
+              </div>
+              <div class="kpi-value" id="kpiTotalMembres">0</div>
+              <div class="kpi-trend">
+                <span class="trend-up" id="kpiTotalFamilles">0 foyers</span> rattachés
+              </div>
+            </div>
+
+            <div class="kpi-card" style="cursor: pointer;" onclick="document.querySelector('[data-tab=tab-finances]').click()" title="Voir les détails de la caisse">
+              <div class="kpi-header">
+                <span class="kpi-title">Caisse Centrale Nette</span>
+                <div class="kpi-icon-box icon-gold">💰</div>
+              </div>
+              <div class="kpi-value" id="kpiFondsCaisse">0 FCFA</div>
+              <div class="kpi-trend">
+                <span class="trend-up" id="kpiFondsCaisseSub">Solde net disponible</span>
+              </div>
+            </div>
+
+            <div class="kpi-card">
+              <div class="kpi-header">
+                <span class="kpi-title">Cotisations Encaissées</span>
+                <div class="kpi-icon-box icon-blue">💳</div>
+              </div>
+              <div class="kpi-value" id="kpiCotisationsTotal">0 FCFA</div>
+              <div class="kpi-trend">
+                <span>Versements obligatoires</span>
+              </div>
+            </div>
+
+            <div class="kpi-card" style="cursor: pointer;" onclick="document.querySelector('[data-tab=tab-finances]').click(); switchFinanceSubTab('dons');" title="Voir les donateurs volontaires">
+              <div class="kpi-header">
+                <span class="kpi-title">Dons Volontaires Membres</span>
+                <div class="kpi-icon-box" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">❤️</div>
+              </div>
+              <div class="kpi-value" id="kpiDonsTotal" style="color: #a78bfa;">0 FCFA</div>
+              <div class="kpi-trend">
+                <span style="color: #a78bfa;">Soutiens aux cérémonies & aides</span>
+              </div>
+            </div>
+
+            <div class="kpi-card" style="cursor: pointer;" onclick="document.querySelector('[data-tab=tab-finances]').click(); switchFinanceSubTab('depenses');" title="Voir les dépenses">
+              <div class="kpi-header">
+                <span class="kpi-title">Dépenses Caisse</span>
+                <div class="kpi-icon-box icon-rose">📉</div>
+              </div>
+              <div class="kpi-value" id="kpiDepensesTotal" style="color: var(--rose-400);">0 FCFA</div>
+              <div class="kpi-trend">
+                <span class="trend-warning">Fonds sortis de caisse</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section Grid: Recent Cotisations & Active Events -->
+          <div class="section-grid">
+            <!-- Table Derniers versements -->
+            <div class="card-panel col-8">
+              <div class="card-header-flex">
+                <h3><span>💳</span> Derniers Versements Reçus</h3>
+                <div class="actions">
+                  <button class="btn btn-sm btn-secondary" onclick="document.querySelector('[data-tab=tab-cotisations]').click()">Voir tout</button>
+                  <button class="btn btn-sm btn-primary" onclick="openModal('modalAddCotisation')">+ Encaisser</button>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Réf Reçu</th>
+                      <th>Membre</th>
+                      <th>Montant</th>
+                      <th>Paiement</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableRecentCotisations">
+                    <!-- Généré par JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Colonne Événements & Entraide -->
+            <div class="col-4" style="display: flex; flex-direction: column; gap: 24px;">
+              
+              <!-- Prochaines Cérémonies -->
+              <div class="card-panel">
+                <div class="card-header-flex">
+                  <h3><span>🎉</span> Cérémonies à Venir</h3>
+                  <button class="btn btn-sm btn-secondary" onclick="openModal('modalAddCeremonie')">+</button>
+                </div>
+                <div id="dashCeremoniesList">
+                  <!-- Généré par JS -->
+                </div>
+              </div>
+
+              <!-- Cas d'Entraide Récents -->
+              <div class="card-panel">
+                <div class="card-header-flex">
+                  <h3><span>❤️</span> Urgences & Entraide</h3>
+                  <button class="btn btn-sm btn-secondary" onclick="openModal('modalAddEntraide')">+</button>
+                </div>
+                <div id="dashEntraideList">
+                  <!-- Généré par JS -->
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 2 : BUREAU EXÉCUTIF (11 POSTES) -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-bureau">
+          <div class="card-panel" style="margin-bottom: 24px;">
+            <div class="card-header-flex">
+              <div>
+                <h2>Organigramme du Bureau Exécutif (13 Postes)</h2>
+                <p style="font-size: 13px; color: var(--text-muted);">
+                  Instance dirigeante élue pour administrer la Mutuelle TAGBA selon les statuts.
+                </p>
+              </div>
+              <span class="badge badge-warning" style="font-size: 12px; padding: 6px 14px;">Mandat en cours (2024 - 2027)</span>
+            </div>
+          </div>
+
+          <div class="bureau-org-grid" id="bureauGrid">
+            <!-- Rendu interactif des 11 postes par JS -->
+          </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 3 : FAMILLES & MEMBRES (SE CONNAÎTRE) -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-familles">
+          
+          <!-- Toolbar with Segmented Controls -->
+          <div class="toolbar-bar">
+            <div class="toolbar-group">
+              <!-- Mode d'affichage -->
+              <div class="segmented-control" id="familyViewModeSwitcher">
+                <button class="segmented-btn active" data-view="grouped">
+                  <span>👑</span> Vue par Chef de Famille (Groupée)
+                </button>
+                <button class="segmented-btn" data-view="table">
+                  <span>📋</span> Annuaire Global
+                </button>
+                <button class="segmented-btn" data-view="cards">
+                  <span>🌳</span> Cartes Rapides
+                </button>
+              </div>
+
+              <div class="search-box">
+                <span>🔍</span>
+                <input type="text" id="memberSearchInput" placeholder="Rechercher membre, chef, profession...">
+              </div>
+
+              <select class="filter-select" id="memberFamilyFilter">
+                <option value="">Tous les chefs de famille</option>
+              </select>
+            </div>
+
+            <div class="toolbar-group">
+              <button class="btn btn-secondary" id="btnNouveauChefMain" onclick="openModal('modalAddFamily')">👨‍👩‍👧 + Nouveau Chef / Famille</button>
+              <button class="btn btn-primary" id="btnNouveauMembreMain" onclick="openModal('modalAddMember')">👤 + Nouveau Membre</button>
+            </div>
+          </div>
+
+          <!-- 1. VUE PRINCIPALE : REGROUPEMENT PAR CHEF DE FAMILLE (Default) -->
+          <div id="groupedFamiliesContainer">
+            <!-- Rendu dynamique complet de chaque chef de famille avec ses membres rattachés -->
+          </div>
+
+          <!-- 2. VUE SECONDAIRE : ANNUAIRE GLOBAL (TABLEAU) -->
+          <div class="card-panel" id="globalMembersTablePanel" style="display: none;">
+            <div class="card-header-flex">
+              <h3><span>📋</span> Répertoire Général des Membres</h3>
+              <span class="badge badge-info" id="globalMembersCountBadge">0 membre(s)</span>
+            </div>
+            <div class="table-responsive">
+              <table class="modern-table">
+                <thead>
+                  <tr>
+                    <th>Matricule</th>
+                    <th>Nom Complet & Poste</th>
+                    <th>Chef de Famille / Lien</th>
+                    <th>Contact</th>
+                    <th>Statut Cotisation</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="membersTableBody">
+                  <!-- Rendu par JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 3. VUE TERTIAIRE : ARBORESCENCE & CARTES RAPIDES -->
+          <div class="card-panel" id="quickCardsContainer" style="display: none;">
+            <div class="card-header-flex">
+              <div>
+                <h3><span>🌳</span> Aperçu Synthétique des Foyers</h3>
+                <p style="font-size: 12px; color: var(--text-muted);">Cartes récapitulatives par branche familiale.</p>
+              </div>
+            </div>
+            <div class="family-tree-grid" id="familyTreeGrid">
+              <!-- Rendu des familles par JS -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 4 : COTISATIONS & VERSEMENTS -->
+        <!-- ============================================================ -->
+        <!-- ============================================================ -->
+        <!-- TAB 4 : COTISATIONS & VERSEMENTS -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-cotisations">
+          
+          <div class="toolbar-bar">
+            <div class="toolbar-group">
+              <div style="font-size: 14px; color: var(--text-muted);">
+                Total cotisations enregistrées : <strong style="color: var(--emerald-400); font-size: 18px;" id="cotisationsSumDisplay">0 FCFA</strong>
+              </div>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn btn-gold" id="btnPlageVersementMain" onclick="openFamilyBatchPayModal()">👨‍👩‍👧‍👦 Plage de Versement Familial</button>
+              <button class="btn btn-primary" id="btnNouveauVersementMain" onclick="openModal('modalAddCotisation')">💳 + Enregistrer un Versement</button>
+            </div>
+          </div>
+
+          <!-- Sous-navigation des Cotisations : Suivi des Mois vs Registre Reçus -->
+          <div class="cotis-subtabs-nav">
+            <button type="button" class="cotis-subtab-btn active" id="btnCotisSubTabMonths" onclick="switchCotisSubTab('months')">
+              <span>📅</span> Suivi des Mois (Payés, Retards & Anticipations)
+            </button>
+            <button type="button" class="cotis-subtab-btn" id="btnCotisSubTabRegistre" onclick="switchCotisSubTab('registre')">
+              <span>📜</span> Registre des Encaissements & Reçus
+            </button>
+          </div>
+
+          <!-- ============================================================ -->
+          <!-- SOUS-VUE 1 : SUIVI DES MOIS (PAYÉS, RETARDS & ANTICIPATIONS) -->
+          <!-- ============================================================ -->
+          <div id="cotisationsMonthsTrackingView">
+            
+            <!-- Bannière officielle du calendrier de versement -->
+            <div class="card-panel" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(15,23,42,0.95) 100%); border-left: 4px solid var(--emerald-400);">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span class="badge badge-success">Cotisations Actives</span>
+                    <span style="font-size: 12px; color: var(--text-muted);">Lancement officiel de la Mutuelle</span>
+                  </div>
+                  <h3 style="font-size: 17px; color: #fff;">
+                    🚀 Versements initiés le <span style="color: var(--emerald-400); font-weight: 800;" id="badgeDateDebutCotis">04/10/2026</span>
+                  </h3>
+                  <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px; max-width: 680px;">
+                    Chaque membre cotise à hauteur de <strong style="color: var(--text-main);" id="cfgDisplayMensuelBadge">5 000 FCFA / mois</strong>. 
+                    Les membres peuvent <strong>anticiper leurs paiements</strong> sur plusieurs mois à venir ou régulariser leurs retards.
+                  </p>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                  <button class="btn btn-sm btn-secondary" onclick="document.querySelector('[data-tab=tab-data]').click()">⚙️ Modifier Paramètres</button>
+                  <button class="btn btn-sm btn-primary" onclick="openModal('modalAddCotisation')">💳 Versement / Anticipation</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cartes KPI de Synthèse des Échéances -->
+            <div class="kpi-grid" style="margin-bottom: 24px;">
+              <div class="kpi-card" style="border-left: 3px solid var(--emerald-500);">
+                <span class="kpi-title">Membres À Jour & En Avance</span>
+                <div class="kpi-value" style="color: var(--emerald-400);" id="kpiMoisAJourCount">0</div>
+                <div class="kpi-sub" id="kpiMoisAJourSub">Sans arriérés de cotisation</div>
+              </div>
+
+              <div class="kpi-card" style="border-left: 3px solid var(--rose-500);">
+                <span class="kpi-title">Membres En Retard</span>
+                <div class="kpi-value" style="color: var(--rose-400);" id="kpiMoisRetardCount">0</div>
+                <div class="kpi-sub" style="color: var(--rose-400);" id="kpiMoisRetardSub">Mois échus impayés</div>
+              </div>
+
+              <div class="kpi-card" style="border-left: 3px solid #f59e0b;">
+                <span class="kpi-title">Arriérés Totaux Dus</span>
+                <div class="kpi-value" style="color: var(--gold-400);" id="kpiTotalArrieres">0 FCFA</div>
+                <div class="kpi-sub">Total des cotisations en souffrance</div>
+              </div>
+
+              <div class="kpi-card" style="border-left: 3px solid var(--cyan-500);">
+                <span class="kpi-title">Mois Anticipés (Avance)</span>
+                <div class="kpi-value" style="color: var(--cyan-400);" id="kpiTotalMoisAnticipes">0</div>
+                <div class="kpi-sub">Mois futurs payés d'avance</div>
+              </div>
+            </div>
+
+            <!-- Filtres & Recherche de la vue Suivi des Mois -->
+            <div class="card-panel" style="margin-bottom: 18px; padding: 14px 20px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="filterMonthsStatusGroup">
+                  <button type="button" class="filter-pill-btn active" data-filter="ALL" onclick="filterMonthsTrackingTable('ALL')">Tous les membres</button>
+                  <button type="button" class="filter-pill-btn" data-filter="EN_AVANCE" onclick="filterMonthsTrackingTable('EN_AVANCE')">🚀 En Avance (Anticipé)</button>
+                  <button type="button" class="filter-pill-btn" data-filter="A_JOUR" onclick="filterMonthsTrackingTable('A_JOUR')">✅ À Jour</button>
+                  <button type="button" class="filter-pill-btn" data-filter="EN_RETARD" onclick="filterMonthsTrackingTable('EN_RETARD')">⚠️ En Retard</button>
+                </div>
+                <div style="min-width: 260px; flex-grow: 1; max-width: 360px;">
+                  <input type="text" class="form-control" id="searchMonthsTrackingInput" placeholder="🔍 Filtrer par nom ou matricule..." oninput="filterMonthsTrackingTable()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Tableau Dynamique de Suivi des Mois -->
+            <div class="card-panel">
+              <div class="card-header-flex">
+                <h3><span>📋</span> Diagnostic Chronologique par Membre (Depuis le 04/10/2026)</h3>
+                <span style="font-size: 12px; color: var(--text-muted);" id="monthsTrackingTableCount">Chargement...</span>
+              </div>
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Membre</th>
+                      <th>Total Versé</th>
+                      <th>Mois Réglés</th>
+                      <th>Mois en Retard</th>
+                      <th>Statut</th>
+                      <th>Prochaine Échéance</th>
+                      <th style="text-align: right;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cotisationsMonthsTrackingTableBody">
+                    <!-- Rempli dynamiquement en JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ============================================================ -->
+          <!-- SOUS-VUE 2 : REGISTRE GÉNÉRAL DES ENCAISSEMENTS & REÇUS -->
+          <!-- ============================================================ -->
+          <div id="cotisationsRegistreView" style="display: none;">
+            
+            <!-- Guide sur les montants -->
+            <div class="card-panel" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(17,24,39,0.8) 100%);">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div>
+                  <h3 style="font-size: 16px; color: var(--emerald-400);">Barème officiel des versements TAGBA</h3>
+                  <p style="font-size: 13px; color: var(--text-muted);">Deux modes de cotisation au choix pour chaque membre de la mutuelle :</p>
+                </div>
+                <div style="display: flex; gap: 16px;">
+                  <div style="background: rgba(255,255,255,0.04); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Option Mensuelle</div>
+                    <strong style="font-size: 16px; color: var(--text-main);" id="cfgDisplayMensuel">5 000 FCFA / mois</strong>
+                  </div>
+                  <div style="background: rgba(255,255,255,0.04); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Option Trimestrielle</div>
+                    <strong style="font-size: 16px; color: var(--gold-400);" id="cfgDisplayTrimestriel">15 000 FCFA / trimestre</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Historique des versements -->
+            <div class="card-panel">
+              <div class="card-header-flex">
+                <h3><span>📜</span> Registre Général des Encaissements</h3>
+              </div>
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Réf. Reçu</th>
+                      <th>Membre & Encaissé par</th>
+                      <th>Type</th>
+                      <th>Période</th>
+                      <th>Montant</th>
+                      <th>Mode</th>
+                      <th>Date</th>
+                      <th>Reçu</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cotisationsTableBody">
+                    <!-- Rendu par JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 5 : ENTRAIDE & CAS SOCIAUX (PROBLÈMES DES MEMBRES) -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-entraide">
+          
+          <div class="toolbar-bar">
+            <div>
+              <h2 style="font-size: 20px;">Fonds de Solidarité & Entraide Communautaire</h2>
+              <p style="font-size: 13px; color: var(--text-muted);">Prise en charge active des problèmes de santé, accidents, deuils et urgences des membres.</p>
+            </div>
+            <button class="btn btn-primary" id="btnAddEntraideMain" onclick="openModal('modalAddEntraide')">❤️ + Signaler un Cas Social</button>
+          </div>
+
+          <div class="section-grid" id="entraideGrid">
+            <!-- Rendu des cas d'entraide par JS -->
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 6 : CÉRÉMONIES & ÉVÉNEMENTS -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-ceremonies">
+          
+          <div class="toolbar-bar">
+            <div>
+              <h2 style="font-size: 20px;">Participation aux Cérémonies Familiales</h2>
+              <p style="font-size: 13px; color: var(--text-muted);">Gestion des présences, délégations mandatées et enveloppes de soutien financier aux événements.</p>
+            </div>
+            <button class="btn btn-gold" id="btnAddCeremonieMain" onclick="openModal('modalAddCeremonie')">🎉 + Programmer une Cérémonie</button>
+          </div>
+
+          <div class="section-grid" id="ceremoniesGrid">
+            <!-- Rendu des cérémonies par JS -->
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 6.5 : TRÉSORERIE, CAISSE, DÉPENSES & CONTRIBUTIONS VOLONTAIRES -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-finances">
+          
+          <div class="toolbar-bar">
+            <div>
+              <h2 style="font-size: 20px;">💰 Trésorerie Générale & Livre de Caisse</h2>
+              <p style="font-size: 13px; color: var(--text-muted);">Suivi du montant en caisse, des dépenses décaissées et de la générosité volontaire nominative des membres.</p>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn btn-secondary" id="btnNouveauDonMain" onclick="openModal('modalAddContributionVolontaire')">❤️ + Enregistrer un Don Volontaire</button>
+              <button class="btn btn-primary" id="btnNouvelleDepenseMain" onclick="openModal('modalAddDepense')">📉 + Enregistrer une Dépense</button>
+            </div>
+          </div>
+
+          <!-- Grand Panneau Visuel du Solde Net en Caisse -->
+          <div class="card-panel" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(15,23,42,0.95) 100%); border-left: 4px solid var(--emerald-400);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+              <div>
+                <span class="badge badge-success" style="margin-bottom: 6px;">Caisse Principale Active</span>
+                <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Solde Net Actuel Disponible en Caisse</div>
+                <div style="font-size: 32px; font-weight: 800; color: var(--emerald-400); margin: 4px 0;" id="caisseSoldeNetDisplay">0 FCFA</div>
+                <div style="font-size: 12px; color: var(--text-secondary); max-width: 620px; line-height: 1.5;" id="caisseFormuleDetail">
+                  Fonds initial + Cotisations ordinaires + Dons volontaires reçus - Dépenses décaissées.
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <div style="background: rgba(255,255,255,0.04); padding: 12px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); text-align: right;">
+                  <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Total Entrées Globales</div>
+                  <strong style="font-size: 17px; color: var(--emerald-400);" id="caisseTotalEntreesDisplay">0 FCFA</strong>
+                </div>
+                <div style="background: rgba(255,255,255,0.04); padding: 12px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); text-align: right;">
+                  <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Total Sorties Caisse</div>
+                  <strong style="font-size: 17px; color: var(--rose-400);" id="caisseTotalSortiesDisplay">0 FCFA</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 Cartes KPI Financières -->
+          <div class="kpi-grid" style="margin-bottom: 24px;">
+            <div class="kpi-card" style="border-left: 3px solid var(--emerald-500);">
+              <span class="kpi-title">Fonds Initial Prévu</span>
+              <div class="kpi-value" style="color: var(--text-main);" id="kpiFinFondsDepart">0 FCFA</div>
+              <div class="kpi-sub">Dotation de caisse de base</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid #06b6d4;">
+              <span class="kpi-title">Cotisations Encaissées</span>
+              <div class="kpi-value" style="color: var(--cyan-400);" id="kpiFinCotisations">0 FCFA</div>
+              <div class="kpi-sub">Versements mensuels obligatoires</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid #8b5cf6;">
+              <span class="kpi-title">Dons Volontaires Membres</span>
+              <div class="kpi-value" style="color: #a78bfa;" id="kpiFinDonsVolontaires">0 FCFA</div>
+              <div class="kpi-sub">Générosité pour cérémonies & aides</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid var(--rose-500);">
+              <span class="kpi-title">Dépenses Décaissées Caisse</span>
+              <div class="kpi-value" style="color: var(--rose-400);" id="kpiFinDepensesCaisse">0 FCFA</div>
+              <div class="kpi-sub">Fonds sortis de la caisse centrale</div>
+            </div>
+          </div>
+
+          <!-- Sous-onglets de Trésorerie -->
+          <div class="cotis-subtabs-nav" style="margin-bottom: 18px;">
+            <button type="button" class="cotis-subtab-btn active" id="btnFinSubTabDepenses" onclick="switchFinanceSubTab('depenses')">
+              <span>📉</span> Registre des Dépenses & Financements
+            </button>
+            <button type="button" class="cotis-subtab-btn" id="btnFinSubTabDons" onclick="switchFinanceSubTab('dons')">
+              <span>❤️</span> Dons & Contributions Volontaires (Nominatif)
+            </button>
+            <button type="button" class="cotis-subtab-btn" id="btnFinSubTabJournal" onclick="switchFinanceSubTab('journal')">
+              <span>📖</span> Grand Livre Journal de Caisse
+            </button>
+          </div>
+
+          <!-- VUE 1 : REGISTRE DES DÉPENSES -->
+          <div id="financeDepensesView">
+            <div class="card-panel">
+              <div class="card-header-flex">
+                <div>
+                  <h3><span>📉</span> Toutes les Dépenses Engagées par la Mutuelle</h3>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Distinction claire entre les montants prélevés sur la caisse centrale et les montants couverts par les dons volontaires des membres.
+                  </p>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="openModal('modalAddDepense')">+ Nouvelle Dépense</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Réf. Dépense</th>
+                      <th>Motif & Événement Associé</th>
+                      <th>Catégorie</th>
+                      <th>Bénéficiaire</th>
+                      <th>Montant Total</th>
+                      <th>Prélevé Caisse</th>
+                      <th>Couvert par Dons</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableDepensesBody">
+                    <!-- Rempli dynamiquement par JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- VUE 2 : DONS ET CONTRIBUTIONS VOLONTAIRES DES MEMBRES (NOMINATIF) -->
+          <div id="financeDonsView" style="display: none;">
+            <div class="card-panel">
+              <div class="card-header-flex">
+                <div>
+                  <h3><span>❤️</span> Membres Ayant Donné Volontairement (Cérémonies & Aides)</h3>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Reconnaissance et traçabilité nominative de chaque membre donateur ayant soutenu un mariage, des obsèques ou un cas social.
+                  </p>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="openModal('modalAddContributionVolontaire')">+ Enregistrer un Don</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Réf. Don</th>
+                      <th>Membre Donateur & Foyer</th>
+                      <th>Destination (Cérémonie ou Aide)</th>
+                      <th>Montant Donné</th>
+                      <th>Mode</th>
+                      <th>Date</th>
+                      <th>Reçu Officiel</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableDonsBody">
+                    <!-- Rempli dynamiquement par JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- VUE 3 : LIVRE JOURNAL DE CAISSE (FLUX ENTRÉES / SORTIES) -->
+          <div id="financeJournalView" style="display: none;">
+            <div class="card-panel">
+              <div class="card-header-flex">
+                <div>
+                  <h3><span>📖</span> Grand Livre Journal Chronologique de la Caisse</h3>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Journal détaillé de toutes les entrées (cotisations, dons) et sorties (aides, dépenses) avec solde progressif.
+                  </p>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type d'Opération</th>
+                      <th>Libellé & Membre / Prestataire</th>
+                      <th>Entrée (+)</th>
+                      <th>Sortie (-)</th>
+                      <th>Solde Cumulé</th>
+                      <th>Mode / Réf</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableLivreCaisseBody">
+                    <!-- Rempli dynamiquement par JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+
+        <!-- ============================================================ -->
+        <!-- TAB 7 : STATUTS & RÈGLEMENT INTÉRIEUR OFFICIEL -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-statuts">
+          
+          <div class="card-panel">
+            <div class="card-header-flex" style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px;">
+              <div>
+                <h2>Statuts & Règlement Intérieur Officiels</h2>
+                <p style="font-size: 13px; color: var(--text-muted);">Document régissant le fonctionnement de l'Association Mutuelle TAGBA</p>
+              </div>
+              <button class="btn btn-secondary" onclick="imprimerStatuts()">🖨️ Imprimer les Statuts</button>
+            </div>
+
+            <article class="statuts-doc">
+              <div style="text-align: center; margin: 24px 0 32px 0;">
+                <h1 style="font-size: 26px; color: var(--emerald-400);">ASSOCIATION MUTUELLE TAGBA</h1>
+                <p style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted);">
+                  « Fraternité • Solidarité • Entraide Familiale »
+                </p>
+              </div>
+
+              <h2>TITRE I : CONSTITUTION – DÉNOMINATION – SIÈGE – DURÉE</h2>
+              <h3>Article 1 : Constitution</h3>
+              <p>Il est constitué entre les adhérents aux présents statuts une association mutuelle de solidarité et d'entraide régie par les lois et règlements en vigueur, dénommée <strong>« ASSOCIATION MUTUELLE TAGBA »</strong>.</p>
+              
+              <h3>Article 2 : Siège et Durée</h3>
+              <p>Le siège social est fixé au domicile du Président en exercice ou en tout autre lieu désigné par l'Assemblée Générale. La durée de l'association est illimitée.</p>
+
+              <h2>TITRE II : OBJECTIFS FONDAMENTAUX</h2>
+              <h3>Article 3 : Buts de la Mutuelle</h3>
+              <p>La Mutuelle TAGBA a pour objectifs cardinaux :</p>
+              <ul>
+                <li><strong>Se Connaître :</strong> Rapprocher les familles, fortifier les liens intergénérationnels, organiser le répertoire des membres et maintenir la communion fraternelle.</li>
+                <li><strong>Versements & Épargne Solidaire :</strong> Instaurer une discipline de versement régulier (mensuel ou trimestriel) pour constituer un fonds de prévoyance.</li>
+                <li><strong>Assistance & Prise en charge des Problèmes :</strong> Venir en aide financièrement, moralement et matériellement à tout membre traversant une situation difficile (maladie, hospitalisation, sinistre, accident).</li>
+                <li><strong>Participation Active aux Cérémonies :</strong> Honorer les événements marquants de la vie des membres (mariages, naissances/baptêmes, obsèques, soutiens académiques) par l'envoi d'une délégation officielle et l'octroi d'une enveloppe de soutien.</li>
+              </ul>
+
+              <h2>TITRE III : DES MEMBRES ET DU RATTACHEMENT FAMILIAL</h2>
+              <h3>Article 4 : Principe d'Identification par Chef de Famille</h3>
+              <p>Pour assurer la traçabilité et préserver l'harmonie communautaire, <strong>chaque membre adhérent est formellement rattaché à un chef de famille</strong> désigné au sein de la mutuelle.</p>
+              <p>Le Chef de famille est le répondant moral et le relais de communication privilégié entre le Bureau Exécutif et les membres de son foyer.</p>
+
+              <h2>TITRE IV : DES ORGANES DIRIGEANTS – LE BUREAU EXÉCUTIF (13 MEMBRES)</h2>
+              <h3>Article 5 : Composition du Bureau</h3>
+              <p>L'administration et la gestion quotidienne de la Mutuelle TAGBA sont confiées à un <strong>Bureau Exécutif composé de treize (13) membres</strong> :</p>
+              <ul>
+                <li><strong>1. Le Président :</strong> Représente la mutuelle dans tous les actes civils, convoque et préside les réunions et veille au respect des statuts (Accès Lecture Seule).</li>
+                <li><strong>2. Le Vice-Président :</strong> Assiste le Président et le remplace en cas d'absence ou d'empêchement avec les mêmes prérogatives.</li>
+                <li><strong>3. Le Secrétaire Général :</strong> Rédige les procès-verbaux, tient les registres d'adhésion, conserve les archives et gère la correspondance officielle.</li>
+                <li><strong>4. Le Vice-Secrétaire :</strong> Assiste le Secrétaire Général et assure le secrétariat de séance lors des réunions.</li>
+                <li><strong>5. Le Trésorier Général :</strong> Responsable de la garde des fonds, perçoit les cotisations, tient le livre de caisse et ordonne les paiements autorisés.</li>
+                <li><strong>6. Le Vice-Trésorier :</strong> Assiste le Trésorier Général, émet les reçus de versement et assure la tenue de la caisse menue dépense.</li>
+                <li><strong>7. Le Commissaire aux Comptes :</strong> Contrôle et audite la gestion financière, vérifie la régularité des comptes. Détient <strong>tous les droits d'écriture, de modification et d'administration générale (Niveau 1)</strong>.</li>
+                <li><strong>8. Le Vice-Commissaire aux Comptes :</strong> Seconde le Commissaire aux comptes dans ses missions de contrôle et d'audit avec les mêmes droits complets.</li>
+                <li><strong>9. Le Conseiller 1 (Sagesse & Médiation) :</strong> Chargé de la conciliation, du règlement amiable des différends et du respect des traditions familiales.</li>
+                <li><strong>10. Le Conseiller 2 (Organisation & Protocole) :</strong> Supervise la logistique des cérémonies, la coordination des délégations et l'accueil.</li>
+                <li><strong>11. Le Conseiller 3 (Jeunesse & Projets) :</strong> Dynamise la participation des jeunes membres et promeut les projets d'insertion et d'entraide.</li>
+                <li><strong>12. Le Porte-Parole :</strong> Représente et communique officiellement les messages de la mutuelle, prononce les allocutions et dispose du <strong>rôle exclusif de créer et gérer les cérémonies & événements (Niveau 2)</strong>.</li>
+                <li><strong>13. Le Porte-Parole Adjoint :</strong> Assiste le Porte-Parole dans la communication officielle et partage le rôle de création et de gestion des cérémonies.</li>
+              </ul>
+
+              <h2>TITRE V : DES FINANCES ET MODALITÉS DE VERSEMENT</h2>
+              <h3>Article 6 : Cotisations</h3>
+              <p>Chaque membre s'engage à s'acquitter de sa cotisation selon l'une des formules suivantes :</p>
+              <ul>
+                <li><strong>Formule Mensuelle :</strong> 5 000 FCFA, exigible au plus tard le 5 de chaque mois.</li>
+                <li><strong>Formule Trimestrielle :</strong> 15 000 FCFA, exigible au plus tard le 10 du premier mois du trimestre.</li>
+              </ul>
+              <p>Tout versement donne obligatoirement lieu à la délivrance d'un <strong>reçu de versement officiel</strong> numéroté, signé par la Trésorerie.</p>
+
+              <h2>TITRE VI : DES PRESTATIONS DE SOLIDARITÉ ET CÉRÉMONIES</h2>
+              <h3>Article 7 : Assistance Médicale & Cas Sociaux</h3>
+              <p>Tout membre à jour de ses cotisations peut solliciter l'aide du fonds de solidarité en cas d'urgence ou de coup dur. Le montant est fixé selon le barème approuvé par le Bureau Exécutif.</p>
+
+              <h3>Article 8 : Cérémonies Familiales</h3>
+              <p>Lors d'un mariage, baptême ou obsèques chez un membre, la Mutuelle TAGBA mandate une délégation officielle conduite par un représentant du Bureau et verse une enveloppe de soutien approuvée.</p>
+            </article>
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 8 : PARAMÈTRES & DONNÉES -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-data">
+          
+          <!-- Configuration des Cotisations & Montants par Défaut -->
+          <div class="card-panel" style="margin-bottom: 24px;">
+            <div class="card-header-flex">
+              <div>
+                <h2>⚙️ Configuration Financière & Cotisations</h2>
+                <p style="font-size: 13px; color: var(--text-muted);">Définissez le montant de cotisation mensuelle par défaut ainsi que les options de versement de la mutuelle.</p>
+              </div>
+              <span class="badge badge-success">Actif</span>
+            </div>
+
+            <form id="formConfigSettings" onsubmit="return enregistrerParametres(event);">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">💰 Cotisation Mensuelle par Défaut *</label>
+                  <div style="position: relative;">
+                    <input type="number" class="form-control" id="cfgCotisationMensuelle" min="0" step="500" value="5000" required>
+                    <span class="cfgCurrencySuffix" style="position: absolute; right: 14px; top: 10px; color: var(--text-muted); font-size: 13px; font-weight: 600;">FCFA</span>
+                  </div>
+                  <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">Montant pré-rempli automatiquement lors de chaque enregistrement de versement mensuel.</small>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">📅 Cotisation Trimestrielle par Défaut *</label>
+                  <div style="position: relative;">
+                    <input type="number" class="form-control" id="cfgCotisationTrimestrielle" min="0" step="500" value="15000" required>
+                    <span class="cfgCurrencySuffix" style="position: absolute; right: 14px; top: 10px; color: var(--text-muted); font-size: 13px; font-weight: 600;">FCFA</span>
+                  </div>
+                  <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">
+                    <a href="javascript:void(0)" id="btnCalcTrimestriel" style="color: var(--emerald-400); text-decoration: underline; font-weight: 600;">⚡ Calculer automatiquement (3 × mensuel)</a>
+                  </small>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Devise / Monnaie *</label>
+                  <select class="form-control" id="cfgCurrency">
+                    <option value="FCFA" selected>FCFA (Franc CFA)</option>
+                    <option value="EUR">EUR (€ - Euro)</option>
+                    <option value="USD">USD ($ - Dollar US)</option>
+                    <option value="GNF">GNF (Franc Guinéen)</option>
+                    <option value="CAD">CAD ($ - Dollar Canadien)</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Année d'Exercice</label>
+                  <input type="number" class="form-control" id="cfgYear" value="2026">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">🚀 Date Officielle de Début des Versements *</label>
+                  <input type="date" class="form-control" id="cfgDateDebutCotisations" value="2026-10-04" required>
+                  <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">Date clé de démarrage des cotisations de la Mutuelle (défaut : 04/10/2026).</small>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Nom Officiel de la Mutuelle</label>
+                  <input type="text" class="form-control" id="cfgAssocName" value="Association Mutuelle TAGBA" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Slogan / Devise</label>
+                  <input type="text" class="form-control" id="cfgTagline" value="Union • Solidarité • Entraide Familiale">
+                </div>
+              </div>
+
+              <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 14px;">
+                <button type="button" class="btn btn-primary" id="btnSaveConfig" onclick="enregistrerParametres(event);">💾 Enregistrer les Paramètres</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Connexion Cloud Supabase -->
+          <div class="card-panel" id="supabaseCardPanel" style="margin-bottom: 24px; border: 1px solid rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(17, 24, 39, 0.8) 100%);">
+            <div class="card-header-flex">
+              <div>
+                <h2>☁️ Connexion Cloud Supabase</h2>
+                <p style="font-size: 13px; color: var(--text-muted);">
+                  Base de données PostgreSQL Cloud en temps réel liée au projet <strong>quxnhuelshtaflsxedoi</strong>
+                </p>
+              </div>
+              <span class="badge badge-success" id="supabaseStatusBadge">🟢 Connecté à Supabase</span>
+            </div>
+
+            <div style="background: rgba(255,255,255,0.03); padding: 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 18px;">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; font-size: 13px;">
+                <div>
+                  <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Projet Supabase</span>
+                  <strong style="color: var(--emerald-400);">quxnhuelshtaflsxedoi</strong>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Endpoint REST API</span>
+                  <code style="font-size: 12px; color: var(--text-main);">https://quxnhuelshtaflsxedoi.supabase.co</code>
+                </div>
+                <div>
+                  <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Clé Publique</span>
+                  <span class="badge" style="background: rgba(139,92,246,0.15); color: var(--purple-400); font-size: 11px;">sb_publishable_NFs2E7...</span>
+                </div>
+              </div>
+              <div id="supabaseStatusDetails" style="margin-top: 12px; font-size: 12px; color: var(--text-muted);"></div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+              <button type="button" class="btn btn-primary" onclick="pushAllDataToSupabase()">
+                <span>☁️</span> Synchroniser vers Supabase (Push)
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="pullAllDataFromSupabase()">
+                <span>📥</span> Charger depuis Supabase (Pull)
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="testSupabaseCloudConnection()">
+                <span>🔄</span> Tester Connexion
+              </button>
+              <button type="button" class="btn btn-gold" onclick="openSupabaseSQLEditor()">
+                <span>⚡</span> Ouvrir Supabase SQL Editor
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="copySupabaseSQLScript()">
+                <span>📋</span> Copier Script SQL des Tables
+              </button>
+            </div>
+          </div>
+
+          <!-- Sauvegarde, Export et Réinitialisation -->
+          <div class="card-panel">
+            <h2 style="margin-bottom: 20px;">💾 Sauvegarde & Sécurité des Données</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+              <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+                <h3 style="font-size: 16px; margin-bottom: 8px;">📥 Exporter la Base</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Télécharger une copie complète de sécurité de toutes vos données (format JSON).</p>
+                <button type="button" class="btn btn-secondary" onclick="exporterDonnees()">📥 Télécharger la Sauvegarde</button>
+              </div>
+
+              <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+                <h3 style="font-size: 16px; margin-bottom: 8px;">📤 Importer / Restaurer</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Restaurer vos données depuis un fichier de sauvegarde JSON téléchargé.</p>
+                <input type="file" id="importJsonFileInput" accept=".json" style="display: none;" onchange="importerFichierJSON(event)">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('importJsonFileInput').click()">📤 Choisir un Fichier JSON</button>
+              </div>
+
+              <div style="background: rgba(255,255,255,0.03); padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+                <h3 style="font-size: 16px; margin-bottom: 8px;">🔄 Réinitialiser Données</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">Rétablir les données de démonstration officielles et barèmes de départ.</p>
+                <button type="button" class="btn btn-outline-danger" onclick="resetDemoData()">⚠️ Réinitialiser</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 9 : CONNEXION & GESTION DES RÔLES (3 NIVEAUX D'ACCÈS) -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-auth">
+          
+          <div class="card-panel" style="margin-bottom: 24px;">
+            <div class="card-header-flex">
+              <div>
+                <h2>🔐 Page de Connexion & Niveaux d'Accès</h2>
+                <p style="font-size: 13px; color: var(--text-muted);">
+                  Système de contrôle d'accès strict selon les statuts de la Mutuelle TAGBA. Choisissez votre profil ou connectez-vous.
+                </p>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 12px; color: var(--text-muted);">Connecté en tant que :</span>
+                <span class="badge badge-success" id="authCurrentRoleTag">Niveau 1 : Commissaire aux Comptes</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grille des 3 Niveaux -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 28px;">
+            
+            <!-- Carte Niveau 1 -->
+            <div class="card-panel auth-role-card" id="authCardLevel1" style="border: 2px solid var(--emerald-500); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                  <div>
+                    <span class="badge badge-success" style="font-size: 11px;">NIVEAU 1</span>
+                    <h3 style="margin-top: 6px; font-size: 18px; color: var(--emerald-400);">Commissaire aux Comptes & Adjoint</h3>
+                  </div>
+                  <span style="font-size: 28px;">🔑</span>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px;">
+                  <strong style="color: var(--emerald-400); font-size: 12px; display: block; margin-bottom: 4px;">⚡ TOUS LES DROITS :</strong>
+                  <ul style="font-size: 12px; color: var(--text-secondary); margin: 0; padding-left: 18px; line-height: 1.6;">
+                    <li>Écrire, modifier, supprimer tous les enregistrements</li>
+                    <li>Enregistrer et valider les versements & cotisations</li>
+                    <li>Gérer et accorder les aides d'entraide & urgences</li>
+                    <li>Créer et administrer les cérémonies</li>
+                    <li>Modifier les paramètres & montants par défaut</li>
+                  </ul>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                  <strong>Titulaires officiels :</strong> Drissa Ouattara (Commissaire aux Comptes) & Seydou Diarra (Adjoint).
+                </p>
+              </div>
+              <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="switchAuthUser('usr-commissaire')">
+                <span>🔑</span> Se Connecter (Tous Droits)
+              </button>
+            </div>
+
+            <!-- Carte Niveau 2 -->
+            <div class="card-panel auth-role-card" id="authCardLevel2" style="border: 2px solid var(--cyan-500); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                  <div>
+                    <span class="badge" style="background: rgba(6,182,212,0.15); color: var(--cyan-400); font-size: 11px;">NIVEAU 2</span>
+                    <h3 style="margin-top: 6px; font-size: 18px; color: var(--cyan-400);">Porte-Parole & Adjoint</h3>
+                  </div>
+                  <span style="font-size: 28px;">📢</span>
+                </div>
+                <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px;">
+                  <strong style="color: var(--cyan-400); font-size: 12px; display: block; margin-bottom: 4px;">🎉 GESTION DES CÉRÉMONIES :</strong>
+                  <ul style="font-size: 12px; color: var(--text-secondary); margin: 0; padding-left: 18px; line-height: 1.6;">
+                    <li><strong>Créer et organiser les cérémonies</strong> (mariages, baptêmes, obsèques)</li>
+                    <li>Planifier les délégations de la mutuelle</li>
+                    <li><span style="color: var(--rose-400);">🔒 Lecture Seule</span> sur les cotisations & finances</li>
+                    <li><span style="color: var(--rose-400);">🔒 Lecture Seule</span> sur les membres, familles et paramètres</li>
+                  </ul>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                  <strong>Titulaires officiels :</strong> Salif Koné (Porte-Parole) & Yacouba Bamba (Porte-Parole Adjoint).
+                </p>
+              </div>
+              <button class="btn btn-secondary" style="width: 100%; justify-content: center; border-color: var(--cyan-500); color: var(--cyan-400);" onclick="switchAuthUser('usr-porteparole')">
+                <span>📢</span> Se Connecter (Porte-Parole)
+              </button>
+            </div>
+
+            <!-- Carte Niveau 3 -->
+            <div class="card-panel auth-role-card" id="authCardLevel3" style="border: 2px solid var(--amber-500); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+                  <div>
+                    <span class="badge badge-warning" style="font-size: 11px;">NIVEAU 3</span>
+                    <h3 style="margin-top: 6px; font-size: 18px; color: var(--amber-400);">Autres Membres & Président</h3>
+                  </div>
+                  <span style="font-size: 28px;">👁️</span>
+                </div>
+                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px;">
+                  <strong style="color: var(--amber-400); font-size: 12px; display: block; margin-bottom: 4px;">👁️ LECTURE SEULE STRICTE :</strong>
+                  <ul style="font-size: 12px; color: var(--text-secondary); margin: 0; padding-left: 18px; line-height: 1.6;">
+                    <li>Consulter l'annuaire des membres et familles</li>
+                    <li>Consulter les cotisations, reçus et bilans financiers</li>
+                    <li>Consulter le calendrier des cérémonies et cas d'entraide</li>
+                    <li><span style="color: var(--rose-400);">🔒 Aucune écriture ni modification autorisée</span> (y compris pour le Président)</li>
+                  </ul>
+                </div>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px;">
+                  <strong>Représentant :</strong> Ibrahim Koné (Président du Bureau Exécutif).
+                </p>
+              </div>
+              <button class="btn btn-secondary" style="width: 100%; justify-content: center; border-color: var(--amber-500); color: var(--amber-400);" onclick="switchAuthUser('usr-president')">
+                <span>👁️</span> Se Connecter (Président - Lecture Seule)
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Formulaire de Connexion Directe -->
+          <div class="card-panel" style="max-width: 600px; margin: 0 auto;">
+            <h3 style="font-size: 16px; margin-bottom: 16px; text-align: center;">🔑 Connexion avec Identifiant & Code d'Accès</h3>
+            <form id="formManualAuth" onsubmit="return handleManualLogin(event);">
+              <div class="form-group">
+                <label class="form-label">Sélectionner votre Compte / Fonction *</label>
+                <select class="form-control" id="loginUserSelect" required>
+                  <option value="usr-commissaire">Drissa Ouattara — Commissaire aux Comptes (Niveau 1 : Tous Droits)</option>
+                  <option value="usr-porteparole">Salif Koné — Porte-Parole (Niveau 2 : Cérémonies)</option>
+                  <option value="usr-president">Ibrahim Koné — Président (Niveau 3 : Lecture Seule)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Code d'Accès PIN *</label>
+                <input type="password" class="form-control" id="loginPasswordInput" placeholder="Ex: 1234 (code universel démo)" value="1234" required>
+                <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">ℹ️ Code d'accès démo par défaut : <strong>1234</strong></span>
+              </div>
+              <div style="display: flex; justify-content: center; margin-top: 20px;">
+                <button type="submit" class="btn btn-primary" style="padding: 10px 32px;">Se Connecter à la Mutuelle</button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+
+      </section>
+    </main>
+
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODALES DE CRÉATION ET GESTION -->
+  <!-- ============================================================ -->
+
+  <!-- Modal 1 : Nouveau Versement / Cotisation -->
+  <div class="modal-overlay" id="modalAddCotisation">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>💳 Enregistrer un Versement de Cotisation</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddCotisation">
+        <!-- Bascule Mode Versement (Individuel vs Groupé) -->
+        <div class="versement-mode-tabs">
+          <button type="button" class="versement-mode-tab active" id="tabModeIndiv" onclick="setVersementFormMode('individual')">
+            <span>👤</span> Versement Individuel
+          </button>
+          <button type="button" class="versement-mode-tab" id="tabModeGroup" onclick="setVersementFormMode('group')">
+            <span>👥</span> Versement par Groupe / Famille
+          </button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" id="cotMemberSelectLabel">Membre Cotisant / Représentant Payeur *</label>
+          <div style="position: relative; margin-bottom: 8px;">
+            <input type="text" class="form-control" id="cotMemberSearchInput" placeholder="🔍 Rechercher par nom, matricule ou chef de famille...">
+          </div>
+          <select class="form-control" id="cotMemberSelect" required>
+            <!-- Rempli dynamiquement -->
+          </select>
+        </div>
+
+        <!-- Aperçu dynamique du statut du membre sélectionné -->
+        <div id="cotMemberAuditPreview" style="display: none; margin-bottom: 14px; padding: 12px 14px; border-radius: var(--radius-md); background: rgba(255,255,255,0.03); border: 1px solid var(--border-color);">
+          <!-- Rendu en JS : Statut, dernier mois payé, prochain mois à régler -->
+        </div>
+
+        <!-- Panneau dynamique pour Chef de Famille & Versement Groupé -->
+        <div id="cotGroupPaymentContainer" style="display: none;">
+          <!-- Injecté dynamiquement par JS quand un chef de famille ou sa famille est sélectionné -->
+        </div>
+
+        <!-- Boutons d'anticipation rapide de mois -->
+        <div class="form-group" id="cotQuickAnticipationBox" style="margin-bottom: 16px;">
+          <label class="form-label">⚡ Sélection Rapide & Anticipation de Mois :</label>
+          <div class="anticipation-quick-btns">
+            <button type="button" class="btn-anticipate active" data-months="1" onclick="setAnticipationMonths(1)">1 Mois (5 000)</button>
+            <button type="button" class="btn-anticipate" data-months="2" onclick="setAnticipationMonths(2)">2 Mois (10 000)</button>
+            <button type="button" class="btn-anticipate" data-months="3" onclick="setAnticipationMonths(3)">3 Mois - Trimestre (15 000)</button>
+            <button type="button" class="btn-anticipate" data-months="6" onclick="setAnticipationMonths(6)">6 Mois (30 000)</button>
+            <button type="button" class="btn-anticipate" data-months="12" onclick="setAnticipationMonths(12)">12 Mois - 1 An (60 000)</button>
+          </div>
+          <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">Le membre peut payer plusieurs mois d'avance. Le calcul de la période et du montant s'adapte automatiquement.</small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Fréquence du Versement *</label>
+            <select class="form-control" id="cotType" required>
+              <option value="Mensuel" selected>Mensuel (1 mois)</option>
+              <option value="2 Mois">2 Mois (Anticipation)</option>
+              <option value="Trimestriel">Trimestriel (3 mois)</option>
+              <option value="Semestriel">Semestriel (6 mois)</option>
+              <option value="Annuel">Annuel (12 mois)</option>
+              <option value="Exceptionnel">Contribution Exceptionnelle</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Montant Total (FCFA) *</label>
+            <input type="number" class="form-control" id="cotMontant" value="5000" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Période concernée *</label>
+            <input type="text" class="form-control" id="cotPeriode" placeholder="Ex: T2 2026 ou Mai 2026" value="T2 2026" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date de paiement *</label>
+            <input type="date" class="form-control" id="cotDate" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mode de règlement *</label>
+          <select class="form-control" id="cotMode">
+            <option value="Wave">Wave</option>
+            <option value="Orange Money">Orange Money</option>
+            <option value="Espèces">Espèces (remis au Trésorier)</option>
+            <option value="Virement bancaire">Virement bancaire</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-primary">Valider & Générer le Reçu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 2 : Nouveau Membre -->
+  <div class="modal-overlay" id="modalAddMember">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👤 Inscription d'un Nouveau Membre</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddMember">
+        <div class="form-group">
+          <label class="form-label">Nom et Prénoms Complets *</label>
+          <input type="text" class="form-control" id="memName" placeholder="Ex: Amara Touré" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Famille de Rattachement *</label>
+            <select class="form-control" id="memFamilySelect" required>
+              <!-- Rempli dynamiquement -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lien avec le Chef de Famille *</label>
+            <input type="text" class="form-control" id="memRelation" placeholder="Ex: Fils, Épouse, Frère, Neveu" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Numéro de Téléphone *</label>
+            <input type="tel" class="form-control" id="memPhone" placeholder="+225 07..." required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Profession</label>
+            <input type="text" class="form-control" id="memProfession" placeholder="Ex: Enseignant, Commerçant...">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Ville / Lieu de Résidence</label>
+            <input type="text" class="form-control" id="memResidence" placeholder="Ex: Abidjan Cocody">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Statut Initial Cotisation</label>
+            <select class="form-control" id="memStatutCotisation">
+              <option value="A_JOUR">À jour</option>
+              <option value="PARTIEL">Partiel</option>
+              <option value="EN_RETARD">En retard</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer le Membre</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 3 : Nouvelle Famille -->
+  <div class="modal-overlay" id="modalAddFamily">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👨‍👩‍👧 Enregistrer une Nouvelle Branche / Famille</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddFamily">
+        <div class="form-group">
+          <label class="form-label">Dénomination de la Famille *</label>
+          <input type="text" class="form-control" id="famName" placeholder="Ex: Famille Sylla - Touré" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nom du Chef de Famille *</label>
+            <input type="text" class="form-control" id="famChef" placeholder="Ex: El Hadj Souleymane Sylla" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Téléphone du Chef de Famille *</label>
+            <input type="tel" class="form-control" id="famPhone" placeholder="+225 05..." required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Localisation / Ville principale</label>
+          <input type="text" class="form-control" id="famCity" placeholder="Ex: Abidjan / Marcory">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Remarques ou historique familial</label>
+          <textarea class="form-control" id="famNotes" rows="2" placeholder="Informations complémentaires..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-primary">Créer la Famille</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 4 : Déclarer Cas Social (Entraide) -->
+  <div class="modal-overlay" id="modalAddEntraide">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>❤️ Déclarer un Cas Social / Demande d'Entraide</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddEntraide">
+        <div class="form-group">
+          <label class="form-label">Membre Concerné *</label>
+          <select class="form-control" id="casMemberSelect" required>
+            <!-- Rempli dynamiquement -->
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nature du Problème *</label>
+            <select class="form-control" id="casNature" required>
+              <option value="Hospitalisation / Urgence Médicale">Hospitalisation / Urgence Médicale</option>
+              <option value="Sinistre / Perte matérielle">Sinistre / Perte matérielle</option>
+              <option value="Obsèques / Deuil">Obsèques / Deuil</option>
+              <option value="Bourse d'appui aux études">Bourse d'appui aux études</option>
+              <option value="Difficulté passagère">Difficulté passagère</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Montant Aide Souhaité (FCFA)</label>
+            <input type="number" class="form-control" id="casMontant" value="75000">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description du problème *</label>
+          <textarea class="form-control" id="casDesc" rows="3" placeholder="Circonstances, pièces justificatives médicales ou factures..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Statut Initial</label>
+          <select class="form-control" id="casStatut">
+            <option value="En cours d’examen">En cours d’examen par le Bureau</option>
+            <option value="Accordé & Décaissé">Accordé & Décaissé immédiatement</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer la Demande</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 5 : Programmer Cérémonie -->
+  <div class="modal-overlay" id="modalAddCeremonie">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🎉 Programmer une Cérémonie Familiale</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddCeremonie">
+        <div class="form-group">
+          <label class="form-label">Intitulé de la Cérémonie *</label>
+          <input type="text" class="form-control" id="cerTitre" placeholder="Ex: Mariage de notre sœur Aminata" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Type d'Événement *</label>
+            <select class="form-control" id="cerType" required>
+              <option value="Mariage">Mariage</option>
+              <option value="Baptême / Naissance">Baptême / Naissance</option>
+              <option value="Obsèques / Funérailles">Obsèques / Funérailles</option>
+              <option value="Assemblée Générale">Assemblée Générale</option>
+              <option value="Réunion de Famille">Réunion de Famille</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Famille Organisatrice *</label>
+            <select class="form-control" id="cerFamilySelect" required>
+              <!-- Rempli dynamiquement -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date prévue *</label>
+            <input type="date" class="form-control" id="cerDate" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Enveloppe de la Mutuelle (FCFA)</label>
+            <input type="number" class="form-control" id="cerEnveloppe" value="100000">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Lieu de la cérémonie *</label>
+          <input type="text" class="form-control" id="cerLieu" placeholder="Ex: Abidjan, Cocody Riviera" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Délégation mandatée du Bureau</label>
+          <input type="text" class="form-control" id="cerDelegation" placeholder="Ex: Président, Trésorier, Conseiller 2">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Détails ou programme</label>
+          <textarea class="form-control" id="cerDesc" rows="2" placeholder="Heures, déroulement, consignes aux membres..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-gold">Programmer la Cérémonie</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 6 : Édition d'un Membre du Bureau -->
+  <div class="modal-overlay" id="modalEditBureau">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Modifier le Poste : <span id="editBureauRole" style="color: var(--gold-400);"></span></h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formEditBureau">
+        <input type="hidden" id="editBureauId">
+        <div class="form-group">
+          <label class="form-label">Nom et Prénoms du Titulaire *</label>
+          <input type="text" class="form-control" id="editBureauName" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Téléphone *</label>
+            <input type="tel" class="form-control" id="editBureauPhone" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="editBureauEmail">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Attributions & Biographie sommaire</label>
+          <textarea class="form-control" id="editBureauBio" rows="3"></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer les Modifications</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 7 : Reçu Imprimable Officiel -->
+  <div class="modal-overlay" id="modalReceipt">
+    <div class="modal-content" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3>🖨️ Reçu Officiel de Versement</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <div id="receiptContent">
+        <!-- Rendu dynamique du reçu par JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel-btn">Fermer</button>
+        <button type="button" class="btn btn-primary" onclick="window.print()">Imprimer le Reçu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 8 : Fiche Officielle de Famille (Imprimable) -->
+  <div class="modal-overlay" id="modalFamilySheet">
+    <div class="modal-content" style="max-width: 760px;">
+      <div class="modal-header">
+        <h3>👑 Fiche Officielle du Foyer Familial</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <div id="familySheetContent">
+        <!-- Rendu dynamique de la fiche par JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel-btn">Fermer</button>
+        <button type="button" class="btn btn-gold" onclick="window.print()">🖨️ Imprimer la Fiche de Famille</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 8.5 : Audit & Calendrier Chronologique des Cotisations par Membre -->
+  <div class="modal-overlay" id="modalMemberMonthsAudit">
+    <div class="modal-content" style="max-width: 820px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 24px;">📅</span>
+          <div>
+            <h3 style="margin-bottom: 2px;">Calendrier & Suivi des Cotisations</h3>
+            <span style="font-size: 12px; color: var(--text-muted);">Audit chronologique des versements depuis le 04/10/2026</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+
+      <div id="memberMonthsAuditContent" style="padding: 10px 0;">
+        <!-- Injecté dynamiquement par JS -->
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel-btn">Fermer</button>
+        <button type="button" class="btn btn-primary" id="btnAuditModalActionPay">💳 Enregistrer un Paiement / Anticiper</button>
+      </div>
+  </div>
+
+  <!-- Modal 8.6 : Enregistrer une Dépense (Caisse vs Dons Volontaires) -->
+  <div class="modal-overlay" id="modalAddDepense">
+    <div class="modal-content" style="max-width: 620px;">
+      <div class="modal-header">
+        <h3>📉 Enregistrer une Dépense / Décaissement</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddDepense">
+        <div class="form-group">
+          <label class="form-label">Motif ou Intitulé de la Dépense *</label>
+          <input type="text" class="form-control" id="depTitre" placeholder="Ex: Frais médicaux d'urgence, Enveloppe mariage, Sonorisation AG..." required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Catégorie de Dépense *</label>
+            <select class="form-control" id="depCategorie" required onchange="onDepenseCategorieChanged()">
+              <option value="Entraide Sociale">🤝 Entraide Sociale (Santé, Urgence)</option>
+              <option value="Cérémonie">🎉 Cérémonie (Mariage, Baptême, Obsèques)</option>
+              <option value="Fonctionnement">🏢 Fonctionnement & Logistique</option>
+              <option value="Autre">📦 Autre Décaissement</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bénéficiaire / Destinataire *</label>
+            <input type="text" class="form-control" id="depBeneficiaire" placeholder="Nom du membre ou prestataire" required>
+          </div>
+        </div>
+
+        <!-- Rattachement Optionnel à un Cas Social ou une Cérémonie -->
+        <div class="form-group" id="depCibleGroup" style="display: block;">
+          <label class="form-label">Rattacher à un Événement ou Dossier Spécifique (Optionnel)</label>
+          <select class="form-control" id="depCibleSelect">
+            <option value="">-- Aucun rattachement direct --</option>
+            <!-- Rempli dynamiquement par JS -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Montant Total de la Dépense (FCFA) *</label>
+          <input type="number" class="form-control" id="depMontantTotal" min="1000" step="500" value="50000" required oninput="calcDepenseFinancementRepartition()">
+        </div>
+
+        <!-- Mode de Répartition du Financement : Caisse vs Dons Volontaires -->
+        <div class="card-panel" style="background: rgba(255,255,255,0.03); padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <label class="form-label" style="margin-bottom: 8px;">💳 Source de Financement de la Dépense :</label>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+            <button type="button" class="filter-pill-btn active" id="btnDepFinCaisse100" onclick="setDepenseFinancementMode('100_caisse')">100% Caisse Centrale</button>
+            <button type="button" class="filter-pill-btn" id="btnDepFinVolontaire100" onclick="setDepenseFinancementMode('100_volontaire')">100% Dons Volontaires</button>
+            <button type="button" class="filter-pill-btn" id="btnDepFinMixte" onclick="setDepenseFinancementMode('mixte')">⚡ Répartition Mixte</button>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: var(--rose-400);">Prélevé sur Caisse Centrale (FCFA) *</label>
+              <input type="number" class="form-control" id="depPartCaisse" min="0" value="50000" required oninput="onDepPartManualInput()">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: var(--cyan-400);">Couvert par Dons Volontaires (FCFA) *</label>
+              <input type="number" class="form-control" id="depPartVolontaire" min="0" value="0" required oninput="onDepPartManualInput()">
+            </div>
+          </div>
+          <small style="color: var(--text-dim); font-size: 11px; display: block;" id="depRepartitionHelp">
+            Le montant sera directement déduit du solde disponible de la Caisse Centrale.
+          </small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date du Décaissement *</label>
+            <input type="date" class="form-control" id="depDate" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mode de Règlement *</label>
+            <select class="form-control" id="depMode">
+              <option value="Wave">Wave</option>
+              <option value="Orange Money">Orange Money</option>
+              <option value="Espèces">Espèces (Remis en main propre)</option>
+              <option value="Virement bancaire">Virement bancaire</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Référence Justificatif / Facture</label>
+          <input type="text" class="form-control" id="depJustificatif" placeholder="Ex: Facture N°102, Reçu d'hôpital, Bon de caisse signé...">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-primary">Valider & Décaisser la Dépense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 8.7 : Enregistrer un Don / Contribution Volontaire Nominative -->
+  <div class="modal-overlay" id="modalAddContributionVolontaire">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 22px;">❤️</span>
+          <h3>Enregistrer une Contribution Volontaire</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddContributionVolontaire">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Enregistrez les dons volontaires des membres pour les cérémonies et cas d'entraide avec délivrance d'un reçu nominatif.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Membre Donateur / Bienfaiteur *</label>
+          <div style="position: relative; margin-bottom: 6px;">
+            <input type="text" class="form-control" id="donMemberSearchInput" placeholder="🔍 Rechercher le membre par nom ou matricule...">
+          </div>
+          <select class="form-control" id="donMemberSelect" required>
+            <!-- Rempli dynamiquement par JS -->
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Destination du Don *</label>
+            <select class="form-control" id="donCibleType" required onchange="onDonCibleTypeChanged()">
+              <option value="Cérémonie">🎉 Pour une Cérémonie (Mariage, Obsèques...)</option>
+              <option value="Entraide">🤝 Pour un Cas Social (Urgence, Maladie...)</option>
+              <option value="Caisse Solidarité">🏛️ Don Général à la Caisse de Solidarité</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Événement ou Dossier Spécifique *</label>
+            <select class="form-control" id="donCibleSelect" required>
+              <!-- Rempli dynamiquement selon donCibleType -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Montant du Don Volontaire (FCFA) *</label>
+            <input type="number" class="form-control" id="donMontant" min="1000" step="500" value="15000" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date du Versement *</label>
+            <input type="date" class="form-control" id="donDate" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mode de Règlement *</label>
+          <select class="form-control" id="donMode">
+            <option value="Wave">Wave</option>
+            <option value="Orange Money">Orange Money</option>
+            <option value="Espèces">Espèces (remis au Trésorier)</option>
+            <option value="Virement bancaire">Virement bancaire</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Message / Note Fraternelle d'Accompagnement</label>
+          <input type="text" class="form-control" id="donNote" placeholder="Ex: Soutien fraternel de la part du foyer...">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-gold">❤️ Valider le Don & Émettre Reçu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 8.8 : Reçu Officiel de Don / Contribution Volontaire (Imprimable) -->
+  <div class="modal-overlay" id="modalReceiptDonation">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3>🧾 Reçu Officiel de Don Volontaire</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <div id="receiptDonationContent" style="padding: 10px 0;">
+        <!-- Généré dynamiquement en JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel-btn">Fermer</button>
+        <button type="button" class="btn btn-gold" onclick="window.print()">🖨️ Imprimer le Reçu de Don</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 9 : Connexion & Changement Rapide de Rôle -->
+  <div class="modal-overlay" id="modalLogin">
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3>🔐 Connexion & Changement de Niveau</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <div style="padding: 10px 0;">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px;">
+          Basculez rapidement entre les 3 niveaux d'accès pour tester les permissions et les restrictions de la mutuelle :
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+          <!-- Option Niveau 1 -->
+          <div onclick="switchAuthUser('usr-commissaire'); closeModal('modalLogin');" style="padding: 14px; border: 1.5px solid var(--emerald-500); border-radius: var(--radius-md); background: rgba(16,185,129,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.15)'" onmouseout="this.style.background='rgba(16,185,129,0.06)'">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--emerald-400); display: block; font-size: 14px;">🔑 Niveau 1 : Commissaire aux Comptes</strong>
+                <span style="font-size: 12px; color: var(--text-secondary);">Drissa Ouattara • Tous droits (Écrire, modifier, supprimer)</span>
+              </div>
+              <span class="badge badge-success">Actif / Plein Droit</span>
+            </div>
+          </div>
+
+          <!-- Option Niveau 2 -->
+          <div onclick="switchAuthUser('usr-porteparole'); closeModal('modalLogin');" style="padding: 14px; border: 1.5px solid var(--cyan-500); border-radius: var(--radius-md); background: rgba(6,182,212,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(6,182,212,0.15)'" onmouseout="this.style.background='rgba(6,182,212,0.06)'">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--cyan-400); display: block; font-size: 14px;">📢 Niveau 2 : Porte-Parole</strong>
+                <span style="font-size: 12px; color: var(--text-secondary);">Salif Koné • Création de cérémonies (Reste en lecture seule)</span>
+              </div>
+              <span class="badge" style="background: rgba(6,182,212,0.2); color: var(--cyan-400);">Cérémonies</span>
+            </div>
+          </div>
+
+          <!-- Option Niveau 3 -->
+          <div onclick="switchAuthUser('usr-president'); closeModal('modalLogin');" style="padding: 14px; border: 1.5px solid var(--amber-500); border-radius: var(--radius-md); background: rgba(245,158,11,0.06); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='rgba(245,158,11,0.06)'">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--amber-400); display: block; font-size: 14px;">👁️ Niveau 3 : Autres Membres & Président</strong>
+                <span style="font-size: 12px; color: var(--text-secondary);">Ibrahim Koné (Président) • Lecture Seule stricte</span>
+              </div>
+              <span class="badge badge-warning">Lecture Seule</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 9.5 : Synchronisation Cloud Supabase -->
+  <div class="modal-overlay" id="modalCloudSync">
+    <div class="modal-content" style="max-width: 540px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 24px;">☁️</span>
+          <h3>Synchronisation Cloud Supabase</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <div style="padding: 10px 0;">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+          Synchronisez vos données de mutuelle (membres, versements, dépenses, caisse) avec le serveur en ligne Supabase :
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+          <!-- Option 1 : Push -->
+          <div onclick="pushAllDataToSupabase(); closeModal('modalCloudSync');" style="padding: 16px; border: 1.5px solid var(--emerald-500); border-radius: var(--radius-md); background: rgba(16,185,129,0.08); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.18)'" onmouseout="this.style.background='rgba(16,185,129,0.08)'">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--emerald-400); font-size: 15px; display: block;">☁️ 1. Envoyer vers Supabase (Push)</strong>
+                <span style="font-size: 12px; color: var(--text-secondary); display: block; margin-top: 4px;">
+                  Sauvegarde toutes les modifications de cet appareil vers le Cloud.
+                </span>
+              </div>
+              <span class="btn btn-sm btn-primary" style="pointer-events: none;">Envoyer</span>
+            </div>
+          </div>
+
+          <!-- Option 2 : Pull -->
+          <div onclick="pullAllDataFromSupabase(); closeModal('modalCloudSync');" style="padding: 16px; border: 1.5px solid #06b6d4; border-radius: var(--radius-md); background: rgba(6,182,212,0.08); cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(6,182,212,0.18)'" onmouseout="this.style.background='rgba(6,182,212,0.08)'">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <strong style="color: var(--cyan-400); font-size: 15px; display: block;">📥 2. Charger depuis Supabase (Pull)</strong>
+                <span style="font-size: 12px; color: var(--text-secondary); display: block; margin-top: 4px;">
+                  Télécharge les dernières données du Cloud sur cet appareil (pour votre 2ᵉ navigateur).
+                </span>
+              </div>
+              <span class="btn btn-sm btn-secondary" style="pointer-events: none;">Télécharger</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 11px; color: var(--text-dim);">Projet : quxnhuelshtaflsxedoi</span>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="testSupabaseCloudConnection(true); closeModal('modalCloudSync');">🔄 Tester Connexion</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel-btn">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/data.js?v=20261010-02"></script>
+  <script src="js/supabase.js?v=20261010-02"></script>
+  <script src="js/app.js?v=20261010-02"></script>
+</body>
+</html>
