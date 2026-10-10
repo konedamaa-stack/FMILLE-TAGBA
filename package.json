@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "description": "Application SaaS de gestion pour l'Association Mutuelle TAGBA",
   "scripts": {
-    "dev": "npx serve -l 3000 .",
-    "build": "echo 'Static site ready'"
+    "dev": "npx serve -l 3000 ."
   },
   "keywords": ["mutuelle", "association", "saas", "entraide", "cotisations"],
   "author": "TAGBA",
