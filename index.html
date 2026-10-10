@@ -227,7 +227,9 @@
             <span class="auth-user-name" id="topbarUserName">Drissa Ouattara</span>
             <span class="auth-switch-link">Changer ▾</span>
           </div>
-          <span class="badge badge-success" style="cursor: pointer; font-size: 11px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 4px;" onclick="testSupabaseCloudConnection()" title="Projet Supabase connecté : quxnhuelshtaflsxedoi">☁️ Supabase</span>
+          <button class="quick-pill-btn" style="background: rgba(16,185,129,0.18); color: var(--emerald-400); border: 1px solid var(--emerald-500); cursor: pointer; font-weight: 700;" onclick="pushAllDataToSupabase()" title="Synchroniser immédiatement vers le Cloud Supabase">
+            <span>☁️</span> Synchroniser (Push)
+          </button>
           <button class="logout-btn" id="topbarLogoutBtn" onclick="logoutAuthUser()" title="Se déconnecter de la mutuelle">
             <span>🚪</span> Déconnexion
           </button>
@@ -1055,7 +1057,7 @@
           </div>
 
           <!-- Connexion Cloud Supabase -->
-          <div class="card-panel" style="margin-bottom: 24px; border: 1px solid rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(17, 24, 39, 0.8) 100%);">
+          <div class="card-panel" id="supabaseCardPanel" style="margin-bottom: 24px; border: 1px solid rgba(16, 185, 129, 0.35); background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(17, 24, 39, 0.8) 100%);">
             <div class="card-header-flex">
               <div>
                 <h2>☁️ Connexion Cloud Supabase</h2>
