@@ -2575,13 +2575,14 @@ body.light-theme .auth-fullscreen {
   .topbar {
     padding: 10px 14px;
     gap: 8px;
+    flex-wrap: wrap;
     justify-content: space-between;
   }
 
   .topbar-left {
     gap: 10px;
     flex: 1;
-    min-width: 0;
+    min-width: 140px;
   }
 
   .page-title-box h1 {
@@ -2596,8 +2597,11 @@ body.light-theme .auth-fullscreen {
   }
 
   .topbar-right {
+    display: flex;
+    flex-wrap: wrap;
     gap: 6px;
-    flex-shrink: 0;
+    align-items: center;
+    justify-content: flex-end;
   }
 
   .auth-topbar-widget {
