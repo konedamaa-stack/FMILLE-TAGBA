@@ -23,8 +23,13 @@ function getSupabaseClient() {
   return tagbaSupabaseClient;
 }
 
-// Test de connectivité avec le Cloud Supabase
-async function testSupabaseCloudConnection() {
+// Test de connectivité ou ouverture du panneau de synchronisation
+async function testSupabaseCloudConnection(testOnly = false) {
+  if (!testOnly && typeof openModal === 'function' && document.getElementById('modalCloudSync')) {
+    openModal('modalCloudSync');
+    return true;
+  }
+
   const statusBadge = document.getElementById('supabaseStatusBadge');
   const detailsEl = document.getElementById('supabaseStatusDetails');
 
