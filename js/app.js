@@ -1547,19 +1547,30 @@ function bindFormSubmissions() {
       const agent = 'Seydou Coulibaly (Trésorier Général)';
 
       const groupContainer = document.getElementById('cotGroupPaymentContainer');
-      const isGroupPayment = isChef && groupContainer && groupContainer.style.display !== 'none' && currentGroupPaymentMode === 'group';
+      const isGroupPayment = groupContainer && groupContainer.style.display !== 'none' && currentGroupPaymentMode === 'group';
 
       if (isGroupPayment) {
-        // Mode Plage de Versement Groupé pour la Famille
-        const checkedRows = Array.from(document.querySelectorAll('.family-plage-row')).filter(row => {
+        // Mode Plage de Versement Groupé (Famille et/ou Autres membres sélectionnés)
+        const allRows = Array.from(document.querySelectorAll('.family-plage-row'));
+        const checkedRows = allRows.filter(row => {
           const cb = row.querySelector('.family-member-cb');
           return cb && cb.checked;
         });
 
+        const unreadyRows = allRows.filter(row => {
+          const cb = row.querySelector('.family-member-cb');
+          return cb && !cb.checked;
+        });
+
         if (checkedRows.length === 0) {
-          showToast('Veuillez cocher au moins un membre de la famille pour le versement groupé', 'warning');
+          showToast('Veuillez cocher au moins un membre prêt pour ce versement groupé', 'warning');
           return;
         }
+
+        const unreadyMembers = unreadyRows.map(row => {
+          const targetMemId = row.getAttribute('data-member-id');
+          return data.members.find(m => m.id === targetMemId);
+        }).filter(Boolean);
 
         const cfg = data.config || {};
         const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
@@ -1581,7 +1592,7 @@ function bindFormSubmissions() {
           const cotRecord = {
             memberId: targetMemId,
             memberName: targetMem ? targetMem.fullName : 'Membre',
-            familyId: mem.familyId,
+            familyId: targetMem ? targetMem.familyId : (mem ? mem.familyId : 'fam-1'),
             type: months === 1 ? 'Mensuel' : (months === 3 ? 'Trimestriel' : `${months} Mois`),
             periode: memberPeriode,
             montant: lineMontant,
@@ -1589,7 +1600,7 @@ function bindFormSubmissions() {
             datePaiement: datePaiement,
             agent: agent,
             groupRef: groupBatchRef,
-            payeurChef: mem.fullName,
+            payeurChef: mem ? mem.fullName : 'Représentant',
             monthsPaid: months
           };
 
@@ -1602,8 +1613,10 @@ function bindFormSubmissions() {
           });
         });
 
-        showToast(`✅ Versement groupé de ${formatMoney(grandTotal, data.config.currency)} validé pour ${checkedRows.length} membres (${totalMonths} mois) !`);
+        const unreadyMsg = unreadyMembers.length > 0 ? ` (${unreadyMembers.length} membre(s) non prêt(s) différé(s))` : '';
+        showToast(`✅ Versement groupé de ${formatMoney(grandTotal, data.config.currency)} validé pour ${checkedRows.length} membres${unreadyMsg} !`);
         closeModal('modalAddCotisation');
+        currentGroupExtraMembers = [];
         formAddCot.reset();
         renderAllViews();
 
@@ -1611,6 +1624,7 @@ function bindFormSubmissions() {
           family: fam,
           chef: mem,
           members: groupMembersInfo,
+          unreadyMembers: unreadyMembers,
           totalAmount: grandTotal,
           totalMonths: totalMonths,
           periode: periode,
@@ -1893,8 +1907,9 @@ function populateCotisationMembers(filterQuery = '') {
   onCotMemberSelected();
 }
 
-let currentGroupPaymentMode = 'group'; // 'group' ou 'individual'
+let currentGroupPaymentMode = 'individual'; // 'group' ou 'individual'
 let currentPlageGlobalDuration = 1; // 1 mois par défaut
+let currentGroupExtraMembers = []; // Autres membres ajoutés manuellement au groupe
 
 // Action d'ouverture directe de la Plage de Versement pour une Famille
 function openFamilyBatchPayModal(familyId) {
@@ -1915,6 +1930,7 @@ function openFamilyBatchPayModal(familyId) {
     return;
   }
 
+  currentGroupExtraMembers = [];
   openModal('modalAddCotisation');
   const cotSearchInput = document.getElementById('cotMemberSearchInput');
   if (cotSearchInput) cotSearchInput.value = '';
@@ -1923,57 +1939,85 @@ function openFamilyBatchPayModal(familyId) {
   const select = document.getElementById('cotMemberSelect');
   if (select) {
     select.value = chef.id;
-    onCotMemberSelected();
   }
 
+  setVersementFormMode('group', true);
   showToast(`👑 Plage de versement ouverte pour la ${fam.name}`);
+}
+
+function setVersementFormMode(mode, triggerRender = true) {
+  currentGroupPaymentMode = mode;
+  const tabIndiv = document.getElementById('tabModeIndiv');
+  const tabGroup = document.getElementById('tabModeGroup');
+  const groupContainer = document.getElementById('cotGroupPaymentContainer');
+  const modalContent = document.getElementById('modalAddCotisation')?.querySelector('.modal-content');
+  const selectLabel = document.getElementById('cotMemberSelectLabel');
+
+  if (mode === 'group') {
+    if (tabGroup) tabGroup.classList.add('active');
+    if (tabIndiv) tabIndiv.classList.remove('active');
+    if (selectLabel) selectLabel.textContent = 'Chef de Famille ou Payeur Principal du Groupe *';
+    if (modalContent) modalContent.classList.add('modal-content-wide');
+    if (groupContainer) groupContainer.style.display = 'block';
+
+    if (triggerRender) {
+      const select = document.getElementById('cotMemberSelect');
+      const memberId = select ? select.value : null;
+      const data = TAGBA_DB.get();
+      const member = memberId ? data.members.find(m => m.id === memberId) : data.members[0];
+      const family = member ? data.families.find(f => f.id === member.familyId) : null;
+      const familyMembers = (member && member.familyId)
+        ? data.members.filter(m => m.familyId === member.familyId)
+        : (member ? [member] : []);
+      renderGroupPaymentCard(family, member, familyMembers);
+    }
+  } else {
+    if (tabIndiv) tabIndiv.classList.add('active');
+    if (tabGroup) tabGroup.classList.remove('active');
+    if (selectLabel) selectLabel.textContent = 'Membre Cotisant *';
+    if (modalContent) modalContent.classList.remove('modal-content-wide');
+    if (groupContainer) {
+      groupContainer.style.display = 'none';
+      groupContainer.innerHTML = '';
+    }
+  }
+  syncCotisationMontantField();
 }
 
 function onCotMemberSelected() {
   const select = document.getElementById('cotMemberSelect');
   const groupContainer = document.getElementById('cotGroupPaymentContainer');
   const modalContent = document.getElementById('modalAddCotisation')?.querySelector('.modal-content');
-  if (!select || !groupContainer) return;
+  if (!select) return;
 
   const memberId = select.value;
   if (!memberId) {
-    groupContainer.style.display = 'none';
-    groupContainer.innerHTML = '';
+    if (groupContainer) {
+      groupContainer.style.display = 'none';
+      groupContainer.innerHTML = '';
+    }
     if (modalContent) modalContent.classList.remove('modal-content-wide');
     return;
   }
 
   const data = TAGBA_DB.get();
   const member = data.members.find(m => m.id === memberId);
-  if (!member) {
-    groupContainer.style.display = 'none';
-    groupContainer.innerHTML = '';
-    if (modalContent) modalContent.classList.remove('modal-content-wide');
-    return;
-  }
+  if (!member) return;
 
   const family = data.families.find(f => f.id === member.familyId);
   const isChef = isMemberChefDeFamille(member, family);
 
-  if (!isChef) {
-    // Membre standard : masquer le panneau groupé et repasser en format classique
-    groupContainer.style.display = 'none';
-    groupContainer.innerHTML = '';
-    currentGroupPaymentMode = 'individual';
-    if (modalContent) modalContent.classList.remove('modal-content-wide');
-    syncCotisationMontantField();
-    return;
+  // Si c'est un chef de famille ou si le mode groupé était déjà activé
+  if (isChef) {
+    setVersementFormMode('group', true);
+  } else if (currentGroupPaymentMode === 'group') {
+    setVersementFormMode('group', true);
+  } else {
+    setVersementFormMode('individual', false);
   }
-
-  // Chef de famille : élargir la modale et afficher la PLAGE DE VERSEMENT FAMILIAL
-  const familyMembers = data.members.filter(m => m.familyId === member.familyId);
-  if (modalContent) modalContent.classList.add('modal-content-wide');
-  groupContainer.style.display = 'block';
-  renderGroupPaymentCard(family, member, familyMembers);
-  syncCotisationMontantField();
 }
 
-function renderGroupPaymentCard(family, chef, familyMembers) {
+function renderGroupPaymentCard(family, chef, familyMembers = []) {
   const groupContainer = document.getElementById('cotGroupPaymentContainer');
   if (!groupContainer) return;
 
@@ -1981,31 +2025,40 @@ function renderGroupPaymentCard(family, chef, familyMembers) {
   const cfg = data.config || {};
   const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
 
+  // Fusionner les membres du foyer avec les membres supplémentaires ajoutés manuellement
+  const baseMembers = [...familyMembers];
+  const allGroupMembers = [...baseMembers];
+
+  currentGroupExtraMembers.forEach(extra => {
+    if (!allGroupMembers.some(m => m.id === extra.id)) {
+      allGroupMembers.push(extra);
+    }
+  });
+
+  // Liste des autres membres disponibles à ajouter (hors ceux déjà dans le groupe)
+  const availableOthers = data.members.filter(m => !allGroupMembers.some(gm => gm.id === m.id));
+
   groupContainer.innerHTML = `
     <div class="family-plage-box">
-      <!-- En-tête de la Plage Familiale -->
+      <!-- En-tête de la Plage de Versement Groupé -->
       <div class="family-group-payment-header">
         <div class="family-group-title">
-          <span style="font-size: 26px;">👑</span>
+          <span style="font-size: 26px;">👥</span>
           <div>
-            <strong style="font-size: 16px;">Plage de Versement Familial : ${family ? family.name : 'Famille'}</strong>
+            <strong style="font-size: 16px;">
+              Versement Groupé : ${family ? family.name : 'Sélection Personnalisée'}
+            </strong>
             <span style="font-size: 12px; font-weight: normal; opacity: 0.9; display: block; margin-top: 2px;">
-              Chef de foyer : <strong>${chef.fullName}</strong> (${chef.matricule}) • ${familyMembers.length} membre(s) sous sa tutelle • 📍 ${family ? family.city : 'N/A'}
+              Payeur principal : <strong>${chef ? chef.fullName : 'Représentant'}</strong> (${chef ? chef.matricule : 'N/A'})
+              ${family ? `• Foyer : ${family.name} (📍 ${family.city})` : ''}
+              • <strong>${allGroupMembers.length} membre(s) dans la liste</strong>
             </span>
           </div>
         </div>
-        <div class="group-mode-toggle">
-          <button type="button" class="group-mode-btn ${currentGroupPaymentMode === 'group' ? 'active' : ''}" id="btnModeGroup" onclick="setGroupPaymentMode('group')">
-            👥 Plage Groupée (Foyer)
-          </button>
-          <button type="button" class="group-mode-btn ${currentGroupPaymentMode === 'individual' ? 'active' : ''}" id="btnModeIndiv" onclick="setGroupPaymentMode('individual')">
-            👤 Chef Uniquement
-          </button>
-        </div>
       </div>
 
-      <div id="groupPaymentChecklistSection" style="${currentGroupPaymentMode === 'group' ? '' : 'display: none;'}">
-        <!-- Barre d'outils de Versement Rapide par plusieurs (Multi-mois & Multi-membres) -->
+      <div id="groupPaymentChecklistSection">
+        <!-- Barre d'outils de Versement Rapide -->
         <div class="family-plage-toolbar">
           <div class="plage-duration-group">
             <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
@@ -2018,28 +2071,44 @@ function renderGroupPaymentCard(family, chef, familyMembers) {
             <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 12 ? 'active' : ''}" id="plageDurBtn_12" onclick="applyPlageDurationAll(12)">12 Mois (Annuel)</button>
           </div>
 
-          <div style="font-size: 11px; display: flex; align-items: center; gap: 8px;">
-            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllFamilyChecks(true)" style="padding: 4px 10px; font-size: 11px;">✅ Tout cocher</button>
-            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllFamilyChecks(false)" style="padding: 4px 10px; font-size: 11px;">⬜ Tout décocher</button>
-            <button type="button" class="btn btn-sm btn-warning" onclick="toggleLateFamilyChecksOnly()" style="padding: 4px 10px; font-size: 11px;" title="Cocher uniquement ceux en retard ou partiel">⚠️ Retardataires uniquement</button>
+          <div style="font-size: 11px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllFamilyChecks(true)" style="padding: 4px 9px; font-size: 11px;">
+              ✅ Tous prêts
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllFamilyChecks(false)" style="padding: 4px 9px; font-size: 11px;">
+              ⬜ Aucun prêt
+            </button>
+            <button type="button" class="btn btn-sm btn-warning" onclick="toggleLateFamilyChecksOnly()" style="padding: 4px 9px; font-size: 11px;" title="Cocher uniquement ceux qui ont un retard">
+              ⚠️ En retard uniquement
+            </button>
           </div>
         </div>
 
-        <!-- Tableau / Plage des Membres du Foyer -->
+        <!-- Note d'aide explicative -->
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+          <span>💡</span> 
+          <span>Si quelqu'un <strong>n'est pas prêt</strong> pour ce versement, cliquez sur son statut pour le marquer <strong>« Non prêt »</strong> (il sera reporté sans être facturé).</span>
+        </div>
+
+        <!-- Tableau / Plage des Membres du Groupe -->
         <div class="plage-table-wrapper">
           <table class="family-plage-table">
             <thead>
               <tr>
                 <th style="width: 40px; text-align: center;"></th>
-                <th>Membre rattaché & Poste</th>
+                <th>Membre du Groupe</th>
+                <th>Disponibilité</th>
                 <th>Statut actuel</th>
-                <th style="width: 150px;">Durée à régler</th>
-                <th style="text-align: right; width: 120px;">Montant</th>
+                <th style="width: 140px;">Durée</th>
+                <th style="text-align: right; width: 110px;">Montant</th>
+                <th style="width: 40px; text-align: center;"></th>
               </tr>
             </thead>
             <tbody>
-              ${familyMembers.map(m => {
+              ${allGroupMembers.map(m => {
                 const isThisChef = isMemberChefDeFamille(m, family);
+                const isExtra = currentGroupExtraMembers.some(em => em.id === m.id);
+                const extraFam = isExtra ? data.families.find(f => f.id === m.familyId) : null;
                 const statusColor = m.statutCotisation === 'A_JOUR' ? '#10b981' : (m.statutCotisation === 'PARTIEL' ? '#f59e0b' : '#ef4444');
                 const statusLabel = m.statutCotisation === 'A_JOUR' ? 'À jour' : (m.statutCotisation === 'PARTIEL' ? 'Partiel' : 'En retard');
                 const initialMonths = currentPlageGlobalDuration || 1;
@@ -2051,12 +2120,18 @@ function renderGroupPaymentCard(family, chef, familyMembers) {
                       <input type="checkbox" class="family-member-cb" value="${m.id}" data-name="${m.fullName}" checked onchange="onFamilyRowCheckChange('${m.id}')" style="cursor: pointer; width: 17px; height: 17px; accent-color: var(--emerald-500);">
                     </td>
                     <td>
-                      <div style="font-weight: 600; color: var(--text-main); font-size: 13px;">
-                        ${isThisChef ? '👑 ' : ''}${m.fullName}
+                      <div style="font-weight: 600; color: var(--text-main); font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                        <span>${isThisChef ? '👑 ' : ''}${m.fullName}</span>
+                        ${isExtra ? `<span class="other-member-badge">🔵 Autre (${extraFam ? extraFam.name : 'Autre'})</span>` : ''}
                       </div>
                       <div style="font-size: 11px; color: var(--text-muted);">
                         ${m.relationToChef || 'Membre'} • <span style="color: var(--emerald-400); font-weight: 600;">${m.matricule}</span>
                       </div>
+                    </td>
+                    <td>
+                      <button type="button" class="ready-status-btn ready" id="btnReady_${m.id}" onclick="toggleMemberReadyStatus('${m.id}')" title="Cliquer pour changer entre Prêt et Non prêt">
+                        🟢 Prêt
+                      </button>
                     </td>
                     <td>
                       <span class="badge" style="font-size: 10px; background: rgba(255,255,255,0.06); color: ${statusColor}; border: 1px solid ${statusColor}40;">
@@ -2065,17 +2140,24 @@ function renderGroupPaymentCard(family, chef, familyMembers) {
                     </td>
                     <td>
                       <select class="plage-months-select plage-member-months-select" id="monthsSelect_${m.id}" onchange="onPlageMemberMonthsChange('${m.id}')">
-                        <option value="1" ${initialMonths === 1 ? 'selected' : ''}>1 mois (${formatMoney(unitMonthly * 1, cfg.currency)})</option>
-                        <option value="2" ${initialMonths === 2 ? 'selected' : ''}>2 mois (${formatMoney(unitMonthly * 2, cfg.currency)})</option>
-                        <option value="3" ${initialMonths === 3 ? 'selected' : ''}>3 mois (${formatMoney(unitMonthly * 3, cfg.currency)})</option>
-                        <option value="6" ${initialMonths === 6 ? 'selected' : ''}>6 mois (${formatMoney(unitMonthly * 6, cfg.currency)})</option>
-                        <option value="12" ${initialMonths === 12 ? 'selected' : ''}>12 mois (${formatMoney(unitMonthly * 12, cfg.currency)})</option>
+                        <option value="1" ${initialMonths === 1 ? 'selected' : ''}>1 mois</option>
+                        <option value="2" ${initialMonths === 2 ? 'selected' : ''}>2 mois</option>
+                        <option value="3" ${initialMonths === 3 ? 'selected' : ''}>3 mois</option>
+                        <option value="6" ${initialMonths === 6 ? 'selected' : ''}>6 mois</option>
+                        <option value="12" ${initialMonths === 12 ? 'selected' : ''}>12 mois</option>
                       </select>
                     </td>
                     <td style="text-align: right;">
                       <strong class="plage-line-amount" id="lineAmount_${m.id}" style="color: var(--emerald-400); font-size: 13px;">
                         ${formatMoney(lineMontant, cfg.currency)}
                       </strong>
+                    </td>
+                    <td style="text-align: center;">
+                      ${isExtra ? `
+                        <button type="button" class="btn-remove-extra-member" onclick="removeOtherMemberFromGroup('${m.id}')" title="Retirer ce membre supplémentaire du groupe">
+                          ✕
+                        </button>
+                      ` : ''}
                     </td>
                   </tr>
                 `;
@@ -2084,19 +2166,44 @@ function renderGroupPaymentCard(family, chef, familyMembers) {
           </table>
         </div>
 
+        <!-- Boîte d'Ajout d'un Autre Membre au Groupe -->
+        <div class="add-other-member-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <strong style="font-size: 12px; color: var(--blue-400); display: flex; align-items: center; gap: 6px;">
+              <span>➕</span> Ajouter un autre membre au groupe (proche, parent ou autre foyer) :
+            </strong>
+            <span style="font-size: 11px; color: var(--text-muted);">${availableOthers.length} autre(s) disponible(s)</span>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <select id="selectOtherMemberToAdd" class="form-control" style="flex: 1; min-width: 220px; font-size: 13px; height: 38px;">
+              <option value="">-- Choisir un membre à ajouter au versement groupé --</option>
+              ${availableOthers.map(om => {
+                const oFam = data.families.find(f => f.id === om.familyId);
+                return `<option value="${om.id}">${om.fullName} (${om.matricule}) — ${oFam ? oFam.name : 'Famille'}</option>`;
+              }).join('')}
+            </select>
+            <button type="button" class="btn btn-sm btn-primary" onclick="addOtherMemberToGroup()" style="padding: 0 16px; height: 38px; white-space: nowrap;">
+              ➕ Ajouter au groupe
+            </button>
+          </div>
+        </div>
+
         <!-- Récapitulatif Global de la Plage -->
-        <div class="family-group-summary">
+        <div class="family-group-summary" style="margin-top: 14px;">
           <div>
-            <span>Membres retenus : </span>
-            <strong id="groupCheckedCount">${familyMembers.length}</strong> / <strong>${familyMembers.length}</strong>
+            <span>Membres prêts (inclus) : </span>
+            <strong id="groupCheckedCount" style="color: var(--emerald-400);">${allGroupMembers.length}</strong> / <strong>${allGroupMembers.length}</strong>
             <span style="opacity: 0.5; margin: 0 8px;">•</span>
-            <span>Total mois couverts : </span>
-            <strong id="groupTotalMonthsDisplay">${familyMembers.length * currentPlageGlobalDuration} mois</strong>
+            <span id="groupUnreadyCountContainer" style="display: none; color: var(--rose-400); font-weight: 600;">
+              <span id="groupUnreadyCount">0</span> non prêt(s) •
+            </span>
+            <span>Total mois : </span>
+            <strong id="groupTotalMonthsDisplay">${allGroupMembers.length * currentPlageGlobalDuration} mois</strong>
           </div>
           <div>
-            <span>Total général à encaisser : </span>
-            <span class="total-val" id="groupTotalAmount" style="font-size: 17px;">
-              ${formatMoney(familyMembers.length * currentPlageGlobalDuration * unitMonthly, cfg.currency)}
+            <span>Total à encaisser : </span>
+            <span class="total-val" id="groupTotalAmount" style="font-size: 18px; color: var(--emerald-400); font-weight: 800;">
+              ${formatMoney(allGroupMembers.length * currentPlageGlobalDuration * unitMonthly, cfg.currency)}
             </span>
           </div>
         </div>
@@ -2105,23 +2212,99 @@ function renderGroupPaymentCard(family, chef, familyMembers) {
   `;
 }
 
-function setGroupPaymentMode(mode) {
-  currentGroupPaymentMode = mode;
-  const sec = document.getElementById('groupPaymentChecklistSection');
-  const btnGroup = document.getElementById('btnModeGroup');
-  const btnIndiv = document.getElementById('btnModeIndiv');
+function toggleMemberReadyStatus(memberId) {
+  const row = document.getElementById(`plageRow_${memberId}`);
+  const cb = row ? row.querySelector('.family-member-cb') : null;
+  if (!cb) return;
 
-  if (btnGroup && btnIndiv) {
-    if (mode === 'group') {
-      btnGroup.classList.add('active');
-      btnIndiv.classList.remove('active');
-      if (sec) sec.style.display = '';
+  cb.checked = !cb.checked;
+  onFamilyRowCheckChange(memberId);
+}
+
+function onFamilyRowCheckChange(memberId) {
+  const row = document.getElementById(`plageRow_${memberId}`);
+  const cb = row ? row.querySelector('.family-member-cb') : null;
+  const btn = document.getElementById(`btnReady_${memberId}`);
+  const amountEl = document.getElementById(`lineAmount_${memberId}`);
+  const sel = document.getElementById(`monthsSelect_${memberId}`);
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+  const months = Number(sel?.value || 1);
+
+  if (row && cb) {
+    if (cb.checked) {
+      row.classList.add('row-checked');
+      row.classList.remove('row-unready');
+      if (btn) {
+        btn.className = 'ready-status-btn ready';
+        btn.innerHTML = '🟢 Prêt';
+      }
+      if (amountEl) {
+        amountEl.textContent = formatMoney(months * unitMonthly, cfg.currency);
+        amountEl.style.opacity = '1';
+      }
     } else {
-      btnIndiv.classList.add('active');
-      btnGroup.classList.remove('active');
-      if (sec) sec.style.display = 'none';
+      row.classList.remove('row-checked');
+      row.classList.add('row-unready');
+      if (btn) {
+        btn.className = 'ready-status-btn not-ready';
+        btn.innerHTML = '⏳ Non prêt';
+      }
+      if (amountEl) {
+        amountEl.innerHTML = '<span style="opacity: 0.5; font-size: 11px;">0 FCFA (Différé)</span>';
+      }
     }
   }
+  syncCotisationMontantField();
+}
+
+function addOtherMemberToGroup() {
+  const select = document.getElementById('selectOtherMemberToAdd');
+  if (!select || !select.value) {
+    showToast('Veuillez sélectionner un membre à ajouter au groupe', 'warning');
+    return;
+  }
+  const memberId = select.value;
+  const data = TAGBA_DB.get();
+  const member = data.members.find(m => m.id === memberId);
+  if (!member) return;
+
+  if (currentGroupExtraMembers.some(m => m.id === memberId)) {
+    showToast('Ce membre est déjà inclus dans le groupe', 'warning');
+    return;
+  }
+
+  currentGroupExtraMembers.push(member);
+  showToast(`👤 ${member.fullName} a été ajouté au versement groupé !`);
+
+  // Rafraîchir l'affichage du groupe
+  const cotSelect = document.getElementById('cotMemberSelect');
+  const mainMemId = cotSelect ? cotSelect.value : null;
+  const mainMem = mainMemId ? data.members.find(m => m.id === mainMemId) : null;
+  const fam = mainMem ? data.families.find(f => f.id === mainMem.familyId) : null;
+  const familyMembers = (mainMem && mainMem.familyId)
+    ? data.members.filter(m => m.familyId === mainMem.familyId)
+    : (mainMem ? [mainMem] : []);
+
+  renderGroupPaymentCard(fam, mainMem, familyMembers);
+  syncCotisationMontantField();
+}
+
+function removeOtherMemberFromGroup(memberId) {
+  currentGroupExtraMembers = currentGroupExtraMembers.filter(m => m.id !== memberId);
+  showToast('Membre retiré du groupe');
+
+  const data = TAGBA_DB.get();
+  const cotSelect = document.getElementById('cotMemberSelect');
+  const mainMemId = cotSelect ? cotSelect.value : null;
+  const mainMem = mainMemId ? data.members.find(m => m.id === mainMemId) : null;
+  const fam = mainMem ? data.families.find(f => f.id === mainMem.familyId) : null;
+  const familyMembers = (mainMem && mainMem.familyId)
+    ? data.members.filter(m => m.familyId === mainMem.familyId)
+    : (mainMem ? [mainMem] : []);
+
+  renderGroupPaymentCard(fam, mainMem, familyMembers);
   syncCotisationMontantField();
 }
 
@@ -2142,12 +2325,17 @@ function applyPlageDurationAll(months) {
     sel.value = months;
   });
 
-  // Mettre à jour les montants par ligne
+  // Mettre à jour les montants par ligne pour les membres prêts
   document.querySelectorAll('.family-plage-row').forEach(row => {
     const memId = row.getAttribute('data-member-id');
+    const cb = row.querySelector('.family-member-cb');
     const amountEl = document.getElementById(`lineAmount_${memId}`);
-    if (amountEl) {
-      amountEl.textContent = formatMoney(months * unitMonthly, cfg.currency);
+    if (amountEl && cb) {
+      if (cb.checked) {
+        amountEl.textContent = formatMoney(months * unitMonthly, cfg.currency);
+      } else {
+        amountEl.innerHTML = '<span style="opacity: 0.5; font-size: 11px;">0 FCFA (Différé)</span>';
+      }
     }
   });
 
@@ -2174,23 +2362,17 @@ function onPlageMemberMonthsChange(memberId) {
   const cfg = data.config || {};
   const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
 
-  const sel = document.getElementById(`monthsSelect_${memberId}`);
-  const amountEl = document.getElementById(`lineAmount_${memberId}`);
-  if (sel && amountEl) {
-    const months = Number(sel.value || 1);
-    amountEl.textContent = formatMoney(months * unitMonthly, cfg.currency);
-  }
-  syncCotisationMontantField();
-}
-
-function onFamilyRowCheckChange(memberId) {
   const row = document.getElementById(`plageRow_${memberId}`);
   const cb = row ? row.querySelector('.family-member-cb') : null;
-  if (row && cb) {
-    if (cb.checked) {
-      row.classList.add('row-checked');
+  const sel = document.getElementById(`monthsSelect_${memberId}`);
+  const amountEl = document.getElementById(`lineAmount_${memberId}`);
+
+  if (sel && amountEl) {
+    const months = Number(sel.value || 1);
+    if (cb && cb.checked) {
+      amountEl.textContent = formatMoney(months * unitMonthly, cfg.currency);
     } else {
-      row.classList.remove('row-checked');
+      amountEl.innerHTML = '<span style="opacity: 0.5; font-size: 11px;">0 FCFA (Différé)</span>';
     }
   }
   syncCotisationMontantField();
@@ -2198,28 +2380,26 @@ function onFamilyRowCheckChange(memberId) {
 
 function toggleAllFamilyChecks(checked) {
   document.querySelectorAll('.family-plage-row').forEach(row => {
+    const memId = row.getAttribute('data-member-id');
     const cb = row.querySelector('.family-member-cb');
     if (cb) {
       cb.checked = checked;
-      if (checked) row.classList.add('row-checked');
-      else row.classList.remove('row-checked');
+      onFamilyRowCheckChange(memId);
     }
   });
-  syncCotisationMontantField();
 }
 
 function toggleLateFamilyChecksOnly() {
   document.querySelectorAll('.family-plage-row').forEach(row => {
+    const memId = row.getAttribute('data-member-id');
     const cb = row.querySelector('.family-member-cb');
     const statut = row.getAttribute('data-statut');
     const isLate = statut !== 'A_JOUR';
     if (cb) {
       cb.checked = isLate;
-      if (isLate) row.classList.add('row-checked');
-      else row.classList.remove('row-checked');
+      onFamilyRowCheckChange(memId);
     }
   });
-  syncCotisationMontantField();
   showToast('Membres avec cotisations en retard ou partielles sélectionnés !');
 }
 
@@ -2234,9 +2414,14 @@ function syncCotisationMontantField() {
   const isGroupActive = groupContainer && groupContainer.style.display !== 'none' && currentGroupPaymentMode === 'group';
 
   if (isGroupActive) {
-    const checkedRows = Array.from(document.querySelectorAll('.family-plage-row')).filter(r => {
+    const allRows = Array.from(document.querySelectorAll('.family-plage-row'));
+    const checkedRows = allRows.filter(r => {
       const cb = r.querySelector('.family-member-cb');
       return cb && cb.checked;
+    });
+    const unreadyRows = allRows.filter(r => {
+      const cb = r.querySelector('.family-member-cb');
+      return cb && !cb.checked;
     });
 
     let grandTotal = 0;
@@ -2249,10 +2434,20 @@ function syncCotisationMontantField() {
     });
 
     const countEl = document.getElementById('groupCheckedCount');
+    const unreadyCountEl = document.getElementById('groupUnreadyCount');
+    const unreadyContainer = document.getElementById('groupUnreadyCountContainer');
     const monthsEl = document.getElementById('groupTotalMonthsDisplay');
     const totalEl = document.getElementById('groupTotalAmount');
 
     if (countEl) countEl.textContent = checkedRows.length;
+    if (unreadyContainer && unreadyCountEl) {
+      if (unreadyRows.length > 0) {
+        unreadyContainer.style.display = 'inline';
+        unreadyCountEl.textContent = `${unreadyRows.length}`;
+      } else {
+        unreadyContainer.style.display = 'none';
+      }
+    }
     if (monthsEl) monthsEl.textContent = `${totalMonths} mois`;
     if (totalEl) totalEl.textContent = formatMoney(grandTotal, cfg.currency);
 
@@ -2320,14 +2515,14 @@ function openGroupReceiptModal(groupInfo) {
 
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
-  const { family, chef, members, totalAmount, totalMonths, periode, datePaiement, modePaiement, groupBatchRef, type, currency } = groupInfo;
+  const { family, chef, members, unreadyMembers, totalAmount, totalMonths, periode, datePaiement, modePaiement, groupBatchRef, type, currency } = groupInfo;
 
   container.innerHTML = `
     <div class="receipt-paper">
       <div class="receipt-header">
         <h2>${cfg.assocName}</h2>
         <p style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;">${cfg.tagline}</p>
-        <p style="font-size: 13px; color: #047857; margin-top: 6px; font-weight: 700;">REÇU OFFICIEL DE VERSEMENT GROUPÉ FAMILIAL</p>
+        <p style="font-size: 13px; color: #047857; margin-top: 6px; font-weight: 700;">REÇU OFFICIEL DE VERSEMENT GROUPÉ</p>
       </div>
 
       <div class="receipt-meta">
@@ -2338,23 +2533,23 @@ function openGroupReceiptModal(groupInfo) {
           <p><strong>Cumul des périodes :</strong> ${totalMonths} mois réglés</p>
         </div>
         <div>
-          <p><strong>Chef de Famille Cotisant :</strong> 👑 ${chef.fullName}</p>
-          <p><strong>Matricule Chef :</strong> ${chef.matricule}</p>
-          <p><strong>Foyer Familial :</strong> ${family ? family.name : 'Famille'}</p>
-          <p><strong>Membres pris en charge :</strong> ${members.length} cotisant(s)</p>
+          <p><strong>Payeur Principal :</strong> 👑 ${chef ? chef.fullName : 'Représentant'}</p>
+          <p><strong>Matricule Payeur :</strong> ${chef ? chef.matricule : 'N/A'}</p>
+          <p><strong>Foyer / Groupe :</strong> ${family ? family.name : 'Sélection Groupe'}</p>
+          <p><strong>Membres réglés ce jour :</strong> ${members.length} cotisant(s)</p>
         </div>
       </div>
 
       <!-- Tableau détaillé des membres cotisés avec nombre de mois -->
-      <div style="margin-bottom: 20px;">
-        <h4 style="font-size: 12px; text-transform: uppercase; color: #4b5569; margin-bottom: 8px; letter-spacing: 0.05em;">Détail de la plage des membres pris en charge :</h4>
+      <div style="margin-bottom: 16px;">
+        <h4 style="font-size: 12px; text-transform: uppercase; color: #4b5569; margin-bottom: 8px; letter-spacing: 0.05em;">Détail des membres pris en charge et réglés :</h4>
         <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
           <thead>
             <tr style="background: #f1f5f9; border-bottom: 2px solid #cbd5e1; text-align: left;">
               <th style="padding: 8px;">N°</th>
               <th style="padding: 8px;">Matricule</th>
               <th style="padding: 8px;">Membre Cotisant</th>
-              <th style="padding: 8px;">Lien Chef</th>
+              <th style="padding: 8px;">Lien / Foyer</th>
               <th style="padding: 8px; text-align: center;">Durée</th>
               <th style="padding: 8px; text-align: right;">Montant Réglé</th>
             </tr>
@@ -2365,7 +2560,7 @@ function openGroupReceiptModal(groupInfo) {
                 <td style="padding: 8px; color: #64748b;">${idx + 1}</td>
                 <td style="padding: 8px; font-weight: 600; color: #047857;">${item.member ? item.member.matricule : 'N/A'}</td>
                 <td style="padding: 8px; font-weight: 600; color: #1e293b;">${item.member ? item.member.fullName : 'Membre'}</td>
-                <td style="padding: 8px; color: #475569;">${item.member ? item.member.relationToChef : 'Membre'}</td>
+                <td style="padding: 8px; color: #475569;">${item.member ? (item.member.relationToChef || 'Membre') : 'Membre'}</td>
                 <td style="padding: 8px; text-align: center; font-weight: 600; color: #0f766e;">${item.months} mois</td>
                 <td style="padding: 8px; text-align: right; font-weight: 700; color: #065f46;">${formatMoney(item.amount, currency)}</td>
               </tr>
@@ -2374,10 +2569,25 @@ function openGroupReceiptModal(groupInfo) {
         </table>
       </div>
 
+      ${unreadyMembers && unreadyMembers.length > 0 ? `
+        <!-- Bloc des membres non prêts (cotisations reportées) -->
+        <div style="margin-bottom: 18px; padding: 12px 14px; border-radius: 8px; background: #fff1f2; border: 1.5px dashed #f43f5e; font-size: 12px; color: #9f1239;">
+          <div style="font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+            <span>⏳</span> Membre(s) non prêt(s) lors de ce passage (Cotisation reportée / non encaissée) :
+          </div>
+          <div style="margin: 6px 0;">
+            ${unreadyMembers.map(u => `<span style="display: inline-block; background: #ffe4e6; padding: 2px 8px; border-radius: 4px; margin: 2px; font-weight: 600;">• ${u.fullName} (${u.matricule})</span>`).join(' ')}
+          </div>
+          <p style="font-size: 11px; margin-top: 4px; opacity: 0.9; margin-bottom: 0;">
+            <em>Note officielle : Ces membres du foyer n'ont pas été encaissés ce jour et restent redevables de leur cotisation ultérieure.</em>
+          </p>
+        </div>
+      ` : ''}
+
       <div class="receipt-amount-box">
-        <span style="font-size: 12px; color: #065f46; text-transform: uppercase; font-weight: 700;">Total Encaissé pour le Foyer (${members.length} membres • ${totalMonths} mois)</span>
+        <span style="font-size: 12px; color: #065f46; text-transform: uppercase; font-weight: 700;">Total Encaissé pour le Groupe (${members.length} membres réglés • ${totalMonths} mois)</span>
         <h3>${formatMoney(totalAmount, currency)}</h3>
-        <p style="font-size: 12px; color: #4b5569; margin-top: 4px;">Règlement effectué par : <strong>${chef.fullName}</strong> • Mode : <strong>${modePaiement}</strong></p>
+        <p style="font-size: 12px; color: #4b5569; margin-top: 4px;">Règlement effectué par : <strong>${chef ? chef.fullName : 'Représentant'}</strong> • Mode : <strong>${modePaiement}</strong></p>
       </div>
 
       <div style="display: flex; justify-content: space-between; margin-top: 36px; padding-top: 18px; border-top: 1px solid #e5e7eb; font-size: 12px;">

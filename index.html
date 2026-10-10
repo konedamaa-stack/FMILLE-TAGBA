@@ -955,8 +955,18 @@
         <button class="modal-close-btn" aria-label="Fermer">&times;</button>
       </div>
       <form id="formAddCotisation">
+        <!-- Bascule Mode Versement (Individuel vs Groupé) -->
+        <div class="versement-mode-tabs">
+          <button type="button" class="versement-mode-tab active" id="tabModeIndiv" onclick="setVersementFormMode('individual')">
+            <span>👤</span> Versement Individuel
+          </button>
+          <button type="button" class="versement-mode-tab" id="tabModeGroup" onclick="setVersementFormMode('group')">
+            <span>👥</span> Versement par Groupe / Famille
+          </button>
+        </div>
+
         <div class="form-group">
-          <label class="form-label">Membre Cotisant *</label>
+          <label class="form-label" id="cotMemberSelectLabel">Membre Cotisant / Représentant Payeur *</label>
           <div style="position: relative; margin-bottom: 8px;">
             <input type="text" class="form-control" id="cotMemberSearchInput" placeholder="🔍 Rechercher par nom, matricule ou chef de famille...">
           </div>

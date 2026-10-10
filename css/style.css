@@ -1675,6 +1675,131 @@ body.light-theme .family-plage-table tr.row-checked {
   background: #f0fdf4;
 }
 
+.family-plage-table tr.row-unready {
+  background: rgba(244, 63, 94, 0.04);
+  opacity: 0.75;
+}
+
+body.light-theme .family-plage-table tr.row-unready {
+  background: #fff1f2;
+}
+
+/* Badge Statut Prêt / Non Prêt */
+.ready-status-btn {
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all var(--transition-fast);
+}
+
+.ready-status-btn.ready {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emerald-400);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+body.light-theme .ready-status-btn.ready {
+  color: #059669;
+}
+
+.ready-status-btn.not-ready {
+  background: rgba(244, 63, 94, 0.12);
+  color: var(--rose-400);
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+body.light-theme .ready-status-btn.not-ready {
+  color: #e11d48;
+}
+
+.ready-status-btn:hover {
+  transform: scale(1.03);
+}
+
+/* Boîte d'Ajout d'un Autre Membre au Groupe */
+.add-other-member-box {
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px dashed rgba(59, 130, 246, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  margin-top: 14px;
+}
+
+body.light-theme .add-other-member-box {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.other-member-badge {
+  background: rgba(59, 130, 246, 0.18);
+  color: var(--blue-400);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  margin-left: 6px;
+}
+
+.btn-remove-extra-member {
+  background: transparent;
+  border: none;
+  color: var(--rose-400);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+}
+
+.btn-remove-extra-member:hover {
+  background: rgba(244, 63, 94, 0.15);
+}
+
+/* Sélecteur Mode Versement */
+.versement-mode-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  gap: 6px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+}
+
+body.light-theme .versement-mode-tabs {
+  background: #f1f5f9;
+}
+
+.versement-mode-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.versement-mode-tab.active {
+  background: var(--emerald-500);
+  color: white;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+}
+
 .plage-months-select {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border-color);
