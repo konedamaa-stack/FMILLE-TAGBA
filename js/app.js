@@ -888,7 +888,10 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
                   </tr>
                 </thead>
                 <tbody>
-                  ${familyMembers.map(mem => `
+                  ${familyMembers.map(mem => {
+                    const audit = getMemberCotisationAudit(mem.id);
+                    const memStatut = audit ? audit.statutKey : mem.statutCotisation;
+                    return `
                     <tr>
                       <td><strong style="color: var(--emerald-400);">${mem.matricule}</strong></td>
                       <td>
@@ -904,16 +907,18 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
                       <td>📞 ${mem.phone}</td>
                       <td>${mem.profession}</td>
                       <td>
-                        <span class="badge ${getStatutBadgeClass(mem.statutCotisation)}">${formatStatut(mem.statutCotisation)}</span>
+                        <span class="badge ${getStatutBadgeClass(memStatut)}">${formatStatut(memStatut)}</span>
                       </td>
                       <td style="text-align: right;">
                         <div style="display: inline-flex; gap: 6px;">
+                          <button class="btn btn-sm btn-secondary" onclick="openMemberMonthsAuditModal('${mem.id}')" title="Calendrier et mois payés">📅 Mois</button>
                           <button class="btn btn-sm btn-secondary" onclick="quickPayMember('${mem.id}')" title="Encaisser versement">💳 Payer</button>
                           <button class="btn btn-sm btn-outline-danger" onclick="deleteMemberConfirm('${mem.id}')" title="Retirer">🗑️</button>
                         </div>
                       </td>
                     </tr>
-                  `).join('')}
+                  `;
+                  }).join('')}
                 </tbody>
               </table>
             </div>
@@ -978,12 +983,19 @@ function renderMembersTable(filterSearch = '', filterFamily = '') {
     const fam = data.families.find(f => f.id === mem.familyId);
     const famName = fam ? fam.name : 'Non rattaché';
     const chefName = fam ? fam.chefDeFamille : 'Non défini';
+    const audit = getMemberCotisationAudit(mem.id);
+    const memStatut = audit ? audit.statutKey : mem.statutCotisation;
 
     return `
       <tr>
         <td><strong style="color: var(--emerald-400);">${mem.matricule}</strong></td>
         <td>
-          <div style="font-weight: 600;">${mem.fullName} ${mem.bureauRole ? `<span class="badge badge-purple" style="font-size: 9px; margin-left: 6px;">${mem.bureauRole}</span>` : ''}</div>
+          <div style="font-weight: 600;">
+            <a href="javascript:void(0)" onclick="openMemberMonthsAuditModal('${mem.id}')" style="color: var(--text-main); text-decoration: none;">
+              ${mem.fullName}
+            </a>
+            ${mem.bureauRole ? `<span class="badge badge-purple" style="font-size: 9px; margin-left: 6px;">${mem.bureauRole}</span>` : ''}
+          </div>
           <div style="font-size: 11px; color: var(--text-muted);">${mem.profession} • 📍 ${mem.residence}</div>
         </td>
         <td>
@@ -992,9 +1004,10 @@ function renderMembersTable(filterSearch = '', filterFamily = '') {
           <div style="margin-top: 2px;">${getRelationBadge(mem.relationToChef)}</div>
         </td>
         <td>📞 ${mem.phone}</td>
-        <td><span class="badge ${getStatutBadgeClass(mem.statutCotisation)}">${formatStatut(mem.statutCotisation)}</span></td>
+        <td><span class="badge ${getStatutBadgeClass(memStatut)}">${formatStatut(memStatut)}</span></td>
         <td>
           <div style="display: flex; gap: 6px;">
+            <button class="btn btn-sm btn-secondary" onclick="openMemberMonthsAuditModal('${mem.id}')" title="Calendrier et mois payés">📅 Mois</button>
             <button class="btn btn-sm btn-secondary" onclick="quickPayMember('${mem.id}')" title="Enregistrer un versement">💳 Payer</button>
             <button class="btn btn-sm btn-outline-danger" onclick="deleteMemberConfirm('${mem.id}')" title="Supprimer">🗑️</button>
           </div>
@@ -1138,18 +1151,381 @@ function openFamilySheetModal(familyId) {
 }
 
 function getStatutBadgeClass(statut) {
+  if (statut === 'EN_AVANCE') return 'badge-advance';
   if (statut === 'A_JOUR') return 'badge-success';
   if (statut === 'PARTIEL') return 'badge-warning';
   return 'badge-danger';
 }
 
 function formatStatut(statut) {
+  if (statut === 'EN_AVANCE') return '🚀 En avance';
   if (statut === 'A_JOUR') return 'À jour';
   if (statut === 'PARTIEL') return 'Partiel';
   return 'En retard';
 }
 
 // 4. Rendu Cotisations & Versements
+let currentCotisSubTab = 'months';
+let currentMonthsTrackingFilter = 'ALL';
+
+function switchCotisSubTab(subTab) {
+  currentCotisSubTab = subTab;
+  const btnMonths = document.getElementById('btnCotisSubTabMonths');
+  const btnRegistre = document.getElementById('btnCotisSubTabRegistre');
+  const viewMonths = document.getElementById('cotisationsMonthsTrackingView');
+  const viewRegistre = document.getElementById('cotisationsRegistreView');
+
+  if (subTab === 'months') {
+    if (btnMonths) btnMonths.classList.add('active');
+    if (btnRegistre) btnRegistre.classList.remove('active');
+    if (viewMonths) viewMonths.style.display = 'block';
+    if (viewRegistre) viewRegistre.style.display = 'none';
+  } else {
+    if (btnMonths) btnMonths.classList.remove('active');
+    if (btnRegistre) btnRegistre.classList.add('active');
+    if (viewMonths) viewMonths.style.display = 'none';
+    if (viewRegistre) viewRegistre.style.display = 'block';
+  }
+}
+
+// 4.1. Moteur d'Audit Chronologique des Cotisations par Membre (Depuis le 04/10/2026)
+function getMemberCotisationAudit(memberId, refDateStr = null) {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const member = data.members.find(m => m.id === memberId);
+  if (!member) return null;
+
+  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+  const dateDebutStr = cfg.dateDebutCotisations || '2026-10-04';
+  
+  // Date de référence (par défaut aujourd'hui ou date imposée)
+  const today = refDateStr ? new Date(refDateStr) : new Date();
+  
+  // Date officielle de départ (04/10/2026)
+  const parts = dateDebutStr.split('-');
+  const startYear = parseInt(parts[0], 10) || 2026;
+  const startMonth = parseInt(parts[1], 10) || 10; // 1-indexed (10 = Octobre)
+  const startDay = parseInt(parts[2], 10) || 4;
+
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth() + 1; // 1-indexed
+  const currentDay = today.getDate();
+
+  // Nombre de mois échus depuis la date de démarrage (au 04 de chaque mois)
+  let monthsDueCount = 0;
+  const diffMonths = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+  if (diffMonths > 0) {
+    monthsDueCount = diffMonths + (currentDay >= startDay ? 1 : 0);
+  } else if (diffMonths === 0) {
+    monthsDueCount = currentDay >= startDay ? 1 : 0;
+  } else {
+    monthsDueCount = 0;
+  }
+  // Au minimum 1 mois échu si la date de démarrage est atteinte ou passée
+  if (monthsDueCount === 0 && today >= new Date(dateDebutStr)) {
+    monthsDueCount = 1;
+  }
+
+  // Somme totale des versements validés de ce membre
+  const memberCotisations = (data.cotisations || []).filter(c => c.memberId === memberId && c.statut !== 'Annulé');
+  const totalVerse = memberCotisations.reduce((sum, c) => sum + Number(c.montant || 0), 0);
+  
+  const monthsPaidCount = Math.floor(totalVerse / unitMonthly);
+  const reliquatVerse = totalVerse % unitMonthly;
+
+  const monthsLateCount = Math.max(0, monthsDueCount - monthsPaidCount);
+  const monthsAdvanceCount = Math.max(0, monthsPaidCount - monthsDueCount);
+  const arrieresMontant = monthsLateCount * unitMonthly;
+
+  let statutKey = 'A_JOUR';
+  let statutLabel = '✅ À jour';
+  let badgeClass = 'badge-ontime';
+
+  if (monthsLateCount > 0) {
+    statutKey = 'EN_RETARD';
+    statutLabel = `⚠️ En retard (${monthsLateCount} mois)`;
+    badgeClass = 'badge-late';
+  } else if (monthsAdvanceCount > 0) {
+    statutKey = 'EN_AVANCE';
+    statutLabel = `🚀 En avance (+${monthsAdvanceCount} mois)`;
+    badgeClass = 'badge-advance';
+  }
+
+  const MONTH_NAMES = [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ];
+  const SHORT_MONTH_NAMES = [
+    'Janv.', 'Févr.', 'Mars', 'Avr.', 'Mai', 'Juin',
+    'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'
+  ];
+
+  // Générer la timeline chronologique sur au moins 14 mois ou plus si anticipation
+  const totalMonthsToGenerate = Math.max(14, monthsPaidCount + 4);
+  const timeline = [];
+  const paidMonthsLabels = [];
+  const advanceMonthsLabels = [];
+  const lateMonthsLabels = [];
+
+  for (let i = 0; i < totalMonthsToGenerate; i++) {
+    const totalMonthIndex = (startMonth - 1) + i;
+    const year = startYear + Math.floor(totalMonthIndex / 12);
+    const monthIndex = totalMonthIndex % 12; // 0-indexed
+    const monthNum = monthIndex + 1;
+    const monthKey = `${year}-${String(monthNum).padStart(2, '0')}`;
+    const fullLabel = `${MONTH_NAMES[monthIndex]} ${year}`;
+    const shortLabel = `${SHORT_MONTH_NAMES[monthIndex]} ${year}`;
+    const dueDateStr = `${year}-${String(monthNum).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+
+    const isDue = (i < monthsDueCount);
+    const isPaid = (i < monthsPaidCount);
+    const isAdvance = (isPaid && !isDue);
+    const isLate = (!isPaid && isDue);
+    const isUpcoming = (!isPaid && !isDue);
+
+    let statusType = 'upcoming';
+    let statusText = 'À échoir (Anticipable)';
+
+    if (isAdvance) {
+      statusType = 'advance';
+      statusText = '🚀 Payé d\'avance (Anticipé)';
+      advanceMonthsLabels.push(shortLabel);
+      paidMonthsLabels.push(shortLabel);
+    } else if (isPaid) {
+      statusType = 'paid';
+      statusText = '✅ Réglé';
+      paidMonthsLabels.push(shortLabel);
+    } else if (isLate) {
+      statusType = 'late';
+      statusText = '⚠️ En retard (Arriéré dû)';
+      lateMonthsLabels.push(shortLabel);
+    }
+
+    timeline.push({
+      index: i,
+      monthKey,
+      year,
+      monthNum,
+      fullLabel,
+      shortLabel,
+      dueDateStr,
+      amount: unitMonthly,
+      isDue,
+      isPaid,
+      isAdvance,
+      isLate,
+      isUpcoming,
+      statusType,
+      statusText
+    });
+  }
+
+  const dernierMoisPaye = monthsPaidCount > 0 ? timeline[monthsPaidCount - 1]?.fullLabel : 'Aucun';
+  const prochainMoisDu = timeline[monthsPaidCount]?.fullLabel || 'Mois à venir';
+
+  return {
+    member,
+    unitMonthly,
+    currency: cfg.currency || 'FCFA',
+    dateDebutCotisations: dateDebutStr,
+    totalVerse,
+    reliquatVerse,
+    monthsPaidCount,
+    monthsDueCount,
+    monthsLateCount,
+    monthsAdvanceCount,
+    arrieresMontant,
+    statutKey,
+    statutLabel,
+    badgeClass,
+    dernierMoisPaye,
+    prochainMoisDu,
+    paidMonthsLabels,
+    advanceMonthsLabels,
+    lateMonthsLabels,
+    timeline,
+    cotisationsCount: memberCotisations.length
+  };
+}
+
+// 4.2. Rendu de la vue Tableau de Suivi des Mois (Payés, Retards & Anticipations)
+function renderCotisationsMonthsTracking() {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const tbody = document.getElementById('cotisationsMonthsTrackingTableBody');
+  const countDisplay = document.getElementById('monthsTrackingTableCount');
+  if (!tbody) return;
+
+  const dateDebutBadge = document.getElementById('badgeDateDebutCotis');
+  if (dateDebutBadge) {
+    dateDebutBadge.textContent = cfg.dateDebutCotisations || '04/10/2026';
+  }
+
+  const mensuelBadge = document.getElementById('cfgDisplayMensuelBadge');
+  if (mensuelBadge) {
+    mensuelBadge.textContent = `${formatMoney(cfg.cotisationMensuelle || 5000, cfg.currency)} / mois`;
+  }
+
+  // Auditer l'ensemble des membres
+  const audits = data.members.map(m => {
+    const audit = getMemberCotisationAudit(m.id);
+    const fam = data.families.find(f => f.id === m.familyId);
+    return { ...audit, family: fam };
+  });
+
+  // Calcul des statistiques globales
+  const totalAJourOrAdvance = audits.filter(a => a.monthsLateCount === 0).length;
+  const totalLate = audits.filter(a => a.monthsLateCount > 0).length;
+  const totalArrieres = audits.reduce((sum, a) => sum + a.arrieresMontant, 0);
+  const totalMoisAnticipes = audits.reduce((sum, a) => sum + a.monthsAdvanceCount, 0);
+
+  const kpiAJour = document.getElementById('kpiMoisAJourCount');
+  const kpiLate = document.getElementById('kpiMoisRetardCount');
+  const kpiArrieres = document.getElementById('kpiTotalArrieres');
+  const kpiAnticipes = document.getElementById('kpiTotalMoisAnticipes');
+
+  if (kpiAJour) kpiAJour.textContent = `${totalAJourOrAdvance} membre(s)`;
+  if (kpiLate) kpiLate.textContent = `${totalLate} membre(s)`;
+  if (kpiArrieres) kpiArrieres.textContent = formatMoney(totalArrieres, cfg.currency);
+  if (kpiAnticipes) kpiAnticipes.textContent = `+${totalMoisAnticipes} mois`;
+
+  // Filtrage
+  const searchInput = document.getElementById('searchMonthsTrackingInput');
+  const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  let filtered = audits.filter(a => {
+    if (currentMonthsTrackingFilter === 'EN_AVANCE' && a.monthsAdvanceCount === 0) return false;
+    if (currentMonthsTrackingFilter === 'A_JOUR' && (a.statutKey !== 'A_JOUR' && a.statutKey !== 'EN_AVANCE')) return false;
+    if (currentMonthsTrackingFilter === 'EN_RETARD' && a.monthsLateCount === 0) return false;
+
+    if (query) {
+      const matchName = a.member.fullName.toLowerCase().includes(query);
+      const matchMatricule = a.member.matricule.toLowerCase().includes(query);
+      const matchFam = a.family && a.family.name.toLowerCase().includes(query);
+      return matchName || matchMatricule || matchFam;
+    }
+    return true;
+  });
+
+  if (countDisplay) {
+    countDisplay.textContent = `${filtered.length} sur ${data.members.length} membre(s)`;
+  }
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-muted);">
+          🔍 Aucun membre ne correspond aux critères de recherche sélectionnés.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(a => {
+    const mem = a.member;
+    const fam = a.family;
+
+    // Badges des mois réglés
+    let paidBadgesHtml = '';
+    if (a.paidMonthsLabels.length === 0) {
+      paidBadgesHtml = '<span style="font-size: 11px; color: var(--text-dim); font-style: italic;">Aucun versement</span>';
+    } else {
+      paidBadgesHtml = a.paidMonthsLabels.slice(0, 4).map(label => {
+        const isAdvance = a.advanceMonthsLabels.includes(label);
+        return `<span class="month-tag-pill ${isAdvance ? 'month-tag-advance' : 'month-tag-paid'}">
+          ${isAdvance ? '🚀' : '✅'} ${label}
+        </span>`;
+      }).join('');
+      if (a.paidMonthsLabels.length > 4) {
+        paidBadgesHtml += `<span class="month-tag-pill month-tag-paid">+${a.paidMonthsLabels.length - 4} autre(s)</span>`;
+      }
+    }
+
+    // Badges des mois en retard
+    let lateBadgesHtml = '';
+    if (a.monthsLateCount === 0) {
+      lateBadgesHtml = '<span class="badge badge-success" style="font-size: 11px;">✅ Aucun retard</span>';
+    } else {
+      lateBadgesHtml = `
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <div>
+            ${a.lateMonthsLabels.slice(0, 3).map(l => `<span class="month-tag-pill month-tag-late">⚠️ ${l}</span>`).join('')}
+            ${a.lateMonthsLabels.length > 3 ? `<span class="month-tag-pill month-tag-late">+${a.lateMonthsLabels.length - 3}</span>` : ''}
+          </div>
+          <span style="font-size: 11px; color: var(--rose-400); font-weight: 700;">
+            Arriéré : -${formatMoney(a.arrieresMontant, a.currency)}
+          </span>
+        </div>
+      `;
+    }
+
+    return `
+      <tr>
+        <td>
+          <div style="font-weight: 700; display: flex; align-items: center; gap: 6px;">
+            <a href="javascript:void(0)" onclick="openMemberMonthsAuditModal('${mem.id}')" style="color: var(--text-main); text-decoration: none;">
+              ${mem.fullName}
+            </a>
+            ${mem.bureauRole ? `<span class="badge badge-purple" style="font-size: 9px;">${mem.bureauRole}</span>` : ''}
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); display: flex; gap: 8px; margin-top: 2px;">
+            <span>${mem.matricule}</span>
+            <span>•</span>
+            <span style="color: var(--gold-400);">👑 ${fam ? fam.name : 'Famille'}</span>
+          </div>
+        </td>
+        <td>
+          <strong style="font-size: 14px; color: var(--emerald-400);">${formatMoney(a.totalVerse, a.currency)}</strong>
+          <div style="font-size: 11px; color: var(--text-dim);">${a.monthsPaidCount} mois couvert(s)</div>
+        </td>
+        <td style="max-width: 200px;">
+          ${paidBadgesHtml}
+        </td>
+        <td style="max-width: 180px;">
+          ${lateBadgesHtml}
+        </td>
+        <td>
+          <span class="badge ${a.badgeClass}">
+            ${a.statutLabel}
+          </span>
+        </td>
+        <td>
+          <div style="font-size: 12px; font-weight: 600; color: var(--text-main);">${a.prochainMoisDu}</div>
+          <div style="font-size: 11px; color: var(--text-dim);">Dernier réglé : ${a.dernierMoisPaye}</div>
+        </td>
+        <td style="text-align: right;">
+          <div style="display: inline-flex; gap: 6px;">
+            <button class="btn btn-sm btn-secondary" onclick="openMemberMonthsAuditModal('${mem.id}')" title="Voir l'audit chronologique mois par mois">
+              🔍 Calendrier
+            </button>
+            <button class="btn btn-sm btn-primary" onclick="quickPayMember('${mem.id}')" title="Encaisser ou anticiper">
+              💳 Payer / Anticiper
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Filtrage du tableau de suivi
+function filterMonthsTrackingTable(filterStatus) {
+  if (filterStatus) {
+    currentMonthsTrackingFilter = filterStatus;
+    const buttons = document.querySelectorAll('#filterMonthsStatusGroup .filter-pill-btn');
+    buttons.forEach(btn => {
+      if (btn.getAttribute('data-filter') === filterStatus) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+  renderCotisationsMonthsTracking();
+}
+
+// 4.3. Rendu Général des Cotisations (Tableau Reçus + Suivi des Mois)
 function renderCotisations() {
   const data = TAGBA_DB.get();
   const tbody = document.getElementById('cotisationsTableBody');
@@ -1176,6 +1552,9 @@ function renderCotisations() {
       </td>
     </tr>
   `).join('');
+
+  // Rendu de la vue de suivi des mois chronologique
+  renderCotisationsMonthsTracking();
 }
 
 // 5. Rendu Entraide & Cas Sociaux
@@ -1749,6 +2128,7 @@ function enregistrerParametres(e) {
   try {
     const inputMensuel = document.getElementById('cfgCotisationMensuelle');
     const inputTrimestriel = document.getElementById('cfgCotisationTrimestrielle');
+    const inputDateDebut = document.getElementById('cfgDateDebutCotisations');
     const selectCurrency = document.getElementById('cfgCurrency');
     const inputYear = document.getElementById('cfgYear');
     const inputAssocName = document.getElementById('cfgAssocName');
@@ -1756,6 +2136,7 @@ function enregistrerParametres(e) {
 
     const newMensuel = inputMensuel && inputMensuel.value ? Number(inputMensuel.value) : 5000;
     const newTrimestriel = inputTrimestriel && inputTrimestriel.value ? Number(inputTrimestriel.value) : (newMensuel * 3);
+    const newDateDebut = inputDateDebut && inputDateDebut.value ? inputDateDebut.value : '2026-10-04';
     const newCurrency = selectCurrency && selectCurrency.value ? selectCurrency.value : 'FCFA';
     const newYear = inputYear && inputYear.value ? Number(inputYear.value) : 2026;
     const newAssocName = inputAssocName && inputAssocName.value.trim() ? inputAssocName.value.trim() : 'Association Mutuelle TAGBA';
@@ -1765,6 +2146,7 @@ function enregistrerParametres(e) {
     const savedConfig = TAGBA_DB.updateConfig({
       cotisationMensuelle: newMensuel,
       cotisationTrimestrielle: newTrimestriel,
+      dateDebutCotisations: newDateDebut,
       currency: newCurrency,
       year: newYear,
       assocName: newAssocName,
@@ -1777,7 +2159,7 @@ function enregistrerParametres(e) {
     updateCotisationModalDefaults();
     renderAllViews();
 
-    showToast(`✅ Paramètres enregistrés : Cotisation mensuelle fixée à ${formatMoney(newMensuel, newCurrency)}`);
+    showToast(`✅ Paramètres enregistrés : Cotisation à ${formatMoney(newMensuel, newCurrency)} / mois (Début : ${newDateDebut})`);
   } catch (err) {
     console.error('Erreur enregistrement paramètres', err);
     showToast('Erreur lors de l’enregistrement des paramètres', 'error');
@@ -1793,6 +2175,7 @@ function loadConfigForm() {
 
   const inputMensuel = document.getElementById('cfgCotisationMensuelle');
   const inputTrimestriel = document.getElementById('cfgCotisationTrimestrielle');
+  const inputDateDebut = document.getElementById('cfgDateDebutCotisations');
   const selectCurrency = document.getElementById('cfgCurrency');
   const inputYear = document.getElementById('cfgYear');
   const inputAssocName = document.getElementById('cfgAssocName');
@@ -1800,6 +2183,7 @@ function loadConfigForm() {
 
   if (inputMensuel) inputMensuel.value = cfg.cotisationMensuelle || 5000;
   if (inputTrimestriel) inputTrimestriel.value = cfg.cotisationTrimestrielle || 15000;
+  if (inputDateDebut) inputDateDebut.value = cfg.dateDebutCotisations || '2026-10-04';
   if (selectCurrency) selectCurrency.value = cfg.currency || 'FCFA';
   if (inputYear) inputYear.value = cfg.year || 2026;
   if (inputAssocName) inputAssocName.value = cfg.assocName || 'Association Mutuelle TAGBA';
@@ -1997,8 +2381,15 @@ function onCotMemberSelected() {
       groupContainer.innerHTML = '';
     }
     if (modalContent) modalContent.classList.remove('modal-content-wide');
+    updateCotMemberAuditPreview(null);
     return;
   }
+
+  // Afficher l'aperçu du statut du membre et ses échéances
+  updateCotMemberAuditPreview(memberId);
+
+  // Mettre à jour les champs montant et période selon l'anticipation par défaut
+  setAnticipationMonths(currentAnticipationSelectedMonths || 1);
 
   const data = TAGBA_DB.get();
   const member = data.members.find(m => m.id === memberId);
@@ -2015,6 +2406,260 @@ function onCotMemberSelected() {
   } else {
     setVersementFormMode('individual', false);
   }
+}
+
+// Aperçu dynamique du diagnostic du membre dans le modal de paiement
+function updateCotMemberAuditPreview(memberId) {
+  const container = document.getElementById('cotMemberAuditPreview');
+  if (!container) return;
+  if (!memberId) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  const audit = getMemberCotisationAudit(memberId);
+  if (!audit) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+      <div>
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); font-weight: 700;">
+          Situation du membre depuis le ${audit.dateDebutCotisations} :
+        </div>
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-top: 2px;">
+          ${audit.member.fullName} (${audit.member.matricule})
+        </div>
+      </div>
+      <div>
+        <span class="badge ${audit.badgeClass}">${audit.statutLabel}</span>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; font-size: 12px;">
+      <div style="background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: var(--radius-sm);">
+        <span style="color: var(--text-muted); font-size: 11px;">Total versé :</span>
+        <strong style="display: block; color: var(--emerald-400);">${formatMoney(audit.totalVerse, audit.currency)}</strong>
+      </div>
+      <div style="background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: var(--radius-sm);">
+        <span style="color: var(--text-muted); font-size: 11px;">Mois couverts :</span>
+        <strong style="display: block; color: var(--text-main);">${audit.monthsPaidCount} mois</strong>
+      </div>
+      <div style="background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: var(--radius-sm);">
+        <span style="color: var(--text-muted); font-size: 11px;">Dernier mois réglé :</span>
+        <strong style="display: block; color: ${audit.monthsPaidCount > 0 ? 'var(--emerald-400)' : 'var(--text-dim)'};">${audit.dernierMoisPaye}</strong>
+      </div>
+      <div style="background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: var(--radius-sm);">
+        <span style="color: var(--text-muted); font-size: 11px;">Prochain à régler :</span>
+        <strong style="display: block; color: var(--cyan-400);">${audit.prochainMoisDu}</strong>
+      </div>
+    </div>
+  `;
+}
+
+// Sélection rapide et anticipation de plusieurs mois
+let currentAnticipationSelectedMonths = 1;
+
+function setAnticipationMonths(nbMonths) {
+  currentAnticipationSelectedMonths = nbMonths;
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+
+  // Mettre à jour l'état actif des boutons
+  document.querySelectorAll('.btn-anticipate').forEach(btn => {
+    const m = Number(btn.getAttribute('data-months'));
+    if (m === nbMonths) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // Mettre à jour le montant
+  const inputMontant = document.getElementById('cotMontant');
+  if (inputMontant) {
+    inputMontant.value = nbMonths * unitMonthly;
+  }
+
+  // Mettre à jour la fréquence dans le select
+  const selectType = document.getElementById('cotType');
+  if (selectType) {
+    if (nbMonths === 1) selectType.value = 'Mensuel';
+    else if (nbMonths === 2) selectType.value = '2 Mois';
+    else if (nbMonths === 3) selectType.value = 'Trimestriel';
+    else if (nbMonths === 6) selectType.value = 'Semestriel';
+    else if (nbMonths === 12) selectType.value = 'Annuel';
+  }
+
+  // Calculer la période couverte exacte selon l'audit du membre sélectionné
+  const memberSelect = document.getElementById('cotMemberSelect');
+  const memberId = memberSelect ? memberSelect.value : null;
+  const inputPeriode = document.getElementById('cotPeriode');
+
+  if (inputPeriode) {
+    if (memberId) {
+      const audit = getMemberCotisationAudit(memberId);
+      if (audit && audit.timeline) {
+        const startIndex = audit.monthsPaidCount;
+        const targetMonths = audit.timeline.slice(startIndex, startIndex + nbMonths);
+        if (targetMonths.length > 0) {
+          if (nbMonths === 1) {
+            inputPeriode.value = `${targetMonths[0].fullLabel} (1 mois)`;
+          } else {
+            const first = targetMonths[0].shortLabel;
+            const last = targetMonths[targetMonths.length - 1].shortLabel;
+            const isAdvanceIncluded = targetMonths.some(t => !t.isDue);
+            inputPeriode.value = `${first} à ${last} (${nbMonths} mois${isAdvanceIncluded ? ' - Anticipation' : ''})`;
+          }
+        }
+      }
+    } else {
+      inputPeriode.value = nbMonths === 1 ? '1 Mois' : `${nbMonths} Mois de cotisation`;
+    }
+  }
+}
+
+// Ouvrir la modal d'audit chronologique détaillé du membre
+function openMemberMonthsAuditModal(memberId) {
+  const container = document.getElementById('memberMonthsAuditContent');
+  if (!container) return;
+
+  const data = TAGBA_DB.get();
+  const audit = getMemberCotisationAudit(memberId);
+  if (!audit) return;
+
+  const mem = audit.member;
+  const fam = data.families.find(f => f.id === mem.familyId);
+
+  container.innerHTML = `
+    <!-- Fiche d'identité financière du membre -->
+    <div style="background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(17,24,39,0.85) 100%); border-radius: var(--radius-lg); padding: 18px; border: 1px solid var(--border-color); margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 50px; height: 50px; border-radius: 50%; background: linear-gradient(135deg, var(--emerald-600), var(--emerald-400)); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);">
+            ${mem.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+          </div>
+          <div>
+            <h2 style="font-size: 18px; margin: 0; color: #fff; display: flex; align-items: center; gap: 8px;">
+              ${mem.fullName}
+              ${mem.bureauRole ? `<span class="badge badge-purple" style="font-size: 10px;">${mem.bureauRole}</span>` : ''}
+            </h2>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap;">
+              <span>Matricule : <strong style="color: var(--emerald-400);">${mem.matricule}</strong></span>
+              <span>•</span>
+              <span>Foyer : <strong style="color: var(--gold-400);">👑 ${fam ? fam.name : 'Famille'}</strong></span>
+              <span>•</span>
+              <span>📞 ${mem.phone}</span>
+            </div>
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <span class="badge ${audit.badgeClass}" style="font-size: 13px; padding: 6px 14px;">
+            ${audit.statutLabel}
+          </span>
+          <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
+            Date de début : ${audit.dateDebutCotisations}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 Cartes Métriques Synthétiques -->
+    <div class="kpi-grid" style="margin-bottom: 22px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));">
+      <div class="kpi-card" style="padding: 12px 16px; border-left: 3px solid var(--emerald-500);">
+        <span class="kpi-title">Total Encaissé</span>
+        <div class="kpi-value" style="font-size: 18px; color: var(--emerald-400);">${formatMoney(audit.totalVerse, audit.currency)}</div>
+        <div class="kpi-sub">${audit.cotisationsCount} versement(s) au total</div>
+      </div>
+
+      <div class="kpi-card" style="padding: 12px 16px; border-left: 3px solid #10b981;">
+        <span class="kpi-title">Mois Réglés</span>
+        <div class="kpi-value" style="font-size: 18px; color: #34d399;">${audit.monthsPaidCount} mois</div>
+        <div class="kpi-sub">Sur ${audit.monthsDueCount} mois échu(s)</div>
+      </div>
+
+      <div class="kpi-card" style="padding: 12px 16px; border-left: 3px solid var(--rose-500);">
+        <span class="kpi-title">Mois en Retard</span>
+        <div class="kpi-value" style="font-size: 18px; color: var(--rose-400);">${audit.monthsLateCount} mois</div>
+        <div class="kpi-sub" style="color: var(--rose-400); font-weight: 600;">
+          ${audit.monthsLateCount > 0 ? `Arriéré : -${formatMoney(audit.arrieresMontant, audit.currency)}` : 'À jour (0 FCFA)'}
+        </div>
+      </div>
+
+      <div class="kpi-card" style="padding: 12px 16px; border-left: 3px solid var(--cyan-500);">
+        <span class="kpi-title">Mois Anticipés</span>
+        <div class="kpi-value" style="font-size: 18px; color: var(--cyan-400);">+${audit.monthsAdvanceCount} mois</div>
+        <div class="kpi-sub">Payés d'avance</div>
+      </div>
+    </div>
+
+    <!-- Titre et Grille Chronologique des Mois -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <h3 style="font-size: 15px; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+        <span>🗓️</span> Calendrier Échéancier Mois par Mois (${formatMoney(audit.unitMonthly, audit.currency)} / mois)
+      </h3>
+      <span style="font-size: 12px; color: var(--text-dim);">
+        Échéance officielle fixée au 4 de chaque mois
+      </span>
+    </div>
+
+    <div class="audit-months-grid">
+      ${audit.timeline.map(item => {
+        let cardClass = item.statusType;
+        let badgeStyleClass = '';
+        let icon = '⚪';
+
+        if (item.statusType === 'paid') {
+          badgeStyleClass = 'badge-success';
+          icon = '✅';
+        } else if (item.statusType === 'advance') {
+          badgeStyleClass = 'badge-advance';
+          icon = '🚀';
+        } else if (item.statusType === 'late') {
+          badgeStyleClass = 'badge-late';
+          icon = '⚠️';
+        } else {
+          badgeStyleClass = 'badge-info';
+          icon = '⚪';
+        }
+
+        return `
+          <div class="month-audit-card ${cardClass}">
+            <div class="month-audit-header">
+              <span class="month-audit-title">${item.fullLabel}</span>
+              <span class="badge ${badgeStyleClass}" style="font-size: 10px; padding: 2px 6px;">
+                ${icon}
+              </span>
+            </div>
+            <div class="month-audit-amount">
+              ${formatMoney(item.amount, audit.currency)}
+            </div>
+            <div class="month-audit-meta">
+              <strong>${item.statusText}</strong>
+            </div>
+            <div style="font-size: 10px; color: var(--text-dim); margin-top: auto;">
+              Échéance : ${item.dueDateStr}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  // Configurer le bouton d'action du modal pour payer / anticiper directement
+  const btnAction = document.getElementById('btnAuditModalActionPay');
+  if (btnAction) {
+    btnAction.onclick = () => {
+      closeModal('modalMemberMonthsAudit');
+      quickPayMember(mem.id);
+    };
+  }
+
+  openModal('modalMemberMonthsAudit');
 }
 
 function renderGroupPaymentCard(family, chef, familyMembers = []) {

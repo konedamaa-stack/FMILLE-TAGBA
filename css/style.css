@@ -2853,3 +2853,313 @@ body.light-theme .auth-fullscreen {
   }
 }
 
+/* ============================================================ */
+/* SUIVI DES MOIS DE COTISATIONS (RETARDS & ANTICIPATIONS) */
+/* ============================================================ */
+
+/* Sous-onglets de Cotisations */
+.cotis-subtabs-nav {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 6px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+body.light-theme .cotis-subtabs-nav {
+  background: #f1f5f9;
+}
+
+.cotis-subtab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.cotis-subtab-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body.light-theme .cotis-subtab-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.cotis-subtab-btn.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%);
+  color: var(--emerald-400);
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+body.light-theme .cotis-subtab-btn.active {
+  background: white;
+  color: var(--emerald-600);
+  border-color: var(--emerald-300);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+/* Filtres pilules */
+.filter-pill-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+body.light-theme .filter-pill-btn {
+  background: #f8fafc;
+}
+
+.filter-pill-btn:hover {
+  border-color: var(--emerald-400);
+  color: var(--text-main);
+}
+
+.filter-pill-btn.active {
+  background: var(--emerald-500);
+  border-color: var(--emerald-500);
+  color: white;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+/* Boutons de sélection d'anticipation rapide */
+.anticipation-quick-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.btn-anticipate {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+body.light-theme .btn-anticipate {
+  background: #f8fafc;
+}
+
+.btn-anticipate:hover {
+  border-color: var(--cyan-400);
+  background: rgba(6, 182, 212, 0.1);
+  color: var(--cyan-400);
+  transform: translateY(-1px);
+}
+
+.btn-anticipate.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
+  border-color: var(--cyan-400);
+  color: var(--cyan-400);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.25);
+  font-weight: 700;
+}
+
+/* Badges spécialisés */
+.badge-advance {
+  background: rgba(6, 182, 212, 0.15) !important;
+  color: #22d3ee !important;
+  border: 1px solid rgba(6, 182, 212, 0.35) !important;
+  font-weight: 600;
+}
+
+body.light-theme .badge-advance {
+  background: #ecfeff !important;
+  color: #0891b2 !important;
+  border-color: #a5f3fc !important;
+}
+
+.badge-late {
+  background: rgba(244, 63, 94, 0.15) !important;
+  color: #fb7185 !important;
+  border: 1px solid rgba(244, 63, 94, 0.35) !important;
+  font-weight: 600;
+}
+
+body.light-theme .badge-late {
+  background: #fff1f2 !important;
+  color: #e11d48 !important;
+  border-color: #fecdd3 !important;
+}
+
+.badge-ontime {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  font-weight: 600;
+}
+
+body.light-theme .badge-ontime {
+  background: #f0fdf4 !important;
+  color: #059669 !important;
+  border-color: #a7f3d0 !important;
+}
+
+/* Pastilles de mois dans le tableau */
+.month-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  margin: 2px 3px 2px 0;
+  font-weight: 600;
+}
+
+.month-tag-paid {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--emerald-400);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+body.light-theme .month-tag-paid {
+  background: #f0fdf4;
+  color: #15803d;
+}
+
+.month-tag-advance {
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--cyan-400);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+body.light-theme .month-tag-advance {
+  background: #ecfeff;
+  color: #0e7490;
+}
+
+.month-tag-late {
+  background: rgba(244, 63, 94, 0.12);
+  color: var(--rose-400);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+body.light-theme .month-tag-late {
+  background: #fff1f2;
+  color: #be123c;
+}
+
+/* Grille Calendrier Mois dans Modal Audit */
+.audit-months-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.month-audit-card {
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+body.light-theme .month-audit-card {
+  background: white;
+}
+
+.month-audit-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.month-audit-card.paid {
+  border-color: rgba(16, 185, 129, 0.4);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+body.light-theme .month-audit-card.paid {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border-color: #86efac;
+}
+
+.month-audit-card.advance {
+  border-color: rgba(6, 182, 212, 0.45);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.09) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+body.light-theme .month-audit-card.advance {
+  background: linear-gradient(135deg, #ecfeff 0%, #ffffff 100%);
+  border-color: #67e8f9;
+}
+
+.month-audit-card.late {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.09) 0%, rgba(255, 255, 255, 0.02) 100%);
+}
+
+body.light-theme .month-audit-card.late {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffffff 100%);
+  border-color: #fda4af;
+}
+
+.month-audit-card.upcoming {
+  opacity: 0.7;
+  border-style: dashed;
+}
+
+.month-audit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.month-audit-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.month-audit-amount {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-top: 2px;
+}
+
+.month-audit-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+

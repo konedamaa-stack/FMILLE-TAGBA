@@ -13,6 +13,7 @@ const defaultData = {
     currency: 'FCFA',
     cotisationMensuelle: 5000,
     cotisationTrimestrielle: 15000,
+    dateDebutCotisations: '2026-10-04',
     fondsCaisse: 1450000,
     year: 2026
   },
@@ -444,13 +445,13 @@ const defaultData = {
       memberId: 'mem-101',
       memberName: 'Ibrahim Koné',
       familyId: 'fam-1',
-      periode: 'T1 2026 (Trimestriel)',
+      periode: 'Octobre à Décembre 2026 (3 mois)',
       type: 'Trimestriel',
       montant: 15000,
       modePaiement: 'Orange Money',
-      datePaiement: '2026-01-05',
+      datePaiement: '2026-10-04',
       statut: 'Validé',
-      agent: 'Seydou Coulibaly (Trésorier)'
+      agent: 'Seydou Coulibaly (Trésorier Général)'
     },
     {
       id: 'cot-2',
@@ -458,13 +459,13 @@ const defaultData = {
       memberId: 'mem-105',
       memberName: 'Moussa Traoré',
       familyId: 'fam-2',
-      periode: 'T1 2026 (Trimestriel)',
-      type: 'Trimestriel',
-      montant: 15000,
+      periode: 'Octobre & Novembre 2026 (2 mois)',
+      type: '2 Mois',
+      montant: 10000,
       modePaiement: 'Wave',
-      datePaiement: '2026-01-08',
+      datePaiement: '2026-10-04',
       statut: 'Validé',
-      agent: 'Seydou Coulibaly (Trésorier)'
+      agent: 'Seydou Coulibaly (Trésorier Général)'
     },
     {
       id: 'cot-3',
@@ -472,11 +473,11 @@ const defaultData = {
       memberId: 'mem-109',
       memberName: 'Aminata Bamba',
       familyId: 'fam-3',
-      periode: 'Janvier 2026',
+      periode: 'Octobre 2026 (1 mois)',
       type: 'Mensuel',
       montant: 5000,
       modePaiement: 'Virement bancaire',
-      datePaiement: '2026-01-10',
+      datePaiement: '2026-10-05',
       statut: 'Validé',
       agent: 'Kadiatou Touré (Vice-Trésorier)'
     },
@@ -486,11 +487,11 @@ const defaultData = {
       memberId: 'mem-112',
       memberName: 'Seydou Coulibaly',
       familyId: 'fam-4',
-      periode: 'T1 2026 (Trimestriel)',
+      periode: 'Octobre à Décembre 2026 (3 mois)',
       type: 'Trimestriel',
       montant: 15000,
       modePaiement: 'Espèces',
-      datePaiement: '2026-01-12',
+      datePaiement: '2026-10-04',
       statut: 'Validé',
       agent: 'Kadiatou Touré (Vice-Trésorier)'
     },
@@ -500,13 +501,13 @@ const defaultData = {
       memberId: 'mem-106',
       memberName: 'Kadiatou Touré',
       familyId: 'fam-2',
-      periode: 'Janvier 2026',
+      periode: 'Octobre 2026 (1 mois)',
       type: 'Mensuel',
       montant: 5000,
       modePaiement: 'Wave',
-      datePaiement: '2026-01-15',
+      datePaiement: '2026-10-06',
       statut: 'Validé',
-      agent: 'Seydou Coulibaly (Trésorier)'
+      agent: 'Seydou Coulibaly (Trésorier Général)'
     },
     {
       id: 'cot-6',
@@ -514,11 +515,11 @@ const defaultData = {
       memberId: 'mem-107',
       memberName: 'Oumar Sangaré',
       familyId: 'fam-2',
-      periode: 'Février 2026',
-      type: 'Mensuel',
-      montant: 5000,
+      periode: 'Octobre & Novembre 2026 (2 mois)',
+      type: '2 Mois',
+      montant: 10000,
       modePaiement: 'Orange Money',
-      datePaiement: '2026-02-02',
+      datePaiement: '2026-10-07',
       statut: 'Validé',
       agent: 'Kadiatou Touré (Vice-Trésorier)'
     }
@@ -607,8 +608,10 @@ const TAGBA_DB = {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (!parsed.config) parsed.config = {};
         parsed.config = { ...defaultData.config, ...parsed.config };
+        if (!parsed.config.dateDebutCotisations) {
+          parsed.config.dateDebutCotisations = '2026-10-04';
+        }
         if (!parsed.families) parsed.families = defaultData.families;
         if (!parsed.members) {
           parsed.members = defaultData.members;
