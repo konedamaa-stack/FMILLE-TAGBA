@@ -500,12 +500,39 @@ function initNavigation() {
   const pageTitle = document.getElementById('currentPageTitle');
   const pageSubtitle = document.getElementById('currentPageSubtitle');
   const mobileToggle = document.getElementById('mobileToggleBtn');
-  const sidebar = document.querySelector('.sidebar');
+  const sidebar = document.getElementById('sidebar') || document.querySelector('.sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const closeBtn = document.getElementById('sidebarMobileClose');
 
-  if (mobileToggle && sidebar) {
-    mobileToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
+  function openMobileNav() {
+    if (sidebar) sidebar.classList.add('open');
+    if (overlay) overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMobileNav() {
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  if (mobileToggle) {
+    mobileToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (sidebar && sidebar.classList.contains('open')) {
+        closeMobileNav();
+      } else {
+        openMobileNav();
+      }
     });
+  }
+
+  if (overlay) {
+    overlay.addEventListener('click', closeMobileNav);
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeMobileNav);
   }
 
   navBtns.forEach(btn => {
@@ -525,7 +552,7 @@ function initNavigation() {
       if (pageSubtitle) pageSubtitle.textContent = btn.getAttribute('data-subtitle') || 'Tableau de bord de la mutuelle';
 
       // Fermer la sidebar sur mobile
-      if (sidebar) sidebar.classList.remove('open');
+      closeMobileNav();
 
       // Rafraîchir la vue spécifique
       refreshCurrentTab(targetId);

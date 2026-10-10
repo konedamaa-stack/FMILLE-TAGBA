@@ -115,13 +115,14 @@
   <div class="app-container">
     
     <!-- Sidebar Navigation -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="brand-section">
         <div class="brand-logo-icon">T</div>
         <div class="brand-text">
           <h2>TAGBA</h2>
           <p>Mutuelle & Solidarité</p>
         </div>
+        <button class="sidebar-mobile-close" id="sidebarMobileClose" aria-label="Fermer le menu">&times;</button>
       </div>
 
       <ul class="nav-menu">
@@ -196,6 +197,9 @@
         </div>
       </div>
     </aside>
+    
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- Main Wrapper -->
     <main class="main-wrapper">
