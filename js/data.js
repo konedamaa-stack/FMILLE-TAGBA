@@ -598,6 +598,129 @@ const defaultData = {
       statut: 'Passé',
       description: 'Bilan moral et financier 2025, approbation du budget 2026.'
     }
+  ],
+
+  // Dépenses de la Mutuelle (Prélevées sur Caisse ou Financées par Dons Volontaires)
+  depenses: [
+    {
+      id: 'dep-1',
+      recuNum: 'DEP-2026-001',
+      titre: 'Aide d’Urgence Médicale - Intervention Chirurgicale',
+      categorie: 'Entraide Sociale',
+      cibleType: 'Entraide',
+      cibleId: 'cas-1',
+      cibleTitre: 'Hospitalisation / Urgence Médicale - Fanta Coulibaly',
+      beneficiaire: 'Fanta Coulibaly',
+      montantTotal: 100000,
+      partCaisse: 70000,
+      partVolontaire: 30000,
+      datePaiement: '2026-10-05',
+      modePaiement: 'Wave',
+      justificatif: 'Facture Clinique Pasteur Abidjan',
+      validePar: 'Seydou Coulibaly (Trésorier Général)'
+    },
+    {
+      id: 'dep-2',
+      recuNum: 'DEP-2026-002',
+      titre: 'Soutien & Enveloppe Officielle de Mariage Coutumier',
+      categorie: 'Cérémonie',
+      cibleType: 'Cérémonie',
+      cibleId: 'cer-1',
+      cibleTitre: 'Mariage coutumier et civil d’Oumar Sangaré',
+      beneficiaire: 'Oumar Sangaré (Marié)',
+      montantTotal: 150000,
+      partCaisse: 100000,
+      partVolontaire: 50000,
+      datePaiement: '2026-10-06',
+      modePaiement: 'Espèces',
+      justificatif: 'Reçu d’émargement du mandataire de famille',
+      validePar: 'Seydou Coulibaly (Trésorier Général)'
+    },
+    {
+      id: 'dep-3',
+      recuNum: 'DEP-2026-003',
+      titre: 'Logistique & Sonorisation Assemblée Générale Extraordinaire',
+      categorie: 'Fonctionnement',
+      cibleType: 'Autre',
+      cibleId: null,
+      cibleTitre: 'Fonctionnement & Logistique Mutuelle',
+      beneficiaire: 'Prestataire Sonorisation & Salle',
+      montantTotal: 45000,
+      partCaisse: 45000,
+      partVolontaire: 0,
+      datePaiement: '2026-10-04',
+      modePaiement: 'Orange Money',
+      justificatif: 'Bon de livraison & Facture N°884',
+      validePar: 'Seydou Coulibaly (Trésorier Général)'
+    }
+  ],
+
+  // Contributions & Dons Volontaires des Membres (Pour Cérémonies ou Aides Sociales)
+  contributionsVolontaires: [
+    {
+      id: 'don-1',
+      recuNum: 'DON-2026-001',
+      memberId: 'mem-101',
+      memberName: 'Ibrahim Koné',
+      familyId: 'fam-1',
+      familyChef: 'Ibrahim Koné',
+      cibleType: 'Cérémonie',
+      cibleId: 'cer-1',
+      cibleTitre: 'Mariage coutumier et civil d’Oumar Sangaré',
+      montant: 25000,
+      modePaiement: 'Orange Money',
+      datePaiement: '2026-10-05',
+      note: 'Contribution volontaire et fraternelle en tant que Président de la Mutuelle.',
+      agent: 'Seydou Coulibaly (Trésorier Général)'
+    },
+    {
+      id: 'don-2',
+      recuNum: 'DON-2026-002',
+      memberId: 'mem-105',
+      memberName: 'Moussa Traoré',
+      familyId: 'fam-2',
+      familyChef: 'Moussa Traoré',
+      cibleType: 'Cérémonie',
+      cibleId: 'cer-1',
+      cibleTitre: 'Mariage coutumier et civil d’Oumar Sangaré',
+      montant: 25000,
+      modePaiement: 'Wave',
+      datePaiement: '2026-10-05',
+      note: 'Don volontaire du chef de famille Traoré pour le mariage du neveu.',
+      agent: 'Seydou Coulibaly (Trésorier Général)'
+    },
+    {
+      id: 'don-3',
+      recuNum: 'DON-2026-003',
+      memberId: 'mem-109',
+      memberName: 'Aminata Bamba',
+      familyId: 'fam-3',
+      familyChef: 'Lassina Bamba',
+      cibleType: 'Entraide',
+      cibleId: 'cas-1',
+      cibleTitre: 'Hospitalisation / Urgence Médicale - Fanta Coulibaly',
+      montant: 20000,
+      modePaiement: 'Wave',
+      datePaiement: '2026-10-04',
+      note: 'Soutien volontaire pour l’achat de médicaments d’urgence.',
+      agent: 'Kadiatou Touré (Vice-Trésorier)'
+    },
+    {
+      id: 'don-4',
+      recuNum: 'DON-2026-004',
+      memberId: 'mem-111',
+      memberName: 'Drissa Ouattara',
+      familyId: 'fam-3',
+      familyChef: 'Lassina Bamba',
+      cibleType: 'Entraide',
+      cibleId: 'cas-1',
+      cibleTitre: 'Hospitalisation / Urgence Médicale - Fanta Coulibaly',
+      montant: 10000,
+      modePaiement: 'Orange Money',
+      datePaiement: '2026-10-04',
+      note: 'Contribution solidaire d’urgence.',
+      agent: 'Seydou Coulibaly (Trésorier Général)'
+    }
   ]
 };
 
@@ -630,6 +753,8 @@ const TAGBA_DB = {
         if (!parsed.cotisations) parsed.cotisations = defaultData.cotisations;
         if (!parsed.entraide) parsed.entraide = defaultData.entraide;
         if (!parsed.ceremonies) parsed.ceremonies = defaultData.ceremonies;
+        if (!parsed.depenses) parsed.depenses = defaultData.depenses;
+        if (!parsed.contributionsVolontaires) parsed.contributionsVolontaires = defaultData.contributionsVolontaires;
         return parsed;
       }
     } catch (e) {
@@ -637,6 +762,58 @@ const TAGBA_DB = {
     }
     this.save(defaultData);
     return JSON.parse(JSON.stringify(defaultData));
+  },
+
+  // Calcul du Bilan & Solde Réel en Caisse
+  getCaisseFinances: function() {
+    const data = this.get();
+    const fondsDepart = Number(data.config.fondsCaisse || 0);
+    const totalCotisations = (data.cotisations || []).reduce((acc, c) => acc + Number(c.montant || 0), 0);
+    const totalDonsVolontaires = (data.contributionsVolontaires || []).reduce((acc, d) => acc + Number(d.montant || 0), 0);
+    
+    // Total des dépenses décaissées de la Caisse
+    const totalDecaisseCaisse = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.partCaisse || 0), 0);
+    // Total des dépenses couvertes par dons volontaires
+    const totalCouvertVolontaire = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.partVolontaire || 0), 0);
+    const totalDepensesGlobal = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.montantTotal || 0), 0);
+
+    const soldeNetCaisse = (fondsDepart + totalCotisations + totalDonsVolontaires) - totalDecaisseCaisse;
+
+    return {
+      fondsDepart,
+      totalCotisations,
+      totalDonsVolontaires,
+      totalEntrees: totalCotisations + totalDonsVolontaires,
+      totalDecaisseCaisse,
+      totalCouvertVolontaire,
+      totalDepensesGlobal,
+      soldeNetCaisse,
+      currency: data.config.currency || 'FCFA'
+    };
+  },
+
+  // Dépenses de la Caisse & Événements
+  addDepense: function(dep) {
+    const data = this.get();
+    dep.id = 'dep-' + Date.now();
+    dep.recuNum = 'DEP-2026-' + String(((data.depenses || []).length + 1)).padStart(3, '0');
+    dep.datePaiement = dep.datePaiement || new Date().toISOString().split('T')[0];
+    if (!data.depenses) data.depenses = [];
+    data.depenses.unshift(dep);
+    this.save(data);
+    return dep;
+  },
+
+  // Contributions & Dons Volontaires
+  addContributionVolontaire: function(don) {
+    const data = this.get();
+    don.id = 'don-' + Date.now();
+    don.recuNum = 'DON-2026-' + String(((data.contributionsVolontaires || []).length + 1)).padStart(3, '0');
+    don.datePaiement = don.datePaiement || new Date().toISOString().split('T')[0];
+    if (!data.contributionsVolontaires) data.contributionsVolontaires = [];
+    data.contributionsVolontaires.unshift(don);
+    this.save(data);
+    return don;
   },
 
   save: function(data) {

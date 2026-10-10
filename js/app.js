@@ -567,6 +567,7 @@ function refreshCurrentTab(tabId) {
   if (tabId === 'tab-cotisations') renderCotisations();
   if (tabId === 'tab-entraide') renderEntraide();
   if (tabId === 'tab-ceremonies') renderCeremonies();
+  if (tabId === 'tab-finances') renderFinances();
   if (tabId === 'tab-data') loadConfigForm();
   applyActiveUserUI();
 }
@@ -578,6 +579,7 @@ function renderAllViews() {
   renderCotisations();
   renderEntraide();
   renderCeremonies();
+  renderFinances();
   populateSelectOptions();
   loadConfigForm();
   updateBaremeDisplays();
@@ -587,25 +589,25 @@ function renderAllViews() {
 // 1. Rendu Dashboard
 function renderDashboard() {
   const data = TAGBA_DB.get();
+  const fin = TAGBA_DB.getCaisseFinances();
 
   // KPIs
   const kpiMembres = document.getElementById('kpiTotalMembres');
   const kpiFamilles = document.getElementById('kpiTotalFamilles');
   const kpiCaisse = document.getElementById('kpiFondsCaisse');
+  const kpiCaisseSub = document.getElementById('kpiFondsCaisseSub');
   const kpiCotisationsMois = document.getElementById('kpiCotisationsTotal');
-  const kpiEntraideTotal = document.getElementById('kpiEntraideTotal');
+  const kpiDonsTotal = document.getElementById('kpiDonsTotal');
+  const kpiDepensesTotal = document.getElementById('kpiDepensesTotal');
 
   if (kpiMembres) kpiMembres.textContent = data.members.length;
   if (kpiFamilles) kpiFamilles.textContent = data.families.length + ' foyers';
-  if (kpiCaisse) kpiCaisse.textContent = formatMoney(data.config.fondsCaisse, data.config.currency);
+  if (kpiCaisse) kpiCaisse.textContent = formatMoney(fin.soldeNetCaisse, fin.currency);
+  if (kpiCaisseSub) kpiCaisseSub.textContent = `Solde net disponible`;
 
-  const totalCotisationsRecues = data.cotisations.reduce((acc, c) => acc + Number(c.montant || 0), 0);
-  if (kpiCotisationsMois) kpiCotisationsMois.textContent = formatMoney(totalCotisationsRecues, data.config.currency);
-
-  const totalEntraideDecaissee = data.entraide
-    .filter(e => e.statut === 'Accordé & Décaissé')
-    .reduce((acc, e) => acc + Number(e.montantAlloue || 0), 0);
-  if (kpiEntraideTotal) kpiEntraideTotal.textContent = formatMoney(totalEntraideDecaissee, data.config.currency);
+  if (kpiCotisationsMois) kpiCotisationsMois.textContent = formatMoney(fin.totalCotisations, fin.currency);
+  if (kpiDonsTotal) kpiDonsTotal.textContent = formatMoney(fin.totalDonsVolontaires, fin.currency);
+  if (kpiDepensesTotal) kpiDepensesTotal.textContent = formatMoney(fin.totalDecaisseCaisse, fin.currency);
 
   // Table des récents versements
   const tbodyRecent = document.getElementById('tableRecentCotisations');
@@ -1568,37 +1570,67 @@ function renderEntraide() {
     return;
   }
 
-  container.innerHTML = data.entraide.map(cas => `
-    <div class="card-panel col-6" style="margin-bottom: 0;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-        <div>
-          <span style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 700;">${cas.reference}</span>
-          <h3 style="font-size: 17px; margin-top: 2px;">${cas.nature}</h3>
-        </div>
-        <span class="badge ${cas.statut === 'Accordé & Décaissé' ? 'badge-success' : 'badge-warning'}">${cas.statut}</span>
-      </div>
+  container.innerHTML = data.entraide.map(cas => {
+    // Récupérer les dons volontaires des membres pour ce cas social
+    const dons = (data.contributionsVolontaires || []).filter(d => 
+      d.cibleId === cas.id || (d.cibleType === 'Entraide' && d.cibleTitre.includes(cas.memberName))
+    );
+    const totalDons = dons.reduce((sum, d) => sum + Number(d.montant || 0), 0);
 
-      <div style="background: rgba(255,255,255,0.03); border-radius: var(--radius-md); padding: 12px; margin-bottom: 14px;">
-        <p style="font-size: 13px; color: var(--text-main); margin-bottom: 8px;"><strong>Membre concerné :</strong> ${cas.memberName}</p>
-        <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">${cas.description}</p>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
-        <div>
-          <div style="font-size: 11px; color: var(--text-muted);">Montant assistance</div>
-          <div style="font-size: 18px; font-weight: 800; color: var(--emerald-400);">${formatMoney(cas.montantAlloue, data.config.currency)}</div>
+    return `
+      <div class="card-panel col-6" style="margin-bottom: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+          <div>
+            <span style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 700;">${cas.reference}</span>
+            <h3 style="font-size: 17px; margin-top: 2px;">${cas.nature}</h3>
+          </div>
+          <span class="badge ${cas.statut === 'Accordé & Décaissé' ? 'badge-success' : 'badge-warning'}">${cas.statut}</span>
         </div>
 
-        <div style="display: flex; gap: 8px;">
-          ${cas.statut !== 'Accordé & Décaissé' ? `
-            <button class="btn btn-sm btn-primary" onclick="accorderEntraide('${cas.id}')">✅ Valider & Décaisser</button>
+        <div style="background: rgba(255,255,255,0.03); border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px;">
+          <p style="font-size: 13px; color: var(--text-main); margin-bottom: 8px;"><strong>Membre concerné :</strong> ${cas.memberName}</p>
+          <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5;">${cas.description}</p>
+        </div>
+
+        <!-- Section des Membres Donateurs Volontaires -->
+        <div style="background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <strong style="font-size: 12px; color: #a78bfa;">❤️ Dons Volontaires des Membres :</strong>
+            <span style="font-size: 13px; font-weight: 800; color: #a78bfa;">${formatMoney(totalDons, data.config.currency)}</span>
+          </div>
+          ${dons.length === 0 ? `
+            <div style="font-size: 11px; color: var(--text-dim); font-style: italic;">Aucun don individuel enregistré pour le moment.</div>
           ` : `
-            <span style="font-size: 12px; color: var(--emerald-400);">Résolu le ${cas.dateResolution || 'Récemment'}</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+              ${dons.map(d => `
+                <span class="badge" style="background: rgba(139,92,246,0.15); color: #c4b5fd; font-size: 10px; border: 1px solid rgba(139,92,246,0.3);">
+                  ❤️ ${d.memberName} : ${formatMoney(d.montant, data.config.currency)}
+                </span>
+              `).join('')}
+            </div>
           `}
         </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
+          <div>
+            <div style="font-size: 11px; color: var(--text-muted);">Budget Aide Mutuelle :</div>
+            <div style="font-size: 17px; font-weight: 800; color: var(--emerald-400);">${formatMoney(cas.montantAlloue, data.config.currency)}</div>
+          </div>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn btn-sm btn-secondary" onclick="quickDonateToTarget('Entraide', '${cas.id}', '${cas.nature} - ${cas.memberName}')" title="Faire un don volontaire pour ce membre">
+              ❤️ Faire un Don
+            </button>
+            ${cas.statut !== 'Accordé & Décaissé' ? `
+              <button class="btn btn-sm btn-primary" onclick="accorderEntraide('${cas.id}')">✅ Valider & Décaisser</button>
+            ` : `
+              <span style="font-size: 11px; color: var(--emerald-400); align-self: center;">Résolu</span>
+            `}
+          </div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // 6. Rendu Cérémonies & Événements
@@ -1607,36 +1639,68 @@ function renderCeremonies() {
   const container = document.getElementById('ceremoniesGrid');
   if (!container) return;
 
-  container.innerHTML = data.ceremonies.map(cer => `
-    <div class="card-panel col-6" style="margin-bottom: 0;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
-        <div>
-          <span class="badge badge-purple" style="margin-bottom: 6px;">${cer.type}</span>
-          <h3 style="font-size: 18px;">${cer.titre}</h3>
+  container.innerHTML = data.ceremonies.map(cer => {
+    // Récupérer les dons volontaires des membres pour cette cérémonie
+    const dons = (data.contributionsVolontaires || []).filter(d => 
+      d.cibleId === cer.id || (d.cibleType === 'Cérémonie' && d.cibleTitre === cer.titre)
+    );
+    const totalDons = dons.reduce((sum, d) => sum + Number(d.montant || 0), 0);
+
+    return `
+      <div class="card-panel col-6" style="margin-bottom: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+          <div>
+            <span class="badge badge-purple" style="margin-bottom: 6px;">${cer.type}</span>
+            <h3 style="font-size: 18px;">${cer.titre}</h3>
+          </div>
+          <span class="badge ${cer.statut === 'À venir' ? 'badge-warning' : 'badge-info'}">${cer.statut}</span>
         </div>
-        <span class="badge ${cer.statut === 'À venir' ? 'badge-warning' : 'badge-info'}">${cer.statut}</span>
-      </div>
 
-      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px;">
-        <div>📅 <strong>Date :</strong> ${cer.date}</div>
-        <div>📍 <strong>Lieu :</strong> ${cer.lieu}</div>
-        <div>👨‍👩‍👧‍👦 <strong>Organisateur :</strong> ${cer.organisateur}</div>
-      </div>
-
-      <div style="background: rgba(255,255,255,0.03); border-radius: var(--radius-md); padding: 12px; margin-bottom: 14px;">
-        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;">Délégation mandatée de la mutuelle :</div>
-        <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">🏛️ ${cer.delegationBureau}</div>
-      </div>
-
-      <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
-        <div>
-          <span style="font-size: 11px; color: var(--text-muted);">Enveloppe de la Mutuelle :</span>
-          <strong style="display: block; font-size: 16px; color: var(--gold-400);">${formatMoney(cer.enveloppeSoutien, data.config.currency)}</strong>
+        <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+          <div>📅 <strong>Date :</strong> ${cer.date}</div>
+          <div>📍 <strong>Lieu :</strong> ${cer.lieu}</div>
+          <div>👨‍👩‍👧‍👦 <strong>Organisateur :</strong> ${cer.organisateur}</div>
         </div>
-        <button class="btn btn-sm btn-secondary" onclick="alert('Détails et rapport de mission pour: ' + '${cer.titre}')">📋 Voir Détails</button>
+
+        <div style="background: rgba(255,255,255,0.03); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 12px;">
+          <div style="font-size: 11px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 2px;">Délégation mandatée :</div>
+          <div style="font-size: 12px; color: var(--text-main); font-weight: 500;">🏛️ ${cer.delegationBureau}</div>
+        </div>
+
+        <!-- Section des Membres Donateurs Volontaires -->
+        <div style="background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <strong style="font-size: 12px; color: #a78bfa;">❤️ Dons Volontaires des Membres :</strong>
+            <span style="font-size: 13px; font-weight: 800; color: #a78bfa;">${formatMoney(totalDons, data.config.currency)}</span>
+          </div>
+          ${dons.length === 0 ? `
+            <div style="font-size: 11px; color: var(--text-dim); font-style: italic;">Aucune contribution volontaire enregistrée.</div>
+          ` : `
+            <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+              ${dons.map(d => `
+                <span class="badge" style="background: rgba(139,92,246,0.15); color: #c4b5fd; font-size: 10px; border: 1px solid rgba(139,92,246,0.3);">
+                  ❤️ ${d.memberName} : ${formatMoney(d.montant, data.config.currency)}
+                </span>
+              `).join('')}
+            </div>
+          `}
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 12px;">
+          <div>
+            <span style="font-size: 11px; color: var(--text-muted);">Enveloppe Caisse :</span>
+            <strong style="display: block; font-size: 16px; color: var(--gold-400);">${formatMoney(cer.enveloppeSoutien, data.config.currency)}</strong>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-sm btn-secondary" onclick="quickDonateToTarget('Cérémonie', '${cer.id}', '${cer.titre}')" title="Donner volontairement">
+              ❤️ Contribuer
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="alert('Détails pour: ' + '${cer.titre}')">📋 Détails</button>
+          </div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // 7. Reçu Imprimable
@@ -1734,9 +1798,11 @@ function openModal(modalId) {
     modalId === 'modalAddMember' ||
     modalId === 'modalAddFamily' ||
     modalId === 'modalAddEntraide' ||
-    modalId === 'modalEditBureau'
+    modalId === 'modalEditBureau' ||
+    modalId === 'modalAddDepense' ||
+    modalId === 'modalAddContributionVolontaire'
   ) {
-    if (!assertPermission('write', 'cette modification')) return;
+    if (!assertPermission('write', 'cette modification financière')) return;
   }
 
   const m = document.getElementById(modalId);
@@ -1744,6 +1810,10 @@ function openModal(modalId) {
     m.classList.add('active');
     if (modalId === 'modalAddCotisation') {
       updateCotisationModalDefaults();
+    } else if (modalId === 'modalAddDepense') {
+      initModalAddDepense();
+    } else if (modalId === 'modalAddContributionVolontaire') {
+      initModalAddContribution();
     }
   }
 }
@@ -3333,3 +3403,816 @@ function resetDemoData() {
     loadConfigForm();
   }
 }
+
+// ============================================================================
+// GESTION COMPLÈTE DE LA CAISSE, DES DÉPENSES ET DES DONS VOLONTAIRES NOMINATIFS
+// ============================================================================
+
+let currentFinanceSubTab = 'depenses';
+let currentDepFinancementMode = '100_caisse'; // '100_caisse', '100_volontaire', 'mixte'
+
+function switchFinanceSubTab(subTab) {
+  currentFinanceSubTab = subTab;
+  const btnDepenses = document.getElementById('btnFinSubTabDepenses');
+  const btnDons = document.getElementById('btnFinSubTabDons');
+  const btnJournal = document.getElementById('btnFinSubTabJournal');
+  const viewDepenses = document.getElementById('financeDepensesView');
+  const viewDons = document.getElementById('financeDonsView');
+  const viewJournal = document.getElementById('financeJournalView');
+
+  if (btnDepenses) btnDepenses.classList.toggle('active', subTab === 'depenses');
+  if (btnDons) btnDons.classList.toggle('active', subTab === 'dons');
+  if (btnJournal) btnJournal.classList.toggle('active', subTab === 'journal');
+
+  if (viewDepenses) viewDepenses.style.display = subTab === 'depenses' ? 'block' : 'none';
+  if (viewDons) viewDons.style.display = subTab === 'dons' ? 'block' : 'none';
+  if (viewJournal) viewJournal.style.display = subTab === 'journal' ? 'block' : 'none';
+
+  if (subTab === 'depenses') {
+    renderDepenses();
+  } else if (subTab === 'dons') {
+    renderContributionsVolontaires();
+  } else if (subTab === 'journal') {
+    renderLivreCaisse();
+  }
+}
+
+function renderFinances() {
+  const data = TAGBA_DB.get();
+  const fin = TAGBA_DB.getCaisseFinances();
+  const cfg = data.config || {};
+  const currency = cfg.devise || 'FCFA';
+
+  // 1. Grand affichage du solde net en caisse
+  const soldeDisplay = document.getElementById('caisseSoldeNetDisplay');
+  const totalEntreesDisplay = document.getElementById('caisseTotalEntreesDisplay');
+  const totalSortiesDisplay = document.getElementById('caisseTotalSortiesDisplay');
+  const formuleDetail = document.getElementById('caisseFormuleDetail');
+
+  if (soldeDisplay) soldeDisplay.textContent = formatMoney(fin.soldeNet, currency);
+  if (totalEntreesDisplay) totalEntreesDisplay.textContent = formatMoney(fin.totalEntreesGlobal, currency);
+  if (totalSortiesDisplay) totalSortiesDisplay.textContent = formatMoney(fin.depensesCaisse, currency);
+
+  if (formuleDetail) {
+    formuleDetail.innerHTML = `
+      Fonds initial (<strong>${formatMoney(fin.fondsDepart, currency)}</strong>) 
+      + Cotisations obligatoires (<strong>${formatMoney(fin.cotisations, currency)}</strong>) 
+      + Dons volontaires reçus (<strong>${formatMoney(fin.donsVolontaires, currency)}</strong>) 
+      - Dépenses prélevées sur caisse (<strong>${formatMoney(fin.depensesCaisse, currency)}</strong>) 
+      = <strong>${formatMoney(fin.soldeNet, currency)}</strong>.
+    `;
+  }
+
+  // 2. 4 Cartes KPI financières
+  const kpiFondsDepart = document.getElementById('kpiFinFondsDepart');
+  const kpiCotisations = document.getElementById('kpiFinCotisations');
+  const kpiDonsVolontaires = document.getElementById('kpiFinDonsVolontaires');
+  const kpiDepensesCaisse = document.getElementById('kpiFinDepensesCaisse');
+
+  if (kpiFondsDepart) kpiFondsDepart.textContent = formatMoney(fin.fondsDepart, currency);
+  if (kpiCotisations) kpiCotisations.textContent = formatMoney(fin.cotisations, currency);
+  if (kpiDonsVolontaires) kpiDonsVolontaires.textContent = formatMoney(fin.donsVolontaires, currency);
+  if (kpiDepensesCaisse) kpiDepensesCaisse.textContent = formatMoney(fin.depensesCaisse, currency);
+
+  // 3. Rendu de la vue active
+  if (currentFinanceSubTab === 'depenses') {
+    renderDepenses();
+  } else if (currentFinanceSubTab === 'dons') {
+    renderContributionsVolontaires();
+  } else if (currentFinanceSubTab === 'journal') {
+    renderLivreCaisse();
+  }
+}
+
+// Rendu du tableau des dépenses
+function renderDepenses() {
+  const data = TAGBA_DB.get();
+  const depenses = data.depenses || [];
+  const tbody = document.getElementById('tableDepensesBody');
+  if (!tbody) return;
+
+  const cfg = data.config || {};
+  const currency = cfg.devise || 'FCFA';
+
+  if (depenses.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
+          Aucune dépense enregistrée pour le moment.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  // Tri antéchronologique (les plus récentes d'abord)
+  const sorted = [...depenses].sort((a, b) => new Date(b.datePaiement || 0) - new Date(a.datePaiement || 0));
+
+  tbody.innerHTML = sorted.map(dep => {
+    let catBadgeClass = 'badge-secondary';
+    if (dep.categorie === 'Entraide Sociale') catBadgeClass = 'badge-primary';
+    else if (dep.categorie === 'Cérémonie') catBadgeClass = 'badge-gold';
+    else if (dep.categorie === 'Fonctionnement') catBadgeClass = 'badge-success';
+
+    const partCaisseDisplay = dep.partCaisse > 0 
+      ? `<strong style="color: var(--rose-400);">${formatMoney(dep.partCaisse, currency)}</strong>` 
+      : `<span style="color: var(--text-dim);">0 ${currency}</span>`;
+
+    const partVolontaireDisplay = dep.partVolontaire > 0 
+      ? `<strong style="color: #a78bfa;">${formatMoney(dep.partVolontaire, currency)}</strong>` 
+      : `<span style="color: var(--text-dim);">0 ${currency}</span>`;
+
+    const cibleBadge = dep.cibleTitre ? `
+      <div style="margin-top: 4px;">
+        <span class="badge ${dep.cibleType === 'Cérémonie' ? 'badge-gold' : 'badge-primary'}" style="font-size: 10px;">
+          ${dep.cibleType || 'Dossier'} : ${dep.cibleTitre}
+        </span>
+      </div>
+    ` : '';
+
+    return `
+      <tr>
+        <td>
+          <code style="color: var(--emerald-400); font-size: 11px; font-weight: 700;">${dep.recuNum || dep.id}</code>
+        </td>
+        <td>
+          <strong>${dep.titre}</strong>
+          ${cibleBadge}
+          ${dep.justificatif ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">📄 Justif: ${dep.justificatif}</div>` : ''}
+        </td>
+        <td>
+          <span class="badge ${catBadgeClass}">${dep.categorie}</span>
+        </td>
+        <td>
+          <span>${dep.beneficiaire}</span>
+          <div style="font-size: 11px; color: var(--text-muted);">${dep.modePaiement || 'Espèces'}</div>
+        </td>
+        <td>
+          <strong style="color: var(--text-main); font-size: 13px;">${formatMoney(dep.montantTotal, currency)}</strong>
+        </td>
+        <td>${partCaisseDisplay}</td>
+        <td>${partVolontaireDisplay}</td>
+        <td>
+          <span style="font-size: 12px; color: var(--text-muted);">${formatDate(dep.datePaiement)}</span>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Rendu du tableau des contributions volontaires nominatives
+function renderContributionsVolontaires() {
+  const data = TAGBA_DB.get();
+  const dons = data.contributionsVolontaires || [];
+  const tbody = document.getElementById('tableDonsBody');
+  if (!tbody) return;
+
+  const cfg = data.config || {};
+  const currency = cfg.devise || 'FCFA';
+
+  if (dons.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+          Aucune contribution volontaire enregistrée pour le moment.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  // Tri antéchronologique
+  const sorted = [...dons].sort((a, b) => new Date(b.datePaiement || 0) - new Date(a.datePaiement || 0));
+
+  tbody.innerHTML = sorted.map(don => {
+    const isCeremonie = don.cibleType === 'Cérémonie';
+    const targetBadgeClass = isCeremonie ? 'badge-gold' : (don.cibleType === 'Entraide' ? 'badge-primary' : 'badge-success');
+
+    return `
+      <tr>
+        <td>
+          <code style="color: #a78bfa; font-size: 11px; font-weight: 700;">${don.recuNum || don.id}</code>
+        </td>
+        <td>
+          <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">
+            ❤️ ${don.memberName}
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            Foyer de : <strong>${don.familyChef || 'Famille'}</strong>
+          </div>
+        </td>
+        <td>
+          <span class="badge ${targetBadgeClass}" style="font-size: 10px;">${don.cibleType}</span>
+          <div style="font-weight: 600; font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
+            ${don.cibleTitre || 'Caisse de Solidarité'}
+          </div>
+          ${don.note ? `<div style="font-size: 11px; color: var(--text-dim); font-style: italic;">« ${don.note} »</div>` : ''}
+        </td>
+        <td>
+          <strong style="color: var(--emerald-400); font-size: 14px;">${formatMoney(don.montant, currency)}</strong>
+        </td>
+        <td>
+          <span class="badge badge-secondary" style="font-size: 10px;">${don.modePaiement}</span>
+        </td>
+        <td>
+          <span style="font-size: 12px; color: var(--text-muted);">${formatDate(don.datePaiement)}</span>
+        </td>
+        <td>
+          <button class="btn btn-sm btn-secondary" onclick="openReceiptDonationModal('${don.id}')" title="Imprimer le Reçu Officiel">
+            🧾 Reçu
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Rendu du Livre Journal de Caisse chronologique
+function renderLivreCaisse() {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const currency = cfg.devise || 'FCFA';
+  const tbody = document.getElementById('tableLivreCaisseBody');
+  if (!tbody) return;
+
+  const flux = [];
+
+  // 1. Fonds initial de départ
+  const fondsDepart = Number(cfg.fondsDepart) || 0;
+  if (fondsDepart > 0) {
+    flux.push({
+      date: cfg.dateDebutCotisations || '2026-10-04',
+      type: 'Dotation Initiale',
+      badgeClass: 'badge-secondary',
+      libelle: 'Dotation de Caisse - Fonds Initial de Démarrage',
+      tiers: 'Mutuelle TAGBA',
+      entree: fondsDepart,
+      sortie: 0,
+      mode: 'Fondation'
+    });
+  }
+
+  // 2. Cotisations ordinaires
+  (data.cotisations || []).forEach(c => {
+    flux.push({
+      date: c.datePaiement || '2026-10-04',
+      type: 'Cotisation Ordinaire',
+      badgeClass: 'badge-success',
+      libelle: `Versement ${c.typeCotisation || 'Mensuel'} (${c.periode || ''})`,
+      tiers: `${c.memberName} (${c.memberMatricule || ''})`,
+      entree: Number(c.montant) || 0,
+      sortie: 0,
+      mode: c.modePaiement || 'Wave',
+      ref: c.recuNum
+    });
+  });
+
+  // 3. Contributions volontaires (Dons)
+  (data.contributionsVolontaires || []).forEach(d => {
+    flux.push({
+      date: d.datePaiement || '2026-10-04',
+      type: `Don Volontaire (${d.cibleType})`,
+      badgeClass: 'badge-gold',
+      libelle: `Don pour ${d.cibleTitre}`,
+      tiers: `❤️ ${d.memberName} (Foyer ${d.familyChef})`,
+      entree: Number(d.montant) || 0,
+      sortie: 0,
+      mode: d.modePaiement || 'Wave',
+      ref: d.recuNum
+    });
+  });
+
+  // 4. Dépenses prélevées sur caisse
+  (data.depenses || []).forEach(dep => {
+    const partCaisse = Number(dep.partCaisse) || 0;
+    if (partCaisse > 0) {
+      flux.push({
+        date: dep.datePaiement || '2026-10-04',
+        type: `Dépense Caisse (${dep.categorie})`,
+        badgeClass: 'badge-danger',
+        libelle: dep.titre + (dep.cibleTitre ? ` (${dep.cibleTitre})` : ''),
+        tiers: `Bénéficiaire : ${dep.beneficiaire}`,
+        entree: 0,
+        sortie: partCaisse,
+        mode: dep.modePaiement || 'Espèces',
+        ref: dep.recuNum
+      });
+    }
+  });
+
+  // Tri chronologique croissant pour calculer le solde cumulé
+  flux.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  let soldeCumule = 0;
+  flux.forEach(op => {
+    soldeCumule += (op.entree - op.sortie);
+    op.soldeApres = soldeCumule;
+  });
+
+  // Affichage en ordre antéchronologique (les plus récents en premier)
+  const fluxAffiche = [...flux].reverse();
+
+  if (fluxAffiche.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+          Aucun mouvement de caisse enregistré.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = fluxAffiche.map(op => {
+    const entreeDisplay = op.entree > 0 
+      ? `<strong style="color: var(--emerald-400);">+ ${formatMoney(op.entree, currency)}</strong>` 
+      : `<span style="color: var(--text-dim);">-</span>`;
+
+    const sortieDisplay = op.sortie > 0 
+      ? `<strong style="color: var(--rose-400);">- ${formatMoney(op.sortie, currency)}</strong>` 
+      : `<span style="color: var(--text-dim);">-</span>`;
+
+    return `
+      <tr>
+        <td><span style="font-size: 12px; color: var(--text-muted);">${formatDate(op.date)}</span></td>
+        <td><span class="badge ${op.badgeClass}" style="font-size: 10px;">${op.type}</span></td>
+        <td>
+          <strong>${op.libelle}</strong>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">${op.tiers}</div>
+        </td>
+        <td>${entreeDisplay}</td>
+        <td>${sortieDisplay}</td>
+        <td>
+          <strong style="color: var(--text-main); font-size: 13px;">${formatMoney(op.soldeApres, currency)}</strong>
+        </td>
+        <td>
+          <span style="font-size: 11px; color: var(--text-secondary);">${op.mode}</span>
+          ${op.ref ? `<div style="font-size: 10px; color: var(--text-dim);">${op.ref}</div>` : ''}
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Initialisation et gestion du modal Ajouter une Dépense
+function initModalAddDepense() {
+  const depDate = document.getElementById('depDate');
+  if (depDate) depDate.value = new Date().toISOString().split('T')[0];
+
+  const depMontant = document.getElementById('depMontantTotal');
+  if (depMontant && (!depMontant.value || Number(depMontant.value) <= 0)) {
+    depMontant.value = '50000';
+  }
+
+  setDepenseFinancementMode('100_caisse');
+  onDepenseCategorieChanged();
+}
+
+function setDepenseFinancementMode(mode) {
+  currentDepFinancementMode = mode;
+  const btnCaisse = document.getElementById('btnDepFinCaisse100');
+  const btnVolontaire = document.getElementById('btnDepFinVolontaire100');
+  const btnMixte = document.getElementById('btnDepFinMixte');
+  const partCaisseInput = document.getElementById('depPartCaisse');
+  const partVolontaireInput = document.getElementById('depPartVolontaire');
+  const helpText = document.getElementById('depRepartitionHelp');
+  const montantTotal = Number(document.getElementById('depMontantTotal')?.value) || 0;
+
+  if (btnCaisse) btnCaisse.classList.toggle('active', mode === '100_caisse');
+  if (btnVolontaire) btnVolontaire.classList.toggle('active', mode === '100_volontaire');
+  if (btnMixte) btnMixte.classList.toggle('active', mode === 'mixte');
+
+  if (mode === '100_caisse') {
+    if (partCaisseInput) partCaisseInput.value = montantTotal;
+    if (partVolontaireInput) partVolontaireInput.value = 0;
+    if (helpText) helpText.textContent = "100% prélevé sur la Caisse Centrale. Déduit intégralement du solde net.";
+  } else if (mode === '100_volontaire') {
+    if (partCaisseInput) partCaisseInput.value = 0;
+    if (partVolontaireInput) partVolontaireInput.value = montantTotal;
+    if (helpText) helpText.textContent = "100% financé par les dons volontaires des membres. La caisse centrale n'est pas débitée.";
+  } else {
+    // Mixte
+    const demi = Math.round(montantTotal / 2);
+    if (partCaisseInput) partCaisseInput.value = demi;
+    if (partVolontaireInput) partVolontaireInput.value = montantTotal - demi;
+    if (helpText) helpText.textContent = "Répartition partagée entre la caisse centrale et les contributions volontaires des membres.";
+  }
+}
+
+function calcDepenseFinancementRepartition() {
+  if (currentDepFinancementMode !== 'mixte') {
+    setDepenseFinancementMode(currentDepFinancementMode);
+  } else {
+    // Si en mode mixte, ajuster la part volontaire pour que le total concorde
+    const total = Number(document.getElementById('depMontantTotal')?.value) || 0;
+    const partCaisse = Number(document.getElementById('depPartCaisse')?.value) || 0;
+    const partVolontaireInput = document.getElementById('depPartVolontaire');
+    if (partVolontaireInput) {
+      partVolontaireInput.value = Math.max(0, total - partCaisse);
+    }
+  }
+}
+
+function onDepPartManualInput() {
+  currentDepFinancementMode = 'mixte';
+  const btnCaisse = document.getElementById('btnDepFinCaisse100');
+  const btnVolontaire = document.getElementById('btnDepFinVolontaire100');
+  const btnMixte = document.getElementById('btnDepFinMixte');
+  if (btnCaisse) btnCaisse.classList.remove('active');
+  if (btnVolontaire) btnVolontaire.classList.remove('active');
+  if (btnMixte) btnMixte.classList.add('active');
+
+  const total = Number(document.getElementById('depMontantTotal')?.value) || 0;
+  const partCaisse = Number(document.getElementById('depPartCaisse')?.value) || 0;
+  const partVol = Number(document.getElementById('depPartVolontaire')?.value) || 0;
+  const helpText = document.getElementById('depRepartitionHelp');
+
+  if (helpText) {
+    if (partCaisse + partVol !== total) {
+      helpText.innerHTML = `<span style="color: var(--rose-400);">⚠️ Attention : La somme (${formatMoney(partCaisse + partVol, 'FCFA')}) doit être égale au montant total (${formatMoney(total, 'FCFA')}).</span>`;
+    } else {
+      helpText.textContent = `Répartition équilibrée : ${formatMoney(partCaisse, 'FCFA')} Caisse + ${formatMoney(partVol, 'FCFA')} Dons Volontaires.`;
+    }
+  }
+}
+
+function onDepenseCategorieChanged() {
+  const cat = document.getElementById('depCategorie')?.value;
+  const cibleSelect = document.getElementById('depCibleSelect');
+  if (!cibleSelect) return;
+
+  const data = TAGBA_DB.get();
+  cibleSelect.innerHTML = '<option value="">-- Aucun rattachement direct --</option>';
+
+  if (cat === 'Entraide Sociale') {
+    (data.entraide || []).forEach(e => {
+      cibleSelect.innerHTML += `
+        <option value="Entraide|${e.id}|${e.typeProbleme} (${e.memberName})">
+          🤝 [Cas Social] ${e.typeProbleme} - ${e.memberName}
+        </option>
+      `;
+    });
+  } else if (cat === 'Cérémonie') {
+    (data.ceremonies || []).forEach(c => {
+      cibleSelect.innerHTML += `
+        <option value="Cérémonie|${c.id}|${c.titre}">
+          🎉 [Cérémonie] ${c.titre} (${formatDate(c.date)})
+        </option>
+      `;
+    });
+  } else {
+    // Afficher les deux types en option
+    const optgroupEntraide = document.createElement('optgroup');
+    optgroupEntraide.label = "Cas Sociaux d'Entraide";
+    (data.entraide || []).forEach(e => {
+      optgroupEntraide.innerHTML += `
+        <option value="Entraide|${e.id}|${e.typeProbleme} (${e.memberName})">
+          🤝 ${e.typeProbleme} - ${e.memberName}
+        </option>
+      `;
+    });
+    if (optgroupEntraide.children.length > 0) cibleSelect.appendChild(optgroupEntraide);
+
+    const optgroupCeremonie = document.createElement('optgroup');
+    optgroupCeremonie.label = "Cérémonies Familiales";
+    (data.ceremonies || []).forEach(c => {
+      optgroupCeremonie.innerHTML += `
+        <option value="Cérémonie|${c.id}|${c.titre}">
+          🎉 ${c.titre}
+        </option>
+      `;
+    });
+    if (optgroupCeremonie.children.length > 0) cibleSelect.appendChild(optgroupCeremonie);
+  }
+}
+
+// Initialisation et gestion du modal Ajouter une Contribution Volontaire
+function initModalAddContribution(targetType, targetId, targetTitre) {
+  const donDate = document.getElementById('donDate');
+  if (donDate) donDate.value = new Date().toISOString().split('T')[0];
+
+  const data = TAGBA_DB.get();
+  const members = data.members || [];
+  const memberSelect = document.getElementById('donMemberSelect');
+  const searchInput = document.getElementById('donMemberSearchInput');
+  if (searchInput) searchInput.value = '';
+
+  populateDonMemberSelect(members);
+
+  if (searchInput) {
+    searchInput.oninput = function() {
+      const q = searchInput.value.toLowerCase().trim();
+      const filtered = members.filter(m => 
+        (m.fullName || '').toLowerCase().includes(q) || 
+        (m.matricule || '').toLowerCase().includes(q) ||
+        (m.phone || '').includes(q)
+      );
+      populateDonMemberSelect(filtered);
+    };
+  }
+
+  // Destination
+  const cibleTypeSelect = document.getElementById('donCibleType');
+  if (targetType && cibleTypeSelect) {
+    cibleTypeSelect.value = targetType;
+  }
+  onDonCibleTypeChanged(targetId, targetTitre);
+}
+
+function populateDonMemberSelect(membersList) {
+  const memberSelect = document.getElementById('donMemberSelect');
+  if (!memberSelect) return;
+  const data = TAGBA_DB.get();
+  const families = data.families || [];
+
+  if (membersList.length === 0) {
+    memberSelect.innerHTML = '<option value="">Aucun membre trouvé</option>';
+    return;
+  }
+
+  memberSelect.innerHTML = membersList.map(m => {
+    const fam = families.find(f => f.id === m.familyId);
+    const chefName = fam ? fam.chefFamille : 'Inconnu';
+    return `<option value="${m.id}">${m.fullName} (${m.matricule}) - Foyer de ${chefName}</option>`;
+  }).join('');
+}
+
+function onDonCibleTypeChanged(targetIdToSelect, targetTitreToSelect) {
+  const cibleType = document.getElementById('donCibleType')?.value || 'Cérémonie';
+  const cibleSelect = document.getElementById('donCibleSelect');
+  if (!cibleSelect) return;
+
+  const data = TAGBA_DB.get();
+  cibleSelect.innerHTML = '';
+
+  if (cibleType === 'Cérémonie') {
+    const ceremonies = data.ceremonies || [];
+    if (ceremonies.length === 0) {
+      cibleSelect.innerHTML = '<option value="">Aucune cérémonie programmée</option>';
+    } else {
+      ceremonies.forEach(c => {
+        const selected = targetIdToSelect === c.id ? 'selected' : '';
+        cibleSelect.innerHTML += `
+          <option value="${c.id}|${c.titre}" ${selected}>
+            🎉 ${c.titre} (${formatDate(c.date)})
+          </option>
+        `;
+      });
+    }
+  } else if (cibleType === 'Entraide') {
+    const entraides = data.entraide || [];
+    if (entraides.length === 0) {
+      cibleSelect.innerHTML = '<option value="">Aucun cas social ouvert</option>';
+    } else {
+      entraides.forEach(e => {
+        const selected = targetIdToSelect === e.id ? 'selected' : '';
+        cibleSelect.innerHTML += `
+          <option value="${e.id}|${e.typeProbleme} (${e.memberName})" ${selected}>
+            🤝 ${e.typeProbleme} - ${e.memberName} (${formatDate(e.dateDeclaration)})
+          </option>
+        `;
+      });
+    }
+  } else {
+    // Caisse Solidarité
+    cibleSelect.innerHTML = '<option value="caisse-solidarite|Caisse de Solidarité Générale">🏛️ Caisse Générale de Secours & Solidarité TAGBA</option>';
+  }
+}
+
+// Raccourci pour donner directement depuis les cartes d'entraide ou de cérémonies
+function quickDonateToTarget(cibleType, cibleId, cibleTitre) {
+  openModal('modalAddContributionVolontaire');
+  initModalAddContribution(cibleType, cibleId, cibleTitre);
+}
+
+// Modal Reçu de Don Volontaire (Nominatif & Imprimable)
+function openReceiptDonationModal(donId) {
+  const data = TAGBA_DB.get();
+  const don = (data.contributionsVolontaires || []).find(d => d.id === donId);
+  if (!don) {
+    showToast('Reçu de don introuvable', 'error');
+    return;
+  }
+
+  const container = document.getElementById('receiptDonationContent');
+  if (!container) return;
+
+  const cfg = data.config || {};
+  const currency = cfg.devise || 'FCFA';
+
+  container.innerHTML = `
+    <div style="background: #ffffff; color: #1e293b; padding: 24px; border-radius: 8px; font-family: 'Inter', sans-serif; border: 1px solid #cbd5e1;">
+      <!-- En-tête officiel -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #10b981; padding-bottom: 16px; margin-bottom: 18px;">
+        <div>
+          <h2 style="margin: 0; color: #047857; font-size: 20px; text-transform: uppercase; font-weight: 800;">MUTUELLE TAGBA</h2>
+          <div style="font-size: 11px; color: #64748b; font-weight: 600;">ASSOCIATION D'ENTRAIDE FAMILIALE & SOLIDARITÉ</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Trésorerie Générale • Caisse de Solidarité</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 11px; color: #64748b; text-transform: uppercase;">REÇU OFFICIEL DE CONTRIBUTION VOLONTAIRE</div>
+          <div style="font-size: 16px; font-weight: 800; color: #047857;">N° ${don.recuNum || don.id}</div>
+          <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Date : ${formatDate(don.datePaiement)}</div>
+        </div>
+      </div>
+
+      <!-- Corps du Reçu -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 18px;">
+        <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">BIENFAITEUR / MEMBRE DONATEUR :</div>
+        <div style="font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 4px;">
+          ❤️ ${don.memberName}
+        </div>
+        <div style="font-size: 13px; color: #475569; margin-top: 2px;">
+          Foyer familial : <strong>Famille ${don.familyChef || 'TAGBA'}</strong>
+        </div>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 13px;">
+        <tbody>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 8px 0; color: #64748b; width: 45%;">Objet / Affectation du Don :</td>
+            <td style="padding: 8px 0; font-weight: 700; color: #0f172a;">${don.cibleType} : ${don.cibleTitre}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 8px 0; color: #64748b;">Mode de Versement :</td>
+            <td style="padding: 8px 0; font-weight: 600; color: #0f172a;">${don.modePaiement}</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 8px 0; color: #64748b;">Encaissé et Certifié par :</td>
+            <td style="padding: 8px 0; font-weight: 600; color: #0f172a;">${don.agent || 'Le Trésorier Général'}</td>
+          </tr>
+          ${don.note ? `
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 8px 0; color: #64748b;">Message d'Accompagnement :</td>
+            <td style="padding: 8px 0; font-style: italic; color: #334155;">« ${don.note} »</td>
+          </tr>
+          ` : ''}
+        </tbody>
+      </table>
+
+      <!-- Montant Mis en Évidence -->
+      <div style="background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 8px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div>
+          <span style="font-size: 11px; text-transform: uppercase; color: #065f46; font-weight: 700;">MONTANT TOTAL DU DON :</span>
+          <div style="font-size: 24px; font-weight: 900; color: #047857;">${formatMoney(don.montant, currency)}</div>
+        </div>
+        <div style="text-align: right; color: #047857; font-size: 28px;">
+          ✓
+        </div>
+      </div>
+
+      <!-- Signature et Mention de Gratitude -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 12px; border-top: 1px dashed #cbd5e1; font-size: 11px; color: #64748b;">
+        <div>
+          <em>« Que la solidarité et la bénédiction demeurent dans chaque foyer TAGBA. »</em>
+        </div>
+        <div style="text-align: center;">
+          <div style="font-weight: 700; color: #0f172a; margin-bottom: 30px;">Cachet & Signature du Bureau</div>
+          <div style="border-top: 1px solid #94a3b8; width: 140px; margin: 0 auto; padding-top: 4px;">Le Trésorier</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  openModal('modalReceiptDonation');
+}
+
+// Initialisation des écouteurs pour les formulaires de Dépenses et de Dons
+function setupFinanceEventListeners() {
+  const formDepense = document.getElementById('formAddDepense');
+  if (formDepense) {
+    formDepense.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (!assertPermission('write', 'l’enregistrement d’une dépense')) return;
+
+      const titre = document.getElementById('depTitre')?.value.trim();
+      const categorie = document.getElementById('depCategorie')?.value;
+      const beneficiaire = document.getElementById('depBeneficiaire')?.value.trim();
+      const montantTotal = Number(document.getElementById('depMontantTotal')?.value) || 0;
+      const partCaisse = Number(document.getElementById('depPartCaisse')?.value) || 0;
+      const partVolontaire = Number(document.getElementById('depPartVolontaire')?.value) || 0;
+      const datePaiement = document.getElementById('depDate')?.value;
+      const modePaiement = document.getElementById('depMode')?.value;
+      const justificatif = document.getElementById('depJustificatif')?.value.trim();
+
+      // Vérification d'équilibre
+      if (partCaisse + partVolontaire !== montantTotal) {
+        showToast('Erreur : La somme (Caisse + Dons) doit être égale au montant total de la dépense', 'error');
+        return;
+      }
+
+      // Traitement du rattachement
+      const cibleRaw = document.getElementById('depCibleSelect')?.value;
+      let cibleType = '';
+      let cibleId = '';
+      let cibleTitre = '';
+
+      if (cibleRaw) {
+        const parts = cibleRaw.split('|');
+        cibleType = parts[0] || '';
+        cibleId = parts[1] || '';
+        cibleTitre = parts[2] || '';
+      }
+
+      const currentUser = getCurrentUser();
+
+      const dep = {
+        titre,
+        categorie,
+        cibleType,
+        cibleId,
+        cibleTitre,
+        beneficiaire,
+        montantTotal,
+        partCaisse,
+        partVolontaire,
+        datePaiement,
+        modePaiement,
+        justificatif,
+        validePar: currentUser.nom
+      };
+
+      TAGBA_DB.addDepense(dep);
+      showToast(`📉 Dépense "${titre}" de ${formatMoney(montantTotal, 'FCFA')} enregistrée avec succès !`);
+      closeModal('modalAddDepense');
+      formDepense.reset();
+
+      renderFinances();
+      renderDashboard();
+      renderEntraide();
+      renderCeremonies();
+    });
+  }
+
+  const formDon = document.getElementById('formAddContributionVolontaire');
+  if (formDon) {
+    formDon.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (!assertPermission('write', 'l’enregistrement d’un don')) return;
+
+      const memberId = document.getElementById('donMemberSelect')?.value;
+      const data = TAGBA_DB.get();
+      const member = (data.members || []).find(m => m.id === memberId);
+      if (!member) {
+        showToast('Veuillez sélectionner un membre donateur valide', 'error');
+        return;
+      }
+
+      const family = (data.families || []).find(f => f.id === member.familyId);
+      const familyChef = family ? family.chefFamille : 'Famille TAGBA';
+
+      const cibleType = document.getElementById('donCibleType')?.value;
+      const cibleRaw = document.getElementById('donCibleSelect')?.value;
+      let cibleId = '';
+      let cibleTitre = '';
+
+      if (cibleRaw) {
+        const parts = cibleRaw.split('|');
+        cibleId = parts[0] || '';
+        cibleTitre = parts[1] || '';
+      }
+
+      const montant = Number(document.getElementById('donMontant')?.value) || 0;
+      const datePaiement = document.getElementById('donDate')?.value;
+      const modePaiement = document.getElementById('donMode')?.value;
+      const note = document.getElementById('donNote')?.value.trim();
+      const currentUser = getCurrentUser();
+
+      const don = {
+        memberId: member.id,
+        memberName: member.fullName,
+        familyId: member.familyId,
+        familyChef: familyChef,
+        cibleType: cibleType,
+        cibleId: cibleId,
+        cibleTitre: cibleTitre,
+        montant: montant,
+        modePaiement: modePaiement,
+        datePaiement: datePaiement,
+        note: note,
+        agent: currentUser.nom
+      };
+
+      const newDon = TAGBA_DB.addContributionVolontaire(don);
+      showToast(`❤️ Don de ${formatMoney(montant, 'FCFA')} enregistré pour ${member.fullName} !`);
+      closeModal('modalAddContributionVolontaire');
+      formDon.reset();
+
+      renderFinances();
+      renderDashboard();
+      renderEntraide();
+      renderCeremonies();
+
+      // Ouvrir le reçu nominatif officiel pour impression immédiate
+      if (newDon && newDon.id) {
+        setTimeout(() => {
+          openReceiptDonationModal(newDon.id);
+        }, 300);
+      }
+    });
+  }
+}
+
+// Initialiser les écouteurs financiers dès le chargement du script
+setupFinanceEventListeners();
+

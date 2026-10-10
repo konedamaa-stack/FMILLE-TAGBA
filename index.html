@@ -164,6 +164,13 @@
           </button>
         </li>
         <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-finances" data-title="Caisse, Dépenses & Dons" data-subtitle="Solde net de caisse, dépenses décaissées et contributions volontaires nominatives">
+            <span class="icon">💰</span>
+            <span>Caisse & Dépenses</span>
+            <span class="badge-pill" id="caisseBadgePill" style="background: rgba(16,185,129,0.2); color: var(--emerald-400);">Trésor</span>
+          </button>
+        </li>
+        <li class="nav-item">
           <button class="nav-btn" data-tab="tab-statuts" data-title="Statuts & Règlement" data-subtitle="Textes officiels, droits, devoirs et organisation juridique">
             <span class="icon">📜</span>
             <span>Statuts Officiels</span>
@@ -271,14 +278,14 @@
               </div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" style="cursor: pointer;" onclick="document.querySelector('[data-tab=tab-finances]').click()" title="Voir les détails de la caisse">
               <div class="kpi-header">
-                <span class="kpi-title">Caisse Centrale</span>
+                <span class="kpi-title">Caisse Centrale Nette</span>
                 <div class="kpi-icon-box icon-gold">💰</div>
               </div>
               <div class="kpi-value" id="kpiFondsCaisse">0 FCFA</div>
               <div class="kpi-trend">
-                <span class="trend-up">Fonds disponibles</span> pour la solidarité
+                <span class="trend-up" id="kpiFondsCaisseSub">Solde net disponible</span>
               </div>
             </div>
 
@@ -289,18 +296,29 @@
               </div>
               <div class="kpi-value" id="kpiCotisationsTotal">0 FCFA</div>
               <div class="kpi-trend">
-                <span>Total des versements enregistrés</span>
+                <span>Versements obligatoires</span>
               </div>
             </div>
 
-            <div class="kpi-card">
+            <div class="kpi-card" style="cursor: pointer;" onclick="document.querySelector('[data-tab=tab-finances]').click(); switchFinanceSubTab('dons');" title="Voir les donateurs volontaires">
               <div class="kpi-header">
-                <span class="kpi-title">Aides Accordées</span>
-                <div class="kpi-icon-box icon-rose">🤝</div>
+                <span class="kpi-title">Dons Volontaires Membres</span>
+                <div class="kpi-icon-box" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">❤️</div>
               </div>
-              <div class="kpi-value" id="kpiEntraideTotal">0 FCFA</div>
+              <div class="kpi-value" id="kpiDonsTotal" style="color: #a78bfa;">0 FCFA</div>
               <div class="kpi-trend">
-                <span class="trend-warning">Fonds d'urgence</span> décaissés
+                <span style="color: #a78bfa;">Soutiens aux cérémonies & aides</span>
+              </div>
+            </div>
+
+            <div class="kpi-card" style="cursor: pointer;" onclick="document.querySelector('[data-tab=tab-finances]').click(); switchFinanceSubTab('depenses');" title="Voir les dépenses">
+              <div class="kpi-header">
+                <span class="kpi-title">Dépenses Caisse</span>
+                <div class="kpi-icon-box icon-rose">📉</div>
+              </div>
+              <div class="kpi-value" id="kpiDepensesTotal" style="color: var(--rose-400);">0 FCFA</div>
+              <div class="kpi-trend">
+                <span class="trend-warning">Fonds sortis de caisse</span>
               </div>
             </div>
           </div>
@@ -687,6 +705,192 @@
           </div>
 
         </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 6.5 : TRÉSORERIE, CAISSE, DÉPENSES & CONTRIBUTIONS VOLONTAIRES -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-finances">
+          
+          <div class="toolbar-bar">
+            <div>
+              <h2 style="font-size: 20px;">💰 Trésorerie Générale & Livre de Caisse</h2>
+              <p style="font-size: 13px; color: var(--text-muted);">Suivi du montant en caisse, des dépenses décaissées et de la générosité volontaire nominative des membres.</p>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn btn-secondary" id="btnNouveauDonMain" onclick="openModal('modalAddContributionVolontaire')">❤️ + Enregistrer un Don Volontaire</button>
+              <button class="btn btn-primary" id="btnNouvelleDepenseMain" onclick="openModal('modalAddDepense')">📉 + Enregistrer une Dépense</button>
+            </div>
+          </div>
+
+          <!-- Grand Panneau Visuel du Solde Net en Caisse -->
+          <div class="card-panel" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(16,185,129,0.12) 0%, rgba(15,23,42,0.95) 100%); border-left: 4px solid var(--emerald-400);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+              <div>
+                <span class="badge badge-success" style="margin-bottom: 6px;">Caisse Principale Active</span>
+                <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted);">Solde Net Actuel Disponible en Caisse</div>
+                <div style="font-size: 32px; font-weight: 800; color: var(--emerald-400); margin: 4px 0;" id="caisseSoldeNetDisplay">0 FCFA</div>
+                <div style="font-size: 12px; color: var(--text-secondary); max-width: 620px; line-height: 1.5;" id="caisseFormuleDetail">
+                  Fonds initial + Cotisations ordinaires + Dons volontaires reçus - Dépenses décaissées.
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <div style="background: rgba(255,255,255,0.04); padding: 12px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); text-align: right;">
+                  <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Total Entrées Globales</div>
+                  <strong style="font-size: 17px; color: var(--emerald-400);" id="caisseTotalEntreesDisplay">0 FCFA</strong>
+                </div>
+                <div style="background: rgba(255,255,255,0.04); padding: 12px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color); text-align: right;">
+                  <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Total Sorties Caisse</div>
+                  <strong style="font-size: 17px; color: var(--rose-400);" id="caisseTotalSortiesDisplay">0 FCFA</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4 Cartes KPI Financières -->
+          <div class="kpi-grid" style="margin-bottom: 24px;">
+            <div class="kpi-card" style="border-left: 3px solid var(--emerald-500);">
+              <span class="kpi-title">Fonds Initial Prévu</span>
+              <div class="kpi-value" style="color: var(--text-main);" id="kpiFinFondsDepart">0 FCFA</div>
+              <div class="kpi-sub">Dotation de caisse de base</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid #06b6d4;">
+              <span class="kpi-title">Cotisations Encaissées</span>
+              <div class="kpi-value" style="color: var(--cyan-400);" id="kpiFinCotisations">0 FCFA</div>
+              <div class="kpi-sub">Versements mensuels obligatoires</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid #8b5cf6;">
+              <span class="kpi-title">Dons Volontaires Membres</span>
+              <div class="kpi-value" style="color: #a78bfa;" id="kpiFinDonsVolontaires">0 FCFA</div>
+              <div class="kpi-sub">Générosité pour cérémonies & aides</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid var(--rose-500);">
+              <span class="kpi-title">Dépenses Décaissées Caisse</span>
+              <div class="kpi-value" style="color: var(--rose-400);" id="kpiFinDepensesCaisse">0 FCFA</div>
+              <div class="kpi-sub">Fonds sortis de la caisse centrale</div>
+            </div>
+          </div>
+
+          <!-- Sous-onglets de Trésorerie -->
+          <div class="cotis-subtabs-nav" style="margin-bottom: 18px;">
+            <button type="button" class="cotis-subtab-btn active" id="btnFinSubTabDepenses" onclick="switchFinanceSubTab('depenses')">
+              <span>📉</span> Registre des Dépenses & Financements
+            </button>
+            <button type="button" class="cotis-subtab-btn" id="btnFinSubTabDons" onclick="switchFinanceSubTab('dons')">
+              <span>❤️</span> Dons & Contributions Volontaires (Nominatif)
+            </button>
+            <button type="button" class="cotis-subtab-btn" id="btnFinSubTabJournal" onclick="switchFinanceSubTab('journal')">
+              <span>📖</span> Grand Livre Journal de Caisse
+            </button>
+          </div>
+
+          <!-- VUE 1 : REGISTRE DES DÉPENSES -->
+          <div id="financeDepensesView">
+            <div class="card-panel">
+              <div class="card-header-flex">
+                <div>
+                  <h3><span>📉</span> Toutes les Dépenses Engagées par la Mutuelle</h3>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Distinction claire entre les montants prélevés sur la caisse centrale et les montants couverts par les dons volontaires des membres.
+                  </p>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="openModal('modalAddDepense')">+ Nouvelle Dépense</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Réf. Dépense</th>
+                      <th>Motif & Événement Associé</th>
+                      <th>Catégorie</th>
+                      <th>Bénéficiaire</th>
+                      <th>Montant Total</th>
+                      <th>Prélevé Caisse</th>
+                      <th>Couvert par Dons</th>
+                      <th>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableDepensesBody">
+                    <!-- Rempli dynamiquement par JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- VUE 2 : DONS ET CONTRIBUTIONS VOLONTAIRES DES MEMBRES (NOMINATIF) -->
+          <div id="financeDonsView" style="display: none;">
+            <div class="card-panel">
+              <div class="card-header-flex">
+                <div>
+                  <h3><span>❤️</span> Membres Ayant Donné Volontairement (Cérémonies & Aides)</h3>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Reconnaissance et traçabilité nominative de chaque membre donateur ayant soutenu un mariage, des obsèques ou un cas social.
+                  </p>
+                </div>
+                <button class="btn btn-sm btn-secondary" onclick="openModal('modalAddContributionVolontaire')">+ Enregistrer un Don</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Réf. Don</th>
+                      <th>Membre Donateur & Foyer</th>
+                      <th>Destination (Cérémonie ou Aide)</th>
+                      <th>Montant Donné</th>
+                      <th>Mode</th>
+                      <th>Date</th>
+                      <th>Reçu Officiel</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableDonsBody">
+                    <!-- Rempli dynamiquement par JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- VUE 3 : LIVRE JOURNAL DE CAISSE (FLUX ENTRÉES / SORTIES) -->
+          <div id="financeJournalView" style="display: none;">
+            <div class="card-panel">
+              <div class="card-header-flex">
+                <div>
+                  <h3><span>📖</span> Grand Livre Journal Chronologique de la Caisse</h3>
+                  <p style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+                    Journal détaillé de toutes les entrées (cotisations, dons) et sorties (aides, dépenses) avec solde progressif.
+                  </p>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type d'Opération</th>
+                      <th>Libellé & Membre / Prestataire</th>
+                      <th>Entrée (+)</th>
+                      <th>Sortie (-)</th>
+                      <th>Solde Cumulé</th>
+                      <th>Mode / Réf</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tableLivreCaisseBody">
+                    <!-- Rempli dynamiquement par JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
 
         <!-- ============================================================ -->
         <!-- TAB 7 : STATUTS & RÈGLEMENT INTÉRIEUR OFFICIEL -->
@@ -1483,6 +1687,195 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary modal-cancel-btn">Fermer</button>
         <button type="button" class="btn btn-primary" id="btnAuditModalActionPay">💳 Enregistrer un Paiement / Anticiper</button>
+      </div>
+  </div>
+
+  <!-- Modal 8.6 : Enregistrer une Dépense (Caisse vs Dons Volontaires) -->
+  <div class="modal-overlay" id="modalAddDepense">
+    <div class="modal-content" style="max-width: 620px;">
+      <div class="modal-header">
+        <h3>📉 Enregistrer une Dépense / Décaissement</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddDepense">
+        <div class="form-group">
+          <label class="form-label">Motif ou Intitulé de la Dépense *</label>
+          <input type="text" class="form-control" id="depTitre" placeholder="Ex: Frais médicaux d'urgence, Enveloppe mariage, Sonorisation AG..." required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Catégorie de Dépense *</label>
+            <select class="form-control" id="depCategorie" required onchange="onDepenseCategorieChanged()">
+              <option value="Entraide Sociale">🤝 Entraide Sociale (Santé, Urgence)</option>
+              <option value="Cérémonie">🎉 Cérémonie (Mariage, Baptême, Obsèques)</option>
+              <option value="Fonctionnement">🏢 Fonctionnement & Logistique</option>
+              <option value="Autre">📦 Autre Décaissement</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bénéficiaire / Destinataire *</label>
+            <input type="text" class="form-control" id="depBeneficiaire" placeholder="Nom du membre ou prestataire" required>
+          </div>
+        </div>
+
+        <!-- Rattachement Optionnel à un Cas Social ou une Cérémonie -->
+        <div class="form-group" id="depCibleGroup" style="display: block;">
+          <label class="form-label">Rattacher à un Événement ou Dossier Spécifique (Optionnel)</label>
+          <select class="form-control" id="depCibleSelect">
+            <option value="">-- Aucun rattachement direct --</option>
+            <!-- Rempli dynamiquement par JS -->
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Montant Total de la Dépense (FCFA) *</label>
+          <input type="number" class="form-control" id="depMontantTotal" min="1000" step="500" value="50000" required oninput="calcDepenseFinancementRepartition()">
+        </div>
+
+        <!-- Mode de Répartition du Financement : Caisse vs Dons Volontaires -->
+        <div class="card-panel" style="background: rgba(255,255,255,0.03); padding: 14px; margin-bottom: 16px; border: 1px solid var(--border-color);">
+          <label class="form-label" style="margin-bottom: 8px;">💳 Source de Financement de la Dépense :</label>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+            <button type="button" class="filter-pill-btn active" id="btnDepFinCaisse100" onclick="setDepenseFinancementMode('100_caisse')">100% Caisse Centrale</button>
+            <button type="button" class="filter-pill-btn" id="btnDepFinVolontaire100" onclick="setDepenseFinancementMode('100_volontaire')">100% Dons Volontaires</button>
+            <button type="button" class="filter-pill-btn" id="btnDepFinMixte" onclick="setDepenseFinancementMode('mixte')">⚡ Répartition Mixte</button>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: var(--rose-400);">Prélevé sur Caisse Centrale (FCFA) *</label>
+              <input type="number" class="form-control" id="depPartCaisse" min="0" value="50000" required oninput="onDepPartManualInput()">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: var(--cyan-400);">Couvert par Dons Volontaires (FCFA) *</label>
+              <input type="number" class="form-control" id="depPartVolontaire" min="0" value="0" required oninput="onDepPartManualInput()">
+            </div>
+          </div>
+          <small style="color: var(--text-dim); font-size: 11px; display: block;" id="depRepartitionHelp">
+            Le montant sera directement déduit du solde disponible de la Caisse Centrale.
+          </small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Date du Décaissement *</label>
+            <input type="date" class="form-control" id="depDate" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mode de Règlement *</label>
+            <select class="form-control" id="depMode">
+              <option value="Wave">Wave</option>
+              <option value="Orange Money">Orange Money</option>
+              <option value="Espèces">Espèces (Remis en main propre)</option>
+              <option value="Virement bancaire">Virement bancaire</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Référence Justificatif / Facture</label>
+          <input type="text" class="form-control" id="depJustificatif" placeholder="Ex: Facture N°102, Reçu d'hôpital, Bon de caisse signé...">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-primary">Valider & Décaisser la Dépense</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 8.7 : Enregistrer un Don / Contribution Volontaire Nominative -->
+  <div class="modal-overlay" id="modalAddContributionVolontaire">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 22px;">❤️</span>
+          <h3>Enregistrer une Contribution Volontaire</h3>
+        </div>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddContributionVolontaire">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Enregistrez les dons volontaires des membres pour les cérémonies et cas d'entraide avec délivrance d'un reçu nominatif.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Membre Donateur / Bienfaiteur *</label>
+          <div style="position: relative; margin-bottom: 6px;">
+            <input type="text" class="form-control" id="donMemberSearchInput" placeholder="🔍 Rechercher le membre par nom ou matricule...">
+          </div>
+          <select class="form-control" id="donMemberSelect" required>
+            <!-- Rempli dynamiquement par JS -->
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Destination du Don *</label>
+            <select class="form-control" id="donCibleType" required onchange="onDonCibleTypeChanged()">
+              <option value="Cérémonie">🎉 Pour une Cérémonie (Mariage, Obsèques...)</option>
+              <option value="Entraide">🤝 Pour un Cas Social (Urgence, Maladie...)</option>
+              <option value="Caisse Solidarité">🏛️ Don Général à la Caisse de Solidarité</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Événement ou Dossier Spécifique *</label>
+            <select class="form-control" id="donCibleSelect" required>
+              <!-- Rempli dynamiquement selon donCibleType -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Montant du Don Volontaire (FCFA) *</label>
+            <input type="number" class="form-control" id="donMontant" min="1000" step="500" value="15000" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date du Versement *</label>
+            <input type="date" class="form-control" id="donDate" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Mode de Règlement *</label>
+          <select class="form-control" id="donMode">
+            <option value="Wave">Wave</option>
+            <option value="Orange Money">Orange Money</option>
+            <option value="Espèces">Espèces (remis au Trésorier)</option>
+            <option value="Virement bancaire">Virement bancaire</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Message / Note Fraternelle d'Accompagnement</label>
+          <input type="text" class="form-control" id="donNote" placeholder="Ex: Soutien fraternel de la part du foyer...">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-gold">❤️ Valider le Don & Émettre Reçu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal 8.8 : Reçu Officiel de Don / Contribution Volontaire (Imprimable) -->
+  <div class="modal-overlay" id="modalReceiptDonation">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3>🧾 Reçu Officiel de Don Volontaire</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <div id="receiptDonationContent" style="padding: 10px 0;">
+        <!-- Généré dynamiquement en JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary modal-cancel-btn">Fermer</button>
+        <button type="button" class="btn btn-gold" onclick="window.print()">🖨️ Imprimer le Reçu de Don</button>
       </div>
     </div>
   </div>
