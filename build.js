@@ -26,4 +26,9 @@ if (fs.existsSync('index.html')) {
 if (fs.existsSync('css')) copyFolderSync('css', path.join(publicDir, 'css'));
 if (fs.existsSync('js')) copyFolderSync('js', path.join(publicDir, 'js'));
 
-console.log('✅ Public directory generated successfully with all assets!');
+if (fs.existsSync('sw.js')) fs.copyFileSync('sw.js', path.join(publicDir, 'sw.js'));
+if (fs.existsSync('manifest.json')) fs.copyFileSync('manifest.json', path.join(publicDir, 'manifest.json'));
+if (fs.existsSync('icon.svg')) fs.copyFileSync('icon.svg', path.join(publicDir, 'icon.svg'));
+
+console.log('✅ Public directory generated successfully with all assets (including PWA & Service Worker)!');
+

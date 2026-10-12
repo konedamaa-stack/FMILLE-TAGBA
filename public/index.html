@@ -4,8 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TAGBA - Association Mutuelle & Entraide Familiale</title>
-  <meta name="description" content="Plateforme SaaS de gestion pour la Mutuelle TAGBA : Bureau exécutif, familles, membres rattachés, cotisations mensuelles/trimestrielles, entraide sociale et cérémonies.">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <meta name="theme-color" content="#059669">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 
@@ -2000,5 +2004,41 @@
   <script src="js/data.js?v=20261010-02"></script>
   <script src="js/supabase.js?v=20261010-02"></script>
   <script src="js/app.js?v=20261010-02"></script>
+
+  <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('✅ ServiceWorker actif (Mode Hors-Ligne opérationnel) :', reg.scope))
+          .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));
+      });
+    }
+
+    // Notifications visuelles automatiques si connexion coupée ou rétablie
+    window.addEventListener('offline', () => {
+      if (typeof showToast === 'function') {
+        showToast('⚠️ Vous êtes hors-ligne. Vous pouvez continuer à travailler, tout est sauvegardé localement !', 'warning');
+      }
+      const badge = document.getElementById('supabaseStatusBadge');
+      if (badge) {
+        badge.style.background = 'rgba(239, 68, 68, 0.2)';
+        badge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+        badge.innerHTML = '<span>🔴</span> HORS-LIGNE (LOCAL)';
+      }
+    });
+
+    window.addEventListener('online', () => {
+      if (typeof showToast === 'function') {
+        showToast('🟢 Connexion rétablie ! Vous pouvez synchroniser vos données avec le Cloud (Push).', 'success');
+      }
+      const badge = document.getElementById('supabaseStatusBadge');
+      if (badge) {
+        badge.style.background = 'rgba(16, 185, 129, 0.2)';
+        badge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+        badge.innerHTML = '<span>☁️</span> SUPABASE CLOUD';
+      }
+    });
+  </script>
 </body>
 </html>
