@@ -338,15 +338,15 @@ async function pullAllDataFromSupabase(silent = false) {
         photoInitial: b.photo_initial,
         level: b.level
       })) : currentLocal.bureau,
-      families: famRes.data ? famRes.data.map(f => ({
+      families: famRes.data && famRes.data.length > 0 ? famRes.data.map(f => ({
         id: f.id,
-        code: f.code,
+        code: f.code || 'FAM',
         name: f.name,
-        chefDeFamille: f.chef_de_famille,
-        phone: f.phone,
-        city: f.city,
-        notes: f.notes
-      })) : [],
+        chefDeFamille: f.chef_de_famille || f.chefDeFamille || 'Chef de famille',
+        phone: f.phone || '',
+        city: f.city || '',
+        notes: f.notes || ''
+      })) : (currentLocal.families && currentLocal.families.length > 0 ? currentLocal.families : defaultData.families),
       members: memRes.data ? memRes.data.map(m => ({
         id: m.id,
         matricule: m.matricule,

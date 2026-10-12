@@ -735,7 +735,16 @@ const TAGBA_DB = {
         if (!parsed.config.dateDebutCotisations) {
           parsed.config.dateDebutCotisations = '2026-10-04';
         }
-        if (!parsed.families) parsed.families = defaultData.families;
+        if (!parsed.families || !Array.isArray(parsed.families) || parsed.families.length === 0) {
+          parsed.families = defaultData.families;
+        } else {
+          defaultData.families.forEach(df => {
+            if (!parsed.families.some(f => f.id === df.id)) parsed.families.push(df);
+          });
+          parsed.families.forEach(f => {
+            if (!f.chefDeFamille && f.chef_de_famille) f.chefDeFamille = f.chef_de_famille;
+          });
+        }
         if (!parsed.members) {
           parsed.members = defaultData.members;
         } else {

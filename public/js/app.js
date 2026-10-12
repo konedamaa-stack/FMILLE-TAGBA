@@ -1062,9 +1062,8 @@ function renderQuickFamilyCards() {
 
 // Action rapide pour rattacher directement un membre à ce chef
 function quickAddMemberToFamily(familyId) {
-  const select = document.getElementById('memFamilySelect');
-  if (select) select.value = familyId;
   openModal('modalAddMember');
+  initModalAddMember(familyId);
 }
 
 // Modal Fiche Officielle du Foyer (Imprimable)
@@ -1810,11 +1809,38 @@ function openModal(modalId) {
     m.classList.add('active');
     if (modalId === 'modalAddCotisation') {
       updateCotisationModalDefaults();
+    } else if (modalId === 'modalAddMember') {
+      initModalAddMember();
     } else if (modalId === 'modalAddDepense') {
       initModalAddDepense();
     } else if (modalId === 'modalAddContributionVolontaire') {
       initModalAddContribution();
     }
+  }
+}
+
+// Initialisation et remplissage garanti du sélecteur de Famille de Rattachement
+function initModalAddMember(selectedFamilyId = null) {
+  const select = document.getElementById('memFamilySelect');
+  if (!select) return;
+
+  const data = TAGBA_DB.get();
+  let families = (data && data.families && data.families.length > 0) ? data.families : (typeof defaultData !== 'undefined' ? defaultData.families : []);
+
+  if (!families || families.length === 0) {
+    select.innerHTML = '<option value="" disabled selected>⚠️ Aucune famille enregistrée. Créez d’abord une famille !</option>';
+    return;
+  }
+
+  let html = `<option value="" disabled ${!selectedFamilyId ? 'selected' : ''}>-- Sélectionnez une famille de rattachement * --</option>`;
+  families.forEach(f => {
+    const chef = f.chefDeFamille || f.chef_de_famille || 'Chef de famille';
+    const isSel = selectedFamilyId && String(selectedFamilyId) === String(f.id);
+    html += `<option value="${f.id}" ${isSel ? 'selected' : ''}>🏠 ${f.name} (Chef: ${chef})</option>`;
+  });
+  select.innerHTML = html;
+  if (selectedFamilyId) {
+    select.value = selectedFamilyId;
   }
 }
 
@@ -1900,16 +1926,21 @@ function bindModalEvents() {
 
 function populateSelectOptions() {
   const data = TAGBA_DB.get();
+  const families = (data && data.families && data.families.length > 0) ? data.families : (typeof defaultData !== 'undefined' ? defaultData.families : []);
 
-  // Familles select
-  const famSelects = ['memFamilySelect', 'memberFamilyFilter', 'cerFamilySelect'];
-  famSelects.forEach(selId => {
+  // 1. Initialiser le sélecteur d'inscription de membre
+  initModalAddMember();
+
+  // 2. Filtres de familles et cérémonies
+  const otherFamSelects = ['memberFamilyFilter', 'cerFamilySelect'];
+  otherFamSelects.forEach(selId => {
     const el = document.getElementById(selId);
     if (!el) return;
     const isFilter = selId === 'memberFamilyFilter';
-    el.innerHTML = isFilter ? '<option value="">Toutes les familles</option>' : '';
-    data.families.forEach(f => {
-      el.innerHTML += `<option value="${f.id}">${f.name} (Chef: ${f.chefDeFamille})</option>`;
+    el.innerHTML = isFilter ? '<option value="">Toutes les familles</option>' : '<option value="" disabled selected>-- Choisir une famille --</option>';
+    families.forEach(f => {
+      const chef = f.chefDeFamille || f.chef_de_famille || 'Chef de famille';
+      el.innerHTML += `<option value="${f.id}">🏠 ${f.name} (Chef: ${chef})</option>`;
     });
   });
 
