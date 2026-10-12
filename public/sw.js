@@ -1,5 +1,6 @@
-const CACHE_NAME = 'tagba-pwa-v3';
-const STATIC_ASSETS = [
+const CACHE_NAME = 'tagba-pwa-v4';
+
+const LOCAL_ASSETS = [
   '/',
   '/index.html',
   '/css/style.css',
@@ -7,30 +8,36 @@ const STATIC_ASSETS = [
   '/js/supabase.js',
   '/js/app.js',
   '/manifest.json',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-  'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap'
+  '/icon.svg'
 ];
 
-// Installation : Mise en cache initiale des fichiers essentiels
+// Installation : Mise en cache robuste fichier par fichier (aucun blocage)
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ServiceWorker] Mise en cache des assets hors-ligne');
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[ServiceWorker] Erreur mise en cache initiale (non bloquante):', err);
-      });
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // Cacher chaque ressource locale individuellement
+      await Promise.allSettled(
+        LOCAL_ASSETS.map((url) =>
+          cache.add(url).catch((err) => console.warn('[SW] Cache miss:', url, err))
+        )
+      );
+      // Tenter la mise en cache de la bibliothèque Supabase CDN
+      try {
+        await cache.add('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
+      } catch (_) {}
+    })
   );
 });
 
-// Activation : Nettoyage des anciens caches
+// Activation : Prise de contrôle immédiate et purge des anciennes versions
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
-            console.log('[ServiceWorker] Suppression ancien cache:', key);
+            console.log('[SW] Suppression ancien cache:', key);
             return caches.delete(key);
           }
         })
@@ -39,50 +46,74 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Interception des requêtes : Stratégie Network-First avec fallback Cache pour fonctionnement 100% hors-ligne
+// Interception des requêtes : Stale-While-Revalidate / Network-First avec repli 100% garanti
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Ignorer les requêtes POST/PUT/DELETE ou requêtes Supabase REST (qui sont gérées localement dans l'app)
-  if (req.method !== 'GET') {
+  // Uniquement les requêtes GET
+  if (req.method !== 'GET') return;
+
+  // Ignorer les requêtes d'API Supabase directes (gérées par le client localement)
+  if (url.hostname.includes('supabase.co')) return;
+
+  // 1. Pour la navigation principale (ex: chargement de la page https://www.tagbala.xyz/? ...)
+  if (req.mode === 'navigate' || req.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(req)
+        .then((networkRes) => {
+          if (networkRes && networkRes.status === 200) {
+            const copy = networkRes.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(req, copy);
+              cache.put('/', copy.clone());
+              cache.put('/index.html', copy.clone());
+            });
+          }
+          return networkRes;
+        })
+        .catch(async () => {
+          // Hors-ligne : Trouver la page dans le cache avec ou sans paramètres d'URL
+          const cached = await caches.match(req, { ignoreSearch: true })
+            || await caches.match('/index.html')
+            || await caches.match('/');
+          if (cached) return cached;
+
+          // Si aucun cache direct, renvoyer la première page HTML trouvée dans le cache
+          const cache = await caches.open(CACHE_NAME);
+          const keys = await cache.keys();
+          for (const k of keys) {
+            if (k.url.endsWith('/') || k.url.includes('index.html')) {
+              const res = await cache.match(k);
+              if (res) return res;
+            }
+          }
+
+          return new Response('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>TAGBA Hors-Ligne</title></head><body style="background:#0a0f1d;color:#fff;font-family:sans-serif;text-align:center;padding:50px;"><h2>🏛️ Mutuelle TAGBA</h2><p>Veuillez charger le site une fois avec connexion pour activer le mode hors-ligne complet.</p><button onclick="location.reload()" style="padding:10px 20px;border-radius:8px;background:#10b981;color:#fff;border:none;cursor:pointer;">Réessayer</button></body></html>', {
+            status: 200,
+            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+          });
+        })
+    );
     return;
   }
 
-  // Ne pas cacher les appels directs aux APIs Supabase
-  if (url.hostname.includes('supabase.co')) {
-    return;
-  }
-
+  // 2. Pour les fichiers CSS, JS, Images, etc.
   event.respondWith(
-    fetch(req)
-      .then((networkRes) => {
-        // Si le réseau répond, on met à jour la copie locale en cache
+    caches.match(req, { ignoreSearch: true }).then((cachedRes) => {
+      // Si trouvé en cache, le servir immédiatement tout en tentant une mise à jour en arrière-plan
+      const fetchPromise = fetch(req).then((networkRes) => {
         if (networkRes && networkRes.status === 200 && networkRes.type !== 'opaque') {
-          const resClone = networkRes.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone));
+          const copy = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
         }
         return networkRes;
-      })
-      .catch(async () => {
-        // En cas de coupure internet (ERR_INTERNET_DISCONNECTED / offline) :
-        // On sert instantanément la version en cache local !
-        const cachedRes = await caches.match(req);
-        if (cachedRes) {
-          return cachedRes;
-        }
+      }).catch(() => null);
 
-        // Si la requête concerne la navigation de page (ex: / ou /index.html)
-        if (req.mode === 'navigate') {
-          const fallbackPage = await caches.match('/index.html') || await caches.match('/');
-          if (fallbackPage) return fallbackPage;
-        }
-
-        return new Response('Application hors ligne. Les données locales sont conservées.', {
-          status: 503,
-          statusText: 'Service Unavailable (Offline)',
-          headers: new Headers({ 'Content-Type': 'text/plain; charset=utf-8' })
-        });
-      })
+      return cachedRes || fetchPromise.then((res) => {
+        if (res) return res;
+        return new Response('', { status: 404, statusText: 'Not Found Offline' });
+      });
+    })
   );
 });
