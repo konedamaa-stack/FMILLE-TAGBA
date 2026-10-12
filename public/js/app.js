@@ -1844,24 +1844,50 @@ function initModalAddMember(selectedFamilyId = null) {
   }
 }
 
-function closeModal(modalId) {
-  const m = document.getElementById(modalId);
-  if (m) m.classList.remove('active');
+function closeModal(target) {
+  if (!target) {
+    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    return;
+  }
+  if (typeof target === 'string') {
+    const m = document.getElementById(target);
+    if (m) m.classList.remove('active');
+  } else if (target && target.closest) {
+    const m = target.closest('.modal-overlay');
+    if (m) m.classList.remove('active');
+  } else {
+    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+  }
 }
 
 function bindModalEvents() {
-  document.querySelectorAll('.modal-close-btn, .modal-cancel-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const modal = e.target.closest('.modal-overlay');
-      if (modal) modal.classList.remove('active');
-    });
-  });
+  // 1. Délégation globale infaillible sur tout le document
+  document.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('.modal-close-btn, .modal-cancel-btn');
+    if (closeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const modal = closeBtn.closest('.modal-overlay');
+      if (modal) {
+        modal.classList.remove('active');
+      } else {
+        document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+      }
+      return;
+    }
 
-  // Fermer au clic extérieur
-  document.querySelectorAll('.modal-overlay').forEach(modal => {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.classList.remove('active');
-    });
+    // Clic sur l'arrière-plan sombre de la modale
+    if (e.target.classList && e.target.classList.contains('modal-overlay')) {
+      e.preventDefault();
+      e.target.classList.remove('active');
+    }
+  }, true);
+
+  // 2. Touche Échap (Escape) pour fermer instantanément n'importe quelle modale
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' || e.key === 'Esc') {
+      document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    }
   });
 
   // Changement de fréquence dans le modal versement

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tagba-pwa-v2';
+const CACHE_NAME = 'tagba-pwa-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

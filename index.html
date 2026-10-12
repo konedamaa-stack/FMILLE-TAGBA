@@ -1387,7 +1387,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>👤 Inscription d'un Nouveau Membre</h3>
-        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="closeModal('modalAddMember')">&times;</button>
       </div>
       <form id="formAddMember">
         <div class="form-group">
@@ -1439,7 +1439,7 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal('modalAddMember')">Annuler</button>
           <button type="submit" class="btn btn-primary">Enregistrer le Membre</button>
         </div>
       </form>
