@@ -346,7 +346,7 @@ async function pullAllDataFromSupabase(silent = false) {
         phone: f.phone || '',
         city: f.city || '',
         notes: f.notes || ''
-      })) : (currentLocal.families && currentLocal.families.length > 0 ? currentLocal.families : defaultData.families),
+      })) : (currentLocal.families && currentLocal.families.length > 0 ? currentLocal.families : []),
       members: memRes.data ? memRes.data.map(m => ({
         id: m.id,
         matricule: m.matricule,
