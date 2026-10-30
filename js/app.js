@@ -1311,20 +1311,22 @@ let currentMonthsTrackingFilter = 'ALL';
 function switchCotisSubTab(subTab) {
   currentCotisSubTab = subTab;
   const btnMonths = document.getElementById('btnCotisSubTabMonths');
+  const btnEvents = document.getElementById('btnCotisSubTabEvents');
   const btnRegistre = document.getElementById('btnCotisSubTabRegistre');
   const viewMonths = document.getElementById('cotisationsMonthsTrackingView');
+  const viewEvents = document.getElementById('cotisationsEventsTrackingView');
   const viewRegistre = document.getElementById('cotisationsRegistreView');
 
-  if (subTab === 'months') {
-    if (btnMonths) btnMonths.classList.add('active');
-    if (btnRegistre) btnRegistre.classList.remove('active');
-    if (viewMonths) viewMonths.style.display = 'block';
-    if (viewRegistre) viewRegistre.style.display = 'none';
-  } else {
-    if (btnMonths) btnMonths.classList.remove('active');
-    if (btnRegistre) btnRegistre.classList.add('active');
-    if (viewMonths) viewMonths.style.display = 'none';
-    if (viewRegistre) viewRegistre.style.display = 'block';
+  if (btnMonths) btnMonths.classList.toggle('active', subTab === 'months');
+  if (btnEvents) btnEvents.classList.toggle('active', subTab === 'events');
+  if (btnRegistre) btnRegistre.classList.toggle('active', subTab === 'registre');
+
+  if (viewMonths) viewMonths.style.display = subTab === 'months' ? 'block' : 'none';
+  if (viewEvents) viewEvents.style.display = subTab === 'events' ? 'block' : 'none';
+  if (viewRegistre) viewRegistre.style.display = subTab === 'registre' ? 'block' : 'none';
+
+  if (subTab === 'events') {
+    renderCotisationsEventsTracking();
   }
 }
 
@@ -1715,6 +1717,7 @@ function renderCotisations() {
 
   // Rendu de la vue de suivi des mois chronologique
   renderCotisationsMonthsTracking();
+  renderCotisationsEventsTracking();
 }
 
 // 5. Rendu Entraide & Cas Sociaux
@@ -2112,6 +2115,15 @@ function bindModalEvents() {
   const cotTypeSelect = document.getElementById('cotType');
   if (cotTypeSelect) {
     cotTypeSelect.addEventListener('change', () => {
+      const cfg = TAGBA_DB.get().config || {};
+      const quickBox = document.getElementById('cotQuickAnticipationBox');
+      const cotPeriodeInput = document.getElementById('cotPeriode');
+      if (cotTypeSelect.value === 'Événement') {
+        if (quickBox) quickBox.style.display = 'none';
+        if (cotPeriodeInput) cotPeriodeInput.value = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+      } else {
+        if (quickBox) quickBox.style.display = 'block';
+      }
       syncCotisationMontantField();
     });
   }
@@ -2402,7 +2414,8 @@ function bindFormSubmissions() {
         }).filter(Boolean);
 
         const cfg = data.config || {};
-        const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+        const isEventMode = cotType === 'Événement';
+        const unitMonthly = isEventMode ? Number(cfg.cotisationEvenement || 5000) : Number(cfg.cotisationMensuelle || 5000);
         let grandTotal = 0;
         let totalMonths = 0;
         const groupBatchRef = 'GRP-' + Date.now().toString().slice(-6);
@@ -2411,18 +2424,18 @@ function bindFormSubmissions() {
         checkedRows.forEach(row => {
           const targetMemId = row.getAttribute('data-member-id');
           const targetMem = data.members.find(m => m.id === targetMemId);
-          const months = Number(row.querySelector('.plage-member-months-select')?.value || 1);
+          const months = isEventMode ? 1 : Number(row.querySelector('.plage-member-months-select')?.value || 1);
           const lineMontant = months * unitMonthly;
           grandTotal += lineMontant;
           totalMonths += months;
 
-          const memberPeriode = months === 1 ? periode : `${periode} (${months} mois)`;
+          const memberPeriode = isEventMode ? periode : (months === 1 ? periode : `${periode} (${months} mois)`);
 
           const cotRecord = {
             memberId: targetMemId,
             memberName: targetMem ? targetMem.fullName : 'Membre',
             familyId: targetMem ? targetMem.familyId : (mem ? mem.familyId : 'fam-1'),
-            type: months === 1 ? 'Mensuel' : (months === 3 ? 'Trimestriel' : `${months} Mois`),
+            type: isEventMode ? 'Événement' : (months === 1 ? 'Mensuel' : (months === 3 ? 'Trimestriel' : `${months} Mois`)),
             periode: memberPeriode,
             montant: lineMontant,
             modePaiement: modePaiement,
@@ -2686,6 +2699,11 @@ function enregistrerParametres(e) {
 
     const newMensuel = inputMensuel && inputMensuel.value ? Number(inputMensuel.value) : 5000;
     const newTrimestriel = inputTrimestriel && inputTrimestriel.value ? Number(inputTrimestriel.value) : (newMensuel * 3);
+    const inputCotisEvenement = document.getElementById('cfgCotisationEvenement');
+    const inputEvenementActuel = document.getElementById('cfgEvenementActuel');
+    const newCotisEvenement = inputCotisEvenement && inputCotisEvenement.value ? Number(inputCotisEvenement.value) : 5000;
+    const newEvenementActuel = inputEvenementActuel && inputEvenementActuel.value.trim() ? inputEvenementActuel.value.trim() : 'Cotisation Sacrifice de la Mutuelle';
+
     const newDateDebut = inputDateDebut && inputDateDebut.value ? inputDateDebut.value : '2026-10-04';
     const newCurrency = selectCurrency && selectCurrency.value ? selectCurrency.value : 'FCFA';
     const newYear = inputYear && inputYear.value ? Number(inputYear.value) : 2026;
@@ -2696,6 +2714,8 @@ function enregistrerParametres(e) {
     const savedConfig = TAGBA_DB.updateConfig({
       cotisationMensuelle: newMensuel,
       cotisationTrimestrielle: newTrimestriel,
+      cotisationEvenement: newCotisEvenement,
+      evenementActuel: newEvenementActuel,
       dateDebutCotisations: newDateDebut,
       currency: newCurrency,
       year: newYear,
@@ -2738,6 +2758,11 @@ function loadConfigForm() {
 
   if (inputMensuel) inputMensuel.value = cfg.cotisationMensuelle || 5000;
   if (inputTrimestriel) inputTrimestriel.value = cfg.cotisationTrimestrielle || 15000;
+  const inputCotisEvenement = document.getElementById('cfgCotisationEvenement');
+  const inputEvenementActuel = document.getElementById('cfgEvenementActuel');
+  if (inputCotisEvenement) inputCotisEvenement.value = cfg.cotisationEvenement || 5000;
+  if (inputEvenementActuel) inputEvenementActuel.value = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+
   if (inputDateDebut) inputDateDebut.value = cfg.dateDebutCotisations || '2026-10-04';
   if (selectCurrency) selectCurrency.value = cfg.currency || 'FCFA';
   if (inputYear) inputYear.value = cfg.year || 2026;
@@ -2779,6 +2804,14 @@ function setQuickCotisation(amount) {
   if (inputMensuel) {
     inputMensuel.value = amount;
     inputMensuel.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+
+function setQuickCotisationEvenement(amount) {
+  const input = document.getElementById('cfgCotisationEvenement');
+  if (input) {
+    input.value = amount;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 }
 
@@ -3701,9 +3734,13 @@ function syncCotisationMontantField() {
     let grandTotal = 0;
     let totalMonths = 0;
 
+    const cotTypeSelect = document.getElementById('cotType');
+    const isEventType = cotTypeSelect && cotTypeSelect.value === 'Événement';
+    const unitRate = isEventType ? Number(cfg.cotisationEvenement || 5000) : unitMonthly;
+
     checkedRows.forEach(row => {
-      const months = Number(row.querySelector('.plage-member-months-select')?.value || 1);
-      grandTotal += months * unitMonthly;
+      const months = isEventType ? 1 : Number(row.querySelector('.plage-member-months-select')?.value || 1);
+      grandTotal += months * unitRate;
       totalMonths += months;
     });
 
@@ -3732,7 +3769,16 @@ function syncCotisationMontantField() {
     const lockIcon = document.getElementById('cotMontantLockIcon');
     const noticeEl = document.getElementById('cotMontantNotice');
 
-    if (cotType === 'Exceptionnel') {
+    if (cotType === 'Événement') {
+      const unitEvent = Number(cfg.cotisationEvenement || 5000);
+      cotMontantInput.value = unitEvent;
+      cotMontantInput.readOnly = true;
+      cotMontantInput.style.cursor = 'not-allowed';
+      if (lockIcon) lockIcon.textContent = '🎯';
+      if (noticeEl) {
+        noticeEl.innerHTML = `🎯 Tarif fixé dans les Paramètres : <strong>${formatMoney(unitEvent, cfg.currency)}</strong> pour cet événement/sacrifice`;
+      }
+    } else if (cotType === 'Exceptionnel') {
       cotMontantInput.readOnly = false;
       cotMontantInput.style.cursor = 'text';
       cotMontantInput.placeholder = 'Saisir montant exceptionnel';
@@ -4997,4 +5043,230 @@ function deleteCotisationFromReceiptModal() {
   if (!cot) return;
   closeModal('modalReceipt');
   deleteCotisationPrompt(cot.id, cot.recuNum, cot.memberName, cot.montant);
+}
+
+
+// 4.3. Rendu du Suivi des Cotisations par Événement / Sacrifice
+function renderCotisationsEventsTracking() {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const tbody = document.getElementById('tableCotisationsEventsBody');
+  if (!tbody) return;
+
+  const unitEvent = Number(cfg.cotisationEvenement || 5000);
+  const eventTitle = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+  const currency = cfg.currency || 'FCFA';
+
+  // Mise à jour de la bannière
+  const titleEl = document.getElementById('eventCurrentTitleDisplay');
+  const badgeEl = document.getElementById('cfgDisplayEvenementBadge');
+  if (titleEl) titleEl.textContent = eventTitle;
+  if (badgeEl) badgeEl.textContent = `${formatMoney(unitEvent, currency)} / membre`;
+
+  // Trouver tous les versements pour cet événement
+  const eventCotisations = (data.cotisations || []).filter(c => 
+    c.type === 'Événement' || 
+    c.type === 'Sacrifice' ||
+    (c.periode && (c.periode === eventTitle || c.periode.toLowerCase().includes('sacrifice') || c.periode.toLowerCase().includes('événement')))
+  );
+
+  const totalMembers = (data.members || []).length;
+  const paidMemberIds = new Set(eventCotisations.map(c => c.memberId));
+  const paidCount = (data.members || []).filter(m => paidMemberIds.has(m.id)).length;
+  const pendingCount = Math.max(0, totalMembers - paidCount);
+  const totalEncaiss = eventCotisations.reduce((acc, c) => acc + Number(c.montant || 0), 0);
+  const totalAttendu = totalMembers * unitEvent;
+  const resteRecouvrer = Math.max(0, totalAttendu - totalEncaiss);
+  const percentPaid = totalMembers > 0 ? Math.round((paidCount / totalMembers) * 100) : 0;
+
+  // KPIs
+  const kpiTotal = document.getElementById('kpiEventTotalEncaiss');
+  const kpiPaidCountSub = document.getElementById('kpiEventPaidCountSub');
+  const kpiPaidMembers = document.getElementById('kpiEventPaidMembersCount');
+  const kpiPercentSub = document.getElementById('kpiEventPercentSub');
+  const kpiReste = document.getElementById('kpiEventResteRecouvrer');
+  const kpiPendingSub = document.getElementById('kpiEventPendingCountSub');
+  const kpiAttendu = document.getElementById('kpiEventTotalAttendu');
+
+  if (kpiTotal) kpiTotal.textContent = formatMoney(totalEncaiss, currency);
+  if (kpiPaidCountSub) kpiPaidCountSub.textContent = `${eventCotisations.length} versement(s) reçu(s)`;
+  if (kpiPaidMembers) kpiPaidMembers.textContent = `${paidCount} / ${totalMembers}`;
+  if (kpiPercentSub) kpiPercentSub.textContent = `${percentPaid}% de participation`;
+  if (kpiReste) kpiReste.textContent = formatMoney(resteRecouvrer, currency);
+  if (kpiPendingSub) kpiPendingSub.textContent = `${pendingCount} membre(s) en attente`;
+  if (kpiAttendu) kpiAttendu.textContent = formatMoney(totalAttendu, currency);
+
+  // Filtre recherche
+  const searchInput = document.getElementById('filterEventMemberSearch');
+  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+  let membersToDisplay = (data.members || []);
+  if (query) {
+    membersToDisplay = membersToDisplay.filter(m => 
+      (m.fullName || '').toLowerCase().includes(query) ||
+      (m.matricule || '').toLowerCase().includes(query) ||
+      (m.phone || '').includes(query)
+    );
+  }
+
+  if (membersToDisplay.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">
+          Aucun membre trouvé pour ce filtre.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = membersToDisplay.map(m => {
+    const fam = (data.families || []).find(f => f.id === m.familyId);
+    const famName = fam ? fam.name : 'Famille TAGBA';
+    const cotsForMem = eventCotisations.filter(c => c.memberId === m.id);
+    const hasPaid = cotsForMem.length > 0;
+    const lastCot = hasPaid ? cotsForMem[0] : null;
+
+    let statutBadge = '';
+    let dateRecuCell = '';
+    let modeCell = '';
+    let actionBtn = '';
+
+    if (hasPaid) {
+      statutBadge = `<span class="badge badge-success">✅ Payé (${formatMoney(lastCot.montant, currency)})</span>`;
+      dateRecuCell = `
+        <div style="font-weight: 600; font-size: 12px; color: var(--text-main);">${formatDate(lastCot.datePaiement)}</div>
+        <div style="font-size: 11px; color: var(--emerald-400);">${lastCot.recuNum}</div>
+      `;
+      modeCell = `<span class="badge badge-purple" style="font-size: 10px;">${lastCot.modePaiement}</span>`;
+      actionBtn = `
+        <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${lastCot.id}')" title="Voir le Reçu Officiel">
+          🧾 Reçu
+        </button>
+      `;
+    } else {
+      statutBadge = `<span class="badge badge-warning">⏳ En attente (${formatMoney(unitEvent, currency)})</span>`;
+      dateRecuCell = `<span style="color: var(--text-dim);">-</span>`;
+      modeCell = `<span style="color: var(--text-dim);">-</span>`;
+      actionBtn = `
+        <button class="btn btn-sm btn-primary" onclick="quickPayMemberForEvent('${m.id}')" title="Encaisser la cotisation pour cet événement">
+          💳 Encaisser
+        </button>
+      `;
+    }
+
+    return `
+      <tr>
+        <td><strong style="color: var(--emerald-400);">${m.matricule}</strong></td>
+        <td>
+          <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">
+            ${m.fullName}
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            👑 ${famName} • 📞 ${m.phone}
+          </div>
+        </td>
+        <td>
+          <strong style="color: var(--gold-400);">${formatMoney(unitEvent, currency)}</strong>
+        </td>
+        <td>${statutBadge}</td>
+        <td>${dateRecuCell}</td>
+        <td>${modeCell}</td>
+        <td style="text-align: right;">${actionBtn}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Raccourci pour encaisser un membre spécifique pour l'événement / sacrifice en cours
+function quickPayMemberForEvent(memberId) {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const unitEvent = Number(cfg.cotisationEvenement || 5000);
+  const eventTitle = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+
+  openModal('modalAddCotisation');
+  setVersementFormMode('individual', false);
+
+  const memberSelect = document.getElementById('cotMemberSelect');
+  if (memberSelect) {
+    memberSelect.value = memberId;
+  }
+  updateCotMemberAuditPreview(memberId);
+
+  const cotTypeSelect = document.getElementById('cotType');
+  if (cotTypeSelect) {
+    cotTypeSelect.value = 'Événement';
+    cotTypeSelect.dispatchEvent(new Event('change'));
+  }
+
+  const cotPeriodeInput = document.getElementById('cotPeriode');
+  if (cotPeriodeInput) {
+    cotPeriodeInput.value = eventTitle;
+  }
+
+  const cotMontantInput = document.getElementById('cotMontant');
+  if (cotMontantInput) {
+    cotMontantInput.value = unitEvent;
+  }
+}
+
+// Raccourci pour ouvrir le modal d'encaissement d'événement
+function openEventAddCotisationModal() {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const unitEvent = Number(cfg.cotisationEvenement || 5000);
+  const eventTitle = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+
+  openModal('modalAddCotisation');
+  setVersementFormMode('individual', false);
+
+  const cotTypeSelect = document.getElementById('cotType');
+  if (cotTypeSelect) {
+    cotTypeSelect.value = 'Événement';
+    cotTypeSelect.dispatchEvent(new Event('change'));
+  }
+
+  const cotPeriodeInput = document.getElementById('cotPeriode');
+  if (cotPeriodeInput) {
+    cotPeriodeInput.value = eventTitle;
+  }
+
+  const cotMontantInput = document.getElementById('cotMontant');
+  if (cotMontantInput) {
+    cotMontantInput.value = unitEvent;
+  }
+}
+
+// Raccourci pour encaisser toute une famille pour l'événement / sacrifice
+function openEventBatchPayModal(familyId = null) {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const unitEvent = Number(cfg.cotisationEvenement || 5000);
+  const eventTitle = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+
+  openModal('modalAddCotisation');
+  setVersementFormMode('group', true);
+
+  if (familyId) {
+    const memInFam = data.members.find(m => m.familyId === familyId);
+    if (memInFam) {
+      const memberSelect = document.getElementById('cotMemberSelect');
+      if (memberSelect) memberSelect.value = memInFam.id;
+      onCotMemberSelected();
+    }
+  }
+
+  const cotTypeSelect = document.getElementById('cotType');
+  if (cotTypeSelect) {
+    cotTypeSelect.value = 'Événement';
+    cotTypeSelect.dispatchEvent(new Event('change'));
+  }
+
+  const cotPeriodeInput = document.getElementById('cotPeriode');
+  if (cotPeriodeInput) {
+    cotPeriodeInput.value = eventTitle;
+  }
+
+  syncCotisationMontantField();
 }

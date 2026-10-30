@@ -21,6 +21,8 @@ const defaultData = {
     currency: 'FCFA',
     cotisationMensuelle: 5000,
     cotisationTrimestrielle: 15000,
+    cotisationEvenement: 5000,
+    evenementActuel: 'Cotisation Sacrifice de la Mutuelle',
     dateDebutCotisations: '2026-10-04',
     fondsCaisse: 0,
     year: 2026
