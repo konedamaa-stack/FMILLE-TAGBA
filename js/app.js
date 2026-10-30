@@ -680,11 +680,34 @@ function renderDashboard() {
   }
 }
 
-// 2. Rendu Bureau Exécutif (Les 11 Postes Officiels)
+// 2. Rendu Bureau Exécutif (Dynamique avec Gestion Complète)
 function renderBureau() {
   const data = TAGBA_DB.get();
   const grid = document.getElementById('bureauGrid');
+  const countBadge = document.getElementById('bureauCountBadge');
+  if (countBadge) countBadge.textContent = (data.bureau || []).length;
   if (!grid) return;
+
+  if (!data.bureau || data.bureau.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; background: var(--bg-card); border: 2px dashed rgba(255,255,255,0.12); border-radius: var(--radius-lg);">
+        <div style="font-size: 42px; margin-bottom: 12px;">🏛️</div>
+        <h3 style="margin-bottom: 8px; font-size: 18px;">Aucun membre actuellement dans le Bureau Exécutif</h3>
+        <p style="color: var(--text-muted); max-width: 520px; margin: 0 auto 24px auto; font-size: 14px; line-height: 1.5;">
+          Vous pouvez ajouter vos membres poste par poste ou initialiser directement les 13 postes statutaires prévus par les Statuts officiels de la Mutuelle TAGBA.
+        </p>
+        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+          <button type="button" class="btn btn-secondary" onclick="initStatutoryBureauPrompt()">
+            ⚡ Initialiser les 13 Postes Statutaires
+          </button>
+          <button type="button" class="btn btn-primary" onclick="openModal('modalAddBureau')">
+            + Ajouter un Membre / Poste
+          </button>
+        </div>
+      </div>
+    `;
+    return;
+  }
 
   grid.innerHTML = data.bureau.map(post => {
     let cardClass = 'bureau-card';
@@ -698,16 +721,19 @@ function renderBureau() {
           <span style="font-size: 14px;">${getRoleIcon(post.role)}</span>
         </div>
         <div class="bureau-person">
-          <div class="bureau-avatar">${post.photoInitial}</div>
+          <div class="bureau-avatar">${post.photoInitial || 'MB'}</div>
           <div class="bureau-details">
             <h4>${post.name}</h4>
-            <p>📞 ${post.phone}</p>
+            <p>📞 ${post.phone || 'Non renseigné'}</p>
           </div>
         </div>
-        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px; flex: 1;">${post.bio}</p>
-        <div class="bureau-meta">
-          <span>✉️ ${post.email}</span>
-          <button class="btn btn-sm btn-secondary" onclick="openEditBureauModal('${post.id}')" title="Modifier">✏️ Modifier</button>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px; flex: 1;">${post.bio || 'Aucune attribution renseignée.'}</p>
+        <div class="bureau-meta" style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+          <span style="font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px;">✉️ ${post.email || '—'}</span>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-sm btn-secondary" onclick="openEditBureauModal('${post.id}')" title="Modifier">✏️ Modifier</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteBureauMemberPrompt('${post.id}', '${(post.role || '').replace(/'/g, "\\'")}')" title="Supprimer">🗑️</button>
+          </div>
         </div>
       </div>
     `;
@@ -1804,6 +1830,7 @@ function openModal(modalId) {
     modalId === 'modalAddFamily' ||
     modalId === 'modalAddEntraide' ||
     modalId === 'modalEditBureau' ||
+    modalId === 'modalAddBureau' ||
     modalId === 'modalAddDepense' ||
     modalId === 'modalAddContributionVolontaire'
   ) {
@@ -2238,9 +2265,42 @@ function bindFormSubmissions() {
       const bio = document.getElementById('editBureauBio').value.trim();
 
       TAGBA_DB.updateBureauMember(burId, name, phone, email, bio);
-      showToast('Poste du Bureau mis à jour');
+      showToast('Poste du Bureau mis à jour', 'success');
       closeModal('modalEditBureau');
       renderBureau();
+      if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+        pushAllDataToSupabase(true);
+      }
+    });
+  }
+
+  // 6-Bis. Ajouter un Membre / Poste au Bureau
+  const formAddBur = document.getElementById('formAddBureau');
+  if (formAddBur) {
+    formAddBur.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!assertPermission('write', 'l’ajout d’un membre du bureau')) return;
+      const role = document.getElementById('addBureauRole').value.trim();
+      const name = document.getElementById('addBureauName').value.trim();
+      const phone = document.getElementById('addBureauPhone').value.trim();
+      const email = document.getElementById('addBureauEmail').value.trim();
+      const bio = document.getElementById('addBureauBio').value.trim();
+
+      TAGBA_DB.addBureauMember({
+        role,
+        name,
+        phone,
+        email,
+        bio
+      });
+
+      showToast(`Membre ajouté au Bureau : ${role} (${name})`, 'success');
+      closeModal('modalAddBureau');
+      formAddBur.reset();
+      renderBureau();
+      if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+        pushAllDataToSupabase(true);
+      }
     });
   }
 
@@ -4279,3 +4339,37 @@ function setupFinanceEventListeners() {
 // Initialiser les écouteurs financiers dès le chargement du script
 setupFinanceEventListeners();
 
+
+
+// Actions Bureau Exécutif
+function initStatutoryBureauPrompt() {
+  if (!assertPermission('write', 'l’initialisation des postes')) return;
+  const data = TAGBA_DB.get();
+  if (data.bureau && data.bureau.length > 0) {
+    if (!confirm('Des postes existent déjà. Voulez-vous initialiser le Bureau avec les 13 postes statutaires prévus par les statuts ?')) return;
+  }
+  TAGBA_DB.initStatutoryBureau();
+  showToast('Les 13 postes statutaires ont été créés ! Cliquez sur "Modifier" pour attribuer chaque titulaire.', 'success');
+  renderBureau();
+  if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+    pushAllDataToSupabase(true);
+  }
+}
+
+function deleteBureauMemberPrompt(burId, roleName) {
+  if (!assertPermission('write', 'la suppression d’un poste')) return;
+  if (!confirm(`Confirmez-vous la suppression du poste "${roleName}" du Bureau ?`)) return;
+  TAGBA_DB.deleteBureauMember(burId);
+  showToast(`Poste "${roleName}" supprimé du Bureau`, 'info');
+  renderBureau();
+  if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+    pushAllDataToSupabase(true);
+  }
+}
+
+function deleteCurrentBureauMemberModal() {
+  const burId = document.getElementById('editBureauId').value;
+  const roleName = document.getElementById('editBureauRole').textContent;
+  closeModal('modalEditBureau');
+  deleteBureauMemberPrompt(burId, roleName);
+}

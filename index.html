@@ -412,14 +412,21 @@
         <!-- ============================================================ -->
         <div class="tab-pane" id="tab-bureau">
           <div class="card-panel" style="margin-bottom: 24px;">
-            <div class="card-header-flex">
+            <div class="card-header-flex" style="flex-wrap: wrap; gap: 12px; align-items: center;">
               <div>
-                <h2>Organigramme du Bureau Exécutif (13 Postes)</h2>
+                <h2>Organigramme du Bureau Exécutif</h2>
                 <p style="font-size: 13px; color: var(--text-muted);">
                   Instance dirigeante élue pour administrer la Mutuelle TAGBA selon les statuts.
                 </p>
               </div>
-              <span class="badge badge-warning" style="font-size: 12px; padding: 6px 14px;">Mandat en cours (2024 - 2027)</span>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="initStatutoryBureauPrompt()" title="Générer les 13 postes officiels prévus par les Statuts">
+                  ⚡ 13 Postes Statutaires
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="openModal('modalAddBureau')">
+                  + Ajouter un Membre / Poste
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1620,6 +1627,59 @@
     </div>
   </div>
 
+  <!-- Modal 5-Bis : Ajouter un Membre / Poste au Bureau -->
+  <div class="modal-overlay" id="modalAddBureau">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>👑 Ajouter un Membre / Poste au Bureau</h3>
+        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddBureau">
+        <div class="form-group">
+          <label class="form-label">Poste / Rôle dans le Bureau *</label>
+          <input type="text" list="rolesSuggestions" class="form-control" id="addBureauRole" placeholder="Ex: Président, Trésorier Général, Secrétaire..." required>
+          <datalist id="rolesSuggestions">
+            <option value="Président">
+            <option value="Vice-Président">
+            <option value="Secrétaire Général">
+            <option value="Vice-Secrétaire">
+            <option value="Trésorier Général">
+            <option value="Vice-Trésorier">
+            <option value="Commissaire aux Comptes">
+            <option value="Vice-Commissaire aux Comptes">
+            <option value="Conseiller 1 (Sagesse & Médiation)">
+            <option value="Conseiller 2 (Organisation & Protocole)">
+            <option value="Conseiller 3 (Jeunesse & Projets)">
+            <option value="Porte-Parole">
+            <option value="Porte-Parole Adjoint">
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nom et Prénoms du Titulaire *</label>
+          <input type="text" class="form-control" id="addBureauName" placeholder="Ex: Ibrahim Koné" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Téléphone</label>
+            <input type="tel" class="form-control" id="addBureauPhone" placeholder="Ex: +225 07 00 00 00 00">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" class="form-control" id="addBureauEmail" placeholder="Ex: contact@tagba.org">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Missions / Attributions / Biographie</label>
+          <textarea class="form-control" id="addBureauBio" rows="2" placeholder="Description du rôle et des responsabilités dans le bureau"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer au Bureau</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal 6 : Édition d'un Membre du Bureau -->
   <div class="modal-overlay" id="modalEditBureau">
     <div class="modal-content">
@@ -1650,9 +1710,12 @@
           <textarea class="form-control" id="editBureauBio" rows="3"></textarea>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
-          <button type="submit" class="btn btn-primary">Enregistrer les Modifications</button>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+          <button type="button" class="btn btn-danger btn-sm" onclick="deleteCurrentBureauMemberModal()">🗑️ Supprimer</button>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+          </div>
         </div>
       </form>
     </div>
