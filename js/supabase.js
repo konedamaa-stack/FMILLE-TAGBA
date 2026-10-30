@@ -606,11 +606,34 @@ CREATE POLICY "Allow public read-write depenses" ON public.depenses FOR ALL USIN
 CREATE POLICY "Allow public read-write contributions_volontaires" ON public.contributions_volontaires FOR ALL USING (true) WITH CHECK (true);
 `;
 
-  navigator.clipboard.writeText(sql).then(() => {
-    showToast('📋 Script SQL copié dans le presse-papier ! Collez-le dans l’éditeur SQL Supabase.');
-  }).catch(() => {
-    showToast('Erreur lors de la copie du script', 'error');
-  });
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(sql).then(() => {
+      showToast('📋 Script SQL copié dans le presse-papier ! Collez-le dans l’éditeur SQL Supabase.');
+    }).catch(() => fallbackCopy(sql));
+  } else {
+    fallbackCopy(sql);
+  }
+
+  function fallbackCopy(text) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (ok) {
+        showToast('📋 Script SQL copié dans le presse-papier !');
+      } else {
+        showToast('Veuillez copier manuellement le script', 'warning');
+      }
+    } catch(err) {
+      showToast('Veuillez copier manuellement le script', 'warning');
+    }
+  }
 }
 
 // ============================================================

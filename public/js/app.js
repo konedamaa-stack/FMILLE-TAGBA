@@ -4,13 +4,23 @@
 
 // Helper de formatage de monnaie
 function formatMoney(amount, currency = 'FCFA') {
-  return new Intl.NumberFormat('fr-FR').format(amount) + ' ' + currency;
+  try {
+    const num = Number(amount) || 0;
+    return new Intl.NumberFormat('fr-FR').format(num) + ' ' + currency;
+  } catch(e) {
+    return String(Math.round(Number(amount) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ' + currency;
+  }
 }
 
-// Helper Toast Notification
+// Helper Toast Notification (Sécurisé tous navigateurs)
 function showToast(message, type = 'success') {
-  const container = document.getElementById('toastContainer');
-  if (!container) return;
+  let container = document.getElementById('toastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'toastContainer';
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
   const toast = document.createElement('div');
   toast.className = 'toast';
   if (type === 'error') toast.style.borderLeftColor = 'var(--rose-500)';

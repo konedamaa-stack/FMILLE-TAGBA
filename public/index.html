@@ -2,14 +2,72 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>TAGBA - Association Mutuelle & Entraide Familiale</title>
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  
+  <!-- Mobile & PWA Compatibility -->
   <meta name="theme-color" content="#059669">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="TAGBA">
+  <meta name="format-detection" content="telephone=no">
+
+  <!-- Icons & Manifest -->
+  <link rel="stylesheet" href="css/style.css?v=20261030-v8">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+
+  <!-- Polyfill & Bouclier Multi-Navigateurs (Safari Privé, Incognito, WebViews, Anciens Navigateurs) -->
+  <script>
+    (function() {
+      // 1. Polyfill sécurisé pour LocalStorage & SessionStorage
+      var storageWorks = false;
+      try {
+        var testKey = '__tagba_test_storage__';
+        window.localStorage.setItem(testKey, testKey);
+        window.localStorage.removeItem(testKey);
+        storageWorks = true;
+      } catch (e) {
+        storageWorks = false;
+      }
+
+      if (!storageWorks) {
+        console.warn('[TAGBA] Stockage local restreint (Navigation Privée / WebView). Activation du stockage mémoire temporaire.');
+        var memStorage = {};
+        try {
+          Object.defineProperty(window, 'localStorage', {
+            value: {
+              getItem: function(k) { return memStorage.hasOwnProperty(k) ? memStorage[k] : null; },
+              setItem: function(k, v) { memStorage[k] = String(v); },
+              removeItem: function(k) { delete memStorage[k]; },
+              clear: function() { memStorage = {}; },
+              key: function(i) { return Object.keys(memStorage)[i] || null; },
+              get length() { return Object.keys(memStorage).length; }
+            },
+            writable: true,
+            configurable: true
+          });
+        } catch(err) {
+          window.localStorage = {
+            getItem: function(k) { return memStorage.hasOwnProperty(k) ? memStorage[k] : null; },
+            setItem: function(k, v) { memStorage[k] = String(v); },
+            removeItem: function(k) { delete memStorage[k]; },
+            clear: function() { memStorage = {}; },
+            key: function(i) { return Object.keys(memStorage)[i] || null; },
+            get length() { return Object.keys(memStorage).length; }
+          };
+        }
+      }
+
+      // 2. Sécurisation console
+      if (!window.console) {
+        window.console = { log: function(){}, warn: function(){}, error: function(){}, info: function(){} };
+      }
+    })();
+  </script>
 </head>
 <body>
 
@@ -2081,9 +2139,9 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261010-02"></script>
-  <script src="js/supabase.js?v=20261010-02"></script>
-  <script src="js/app.js?v=20261010-02"></script>
+  <script src="js/data.js?v=20261030-v8"></script>
+  <script src="js/supabase.js?v=20261030-v8"></script>
+  <script src="js/app.js?v=20261030-v8"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
