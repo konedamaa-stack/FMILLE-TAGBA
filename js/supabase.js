@@ -1,18 +1,5 @@
-
-// Suppression directe d'une cotisation dans Supabase
-async function deleteCotisationFromSupabase(cotId) {
-  const client = getSupabaseClient();
-  if (!client) return;
-  try {
-    const { error } = await client.from('cotisations').delete().eq('id', cotId);
-    if (error) console.warn('[Supabase] Erreur suppression cotisation:', error);
-  } catch (err) {
-    console.warn('[Supabase] Erreur suppression:', err);
-  }
-}
-
 /**
- * TAGBA - Supabase Cloud Synchronization & Client
+ * TAGBA - Supabase Cloud Synchronization, Realtime & Client
  * Projet : quxnhuelshtaflsxedoi
  */
 
@@ -24,6 +11,10 @@ const TAGBA_SUPABASE_CONFIG = {
 };
 
 let tagbaSupabaseClient = null;
+let tagbaRealtimeChannel = null;
+let isSyncingToCloud = false;
+let isPullingFromCloud = false;
+let autoSyncTimer = null;
 
 function getSupabaseClient() {
   if (tagbaSupabaseClient) return tagbaSupabaseClient;
@@ -36,6 +27,158 @@ function getSupabaseClient() {
   return tagbaSupabaseClient;
 }
 
+// Mise à jour visuelle du badge de statut
+function updateSyncStatusBadge(status, customText = '') {
+  const statusBadge = document.getElementById('supabaseStatusBadge');
+  const detailsEl = document.getElementById('supabaseStatusDetails');
+
+  if (statusBadge) {
+    if (status === 'connected') {
+      statusBadge.className = 'badge badge-success';
+      statusBadge.innerHTML = '🟢 Cloud Temps Réel Actif';
+      statusBadge.style.background = 'rgba(16, 185, 129, 0.2)';
+      statusBadge.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+      statusBadge.style.color = 'var(--emerald-400)';
+    } else if (status === 'syncing') {
+      statusBadge.className = 'badge badge-warning';
+      statusBadge.innerHTML = '⏳ Synchronisation...';
+      statusBadge.style.background = 'rgba(245, 158, 11, 0.2)';
+      statusBadge.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+      statusBadge.style.color = 'var(--amber-400)';
+    } else if (status === 'offline') {
+      statusBadge.className = 'badge badge-danger';
+      statusBadge.innerHTML = '🔴 Hors-Ligne (Stockage Local)';
+      statusBadge.style.background = 'rgba(239, 68, 68, 0.2)';
+      statusBadge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+      statusBadge.style.color = 'var(--rose-400)';
+    } else if (status === 'error') {
+      statusBadge.className = 'badge badge-danger';
+      statusBadge.innerHTML = '⚠️ Erreur Cloud';
+    }
+  }
+
+  if (detailsEl && customText) {
+    detailsEl.innerHTML = customText;
+  }
+}
+
+// Configuration du canal Realtime Supabase (Postgres Changes + Broadcast instantané)
+function setupSupabaseRealtime() {
+  const client = getSupabaseClient();
+  if (!client || tagbaRealtimeChannel) return;
+
+  try {
+    tagbaRealtimeChannel = client.channel('tagba-live-sync-v1', {
+      config: { broadcast: { self: false } }
+    });
+
+    // 1. Réception instantanée d'un broadcast émis par un autre appareil (PC, téléphone, etc.)
+    tagbaRealtimeChannel.on('broadcast', { event: 'tagba_data_changed' }, (payload) => {
+      console.log('⚡ [Realtime] Notification de mise à jour reçue d’un autre appareil :', payload);
+      pullAllDataFromSupabase(true, true);
+    });
+
+    // 2. Réception directe des mutations Postgres
+    tagbaRealtimeChannel.on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+      console.log('⚡ [Realtime] Événement base Postgres détecté :', payload);
+      pullAllDataFromSupabase(true, true);
+    });
+
+    tagbaRealtimeChannel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log('⚡ [Realtime] Connecté au canal temps réel Supabase !');
+        updateSyncStatusBadge('connected');
+      }
+    });
+  } catch (err) {
+    console.warn('[Realtime] Erreur initialisation :', err);
+  }
+}
+
+// Émission d'un broadcast à tous les autres appareils connectés
+function broadcastDataChanged() {
+  if (tagbaRealtimeChannel) {
+    tagbaRealtimeChannel.send({
+      type: 'broadcast',
+      event: 'tagba_data_changed',
+      payload: { timestamp: Date.now() }
+    }).catch(err => console.warn('[Realtime] Erreur envoi broadcast:', err));
+  }
+}
+
+// Déclenchement automatique de la synchronisation (Debounced)
+window.autoSyncWithSupabase = function() {
+  if (!navigator.onLine) {
+    updateSyncStatusBadge('offline');
+    return;
+  }
+  if (autoSyncTimer) clearTimeout(autoSyncTimer);
+  autoSyncTimer = setTimeout(() => {
+    pushAllDataToSupabase(true);
+  }, 400);
+};
+
+// Suppression directe d'enregistrements spécifiques dans les tables Supabase
+async function deleteMemberFromSupabase(memberId) {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    await client.from('members').delete().eq('id', memberId);
+  } catch (err) {
+    console.warn('[Supabase] Erreur suppression membre:', err);
+  }
+}
+
+async function deleteFamilyFromSupabase(familyId) {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    await client.from('families').delete().eq('id', familyId);
+  } catch (err) {
+    console.warn('[Supabase] Erreur suppression famille:', err);
+  }
+}
+
+async function deleteBureauMemberFromSupabase(burId) {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    await client.from('bureau').delete().eq('id', burId);
+  } catch (err) {
+    console.warn('[Supabase] Erreur suppression bureau:', err);
+  }
+}
+
+async function deleteCotisationFromSupabase(cotId) {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    await client.from('cotisations').delete().eq('id', cotId);
+  } catch (err) {
+    console.warn('[Supabase] Erreur suppression cotisation:', err);
+  }
+}
+
+async function deleteEntraideFromSupabase(casId) {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    await client.from('entraide').delete().eq('id', casId);
+  } catch (err) {
+    console.warn('[Supabase] Erreur suppression entraide:', err);
+  }
+}
+
+async function deleteCeremonieFromSupabase(cerId) {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    await client.from('ceremonies').delete().eq('id', cerId);
+  } catch (err) {
+    console.warn('[Supabase] Erreur suppression ceremonie:', err);
+  }
+}
+
 // Test de connectivité ou ouverture du panneau de synchronisation
 async function testSupabaseCloudConnection(testOnly = false) {
   if (!testOnly && typeof openModal === 'function' && document.getElementById('modalCloudSync')) {
@@ -43,189 +186,173 @@ async function testSupabaseCloudConnection(testOnly = false) {
     return true;
   }
 
-  const statusBadge = document.getElementById('supabaseStatusBadge');
+  updateSyncStatusBadge('syncing');
   const detailsEl = document.getElementById('supabaseStatusDetails');
-
-  if (statusBadge) {
-    statusBadge.className = 'badge badge-warning';
-    statusBadge.textContent = '⏳ Test en cours...';
-  }
 
   const client = getSupabaseClient();
   if (!client) {
-    if (statusBadge) {
-      statusBadge.className = 'badge badge-danger';
-      statusBadge.textContent = '❌ SDK Supabase non chargé';
-    }
+    updateSyncStatusBadge('error');
+    if (detailsEl) detailsEl.textContent = 'SDK Supabase non chargé';
     return false;
   }
 
   try {
-    const { data, error } = await client.from('members').select('count', { count: 'exact', head: true });
-    
-    if (error) {
-      if (error.code === 'PGRST205' || (error.message && error.message.includes('Could not find the table'))) {
-        if (statusBadge) {
-          statusBadge.className = 'badge badge-warning';
-          statusBadge.textContent = '⚠️ Connecté (Tables à créer)';
-        }
-        if (detailsEl) {
-          detailsEl.innerHTML = `
-            <span style="color: var(--amber-400);">Projet actif et connecté !</span><br>
-            Les tables n'ont pas encore été créées dans la base de données.<br>
-            <button class="btn btn-sm btn-gold" style="margin-top: 8px;" onclick="openSupabaseSQLEditor()">
-              📋 Ouvrir SQL Editor Supabase & Créer les Tables
-            </button>
-          `;
-        }
-        return true;
-      } else {
-        throw error;
+    const { error } = await client.from('app_config').select('key').limit(1);
+    if (error && error.code === 'PGRST205') {
+      updateSyncStatusBadge('warning');
+      if (detailsEl) {
+        detailsEl.innerHTML = `
+          <span style="color: var(--amber-400);">Projet connecté, tables à créer.</span><br>
+          <button class="btn btn-sm btn-gold" style="margin-top: 8px;" onclick="openSupabaseSQLEditor()">
+            📋 Ouvrir SQL Editor Supabase & Créer les Tables
+          </button>
+        `;
       }
+      return true;
     }
-
-    // Tables existantes et accessibles !
-    if (statusBadge) {
-      statusBadge.className = 'badge badge-success';
-      statusBadge.textContent = '🟢 Connecté & Synchronisé';
-    }
+    updateSyncStatusBadge('connected');
     if (detailsEl) {
-      detailsEl.innerHTML = `<span style="color: var(--emerald-400);">Connexion au Cloud Supabase 100% opérationnelle. Données accessibles en temps réel.</span>`;
+      detailsEl.innerHTML = `<span style="color: var(--emerald-400);">Connexion au Cloud Supabase 100% opérationnelle. Données synchronisées en direct.</span>`;
     }
     showToast('🟢 Connecté avec succès au Cloud Supabase !');
     return true;
   } catch (err) {
-    console.error('Erreur Supabase:', err);
-    if (statusBadge) {
-      statusBadge.className = 'badge badge-danger';
-      statusBadge.textContent = '❌ Erreur de Connexion';
-    }
-    if (detailsEl) {
-      detailsEl.textContent = err.message || 'Erreur de connexion à Supabase';
-    }
+    console.error('Erreur test Supabase:', err);
+    updateSyncStatusBadge('error');
+    if (detailsEl) detailsEl.textContent = err.message || 'Erreur de connexion';
     return false;
   }
 }
 
 // Envoi complet des données locales vers Supabase (Push)
 async function pushAllDataToSupabase(silent = false) {
+  if (isSyncingToCloud) return;
   const client = getSupabaseClient();
   if (!client) {
     if (!silent) showToast('SDK Supabase introuvable', 'error');
     return;
   }
 
+  isSyncingToCloud = true;
   if (!silent) showToast('⏳ Synchronisation vers Supabase en cours...', 'info');
+  updateSyncStatusBadge('syncing');
+
   const localData = TAGBA_DB.get();
+  localData.lastModified = Date.now();
 
   try {
-    // 1. Families
+    // 1. Sauvegarde intégrale absolue dans app_config (Source unique de vérité atomique)
+    const { error: errFull } = await client.from('app_config').upsert([
+      {
+        key: 'tagba_full_data',
+        value: localData,
+        updated_at: new Date().toISOString()
+      },
+      {
+        key: 'main_config',
+        value: localData.config || {},
+        updated_at: new Date().toISOString()
+      }
+    ]);
+    if (errFull) throw errFull;
+
+    // 2. Synchronisation parallèle des tables relationnelles
+    const promises = [];
+
     if (localData.families && localData.families.length > 0) {
       const famRows = localData.families.map(f => ({
         id: f.id,
         code: f.code || 'FAM',
         name: f.name,
         chef_de_famille: f.chefDeFamille,
-        phone: f.phone,
-        city: f.city,
-        notes: f.notes
+        phone: f.phone || '',
+        city: f.city || '',
+        notes: f.notes || ''
       }));
-      const { error: errFam } = await client.from('families').upsert(famRows);
-      if (errFam) throw errFam;
+      promises.push(client.from('families').upsert(famRows));
     }
 
-    // 2. Members
     if (localData.members && localData.members.length > 0) {
       const memRows = localData.members.map(m => ({
         id: m.id,
         matricule: m.matricule,
         full_name: m.fullName,
-        family_id: m.familyId,
-        is_chef: Boolean(m.isChef),
-        relation_to_chef: m.relationToChef,
-        phone: m.phone,
-        profession: m.profession,
-        residence: m.residence,
-        statut_cotisation: m.statutCotisation
+        family_id: m.familyId || null,
+        is_chef: Boolean(m.is_chef),
+        relation_to_chef: m.relationToChef || 'Membre',
+        phone: m.phone || '',
+        profession: m.profession || '',
+        residence: m.residence || '',
+        statut_cotisation: m.statutCotisation || 'A_JOUR'
       }));
-      const { error: errMem } = await client.from('members').upsert(memRows);
-      if (errMem) throw errMem;
+      promises.push(client.from('members').upsert(memRows));
     }
 
-    // 3. Bureau
     if (localData.bureau && localData.bureau.length > 0) {
       const burRows = localData.bureau.map(b => ({
         id: b.id,
         role: b.role,
         name: b.name,
-        phone: b.phone,
-        email: b.email,
-        bio: b.bio,
-        photo_initial: b.photoInitial,
+        phone: b.phone || '',
+        email: b.email || '',
+        bio: b.bio || '',
+        photo_initial: b.photoInitial || 'MB',
         level: b.level || 3
       }));
-      const { error: errBur } = await client.from('bureau').upsert(burRows);
-      if (errBur) throw errBur;
+      promises.push(client.from('bureau').upsert(burRows));
     }
 
-    // 4. Cotisations
     if (localData.cotisations && localData.cotisations.length > 0) {
       const cotRows = localData.cotisations.map(c => ({
         id: c.id,
         recu_num: c.recuNum,
-        member_id: c.memberId,
-        member_name: c.memberName,
-        family_id: c.familyId,
-        type: c.type,
-        periode: c.periode,
+        member_id: c.memberId || null,
+        member_name: c.memberName || '',
+        family_id: c.familyId || null,
+        type: c.type || 'Mensuel',
+        periode: c.periode || '',
         montant: Number(c.montant || 0),
-        mode_paiement: c.modePaiement,
+        mode_paiement: c.modePaiement || 'Espèces',
         date_paiement: c.datePaiement,
-        agent: c.agent,
-        payeur_chef: c.payeurChef,
+        agent: c.agent || '',
+        payeur_chef: c.payeurChef || '',
         batch_ref: c.batchRef || null
       }));
-      const { error: errCot } = await client.from('cotisations').upsert(cotRows);
-      if (errCot) throw errCot;
+      promises.push(client.from('cotisations').upsert(cotRows));
     }
 
-    // 5. Entraide
     if (localData.entraide && localData.entraide.length > 0) {
       const entRows = localData.entraide.map(e => ({
         id: e.id,
         reference: e.reference,
-        member_id: e.memberId,
-        member_name: e.memberName,
+        member_id: e.memberId || null,
+        member_name: e.memberName || '',
         nature: e.nature,
-        description: e.description,
+        description: e.description || '',
         montant_alloue: Number(e.montantAlloue || 0),
         statut: e.statut,
         date_resolution: e.dateResolution || null
       }));
-      const { error: errEnt } = await client.from('entraide').upsert(entRows);
-      if (errEnt) throw errEnt;
+      promises.push(client.from('entraide').upsert(entRows));
     }
 
-    // 6. Cérémonies
     if (localData.ceremonies && localData.ceremonies.length > 0) {
       const cerRows = localData.ceremonies.map(c => ({
         id: c.id,
         titre: c.titre,
         type: c.type,
-        family_id: c.familyId,
-        organisateur: c.organisateur,
+        family_id: c.familyId || null,
+        organisateur: c.organisateur || '',
         date: c.date,
-        lieu: c.lieu,
+        lieu: c.lieu || '',
         enveloppe_soutien: Number(c.enveloppeSoutien || 0),
-        delegation_bureau: c.delegationBureau,
-        description: c.description,
-        statut: c.statut
+        delegation_bureau: c.delegationBureau || '',
+        description: c.description || '',
+        statut: c.statut || 'À venir'
       }));
-      const { error: errCer } = await client.from('ceremonies').upsert(cerRows);
-      if (errCer) throw errCer;
+      promises.push(client.from('ceremonies').upsert(cerRows));
     }
 
-    // 7. Dépenses (avec sécurité si la table n'est pas encore créée)
     if (localData.depenses && localData.depenses.length > 0) {
       try {
         const depRows = localData.depenses.map(d => ({
@@ -245,21 +372,18 @@ async function pushAllDataToSupabase(silent = false) {
           justificatif: d.justificatif,
           valide_par: d.validePar
         }));
-        await client.from('depenses').upsert(depRows);
-      } catch (errDep) {
-        console.warn('Note: Table depenses gérée via app_config:', errDep);
-      }
+        promises.push(client.from('depenses').upsert(depRows));
+      } catch (_) {}
     }
 
-    // 8. Contributions Volontaires (avec sécurité si la table n'est pas encore créée)
     if (localData.contributionsVolontaires && localData.contributionsVolontaires.length > 0) {
       try {
         const donRows = localData.contributionsVolontaires.map(don => ({
           id: don.id,
           recu_num: don.recuNum,
-          member_id: don.memberId,
+          member_id: don.memberId || null,
           member_name: don.memberName,
-          family_id: don.familyId,
+          family_id: don.familyId || null,
           family_chef: don.familyChef,
           cible_type: don.cibleType,
           cible_id: don.cibleId,
@@ -270,60 +394,82 @@ async function pushAllDataToSupabase(silent = false) {
           note: don.note,
           agent: don.agent
         }));
-        await client.from('contributions_volontaires').upsert(donRows);
-      } catch (errDon) {
-        console.warn('Note: Table contributions_volontaires gérée via app_config:', errDon);
-      }
+        promises.push(client.from('contributions_volontaires').upsert(donRows));
+      } catch (_) {}
     }
 
-    // 9. Sauvegarde intégrale absolue dans app_config (Garantie de restauration à 100%)
-    await client.from('app_config').upsert([
-      {
-        key: 'tagba_full_data',
-        value: localData,
-        updated_at: new Date().toISOString()
-      },
-      {
-        key: 'main_config',
-        value: localData.config || {},
-        updated_at: new Date().toISOString()
-      }
-    ]);
+    await Promise.allSettled(promises);
 
-    showToast('☁️ Toutes les données ont été synchronisées avec succès vers Supabase !');
-    testSupabaseCloudConnection(true);
+    // 3. Diffuser l'alerte à tous les autres appareils en temps réel
+    broadcastDataChanged();
+
+    updateSyncStatusBadge('connected');
+    if (!silent) showToast('☁️ Toutes les données ont été synchronisées vers Supabase !');
   } catch (err) {
-    console.error('Erreur synchronisation push:', err);
-    showToast(`Erreur lors de la synchronisation : ${err.message}`, 'error');
+    console.error('Erreur push Supabase:', err);
+    updateSyncStatusBadge('error');
+    if (!silent) showToast(`Erreur lors de la synchronisation : ${err.message}`, 'error');
+  } finally {
+    isSyncingToCloud = false;
   }
 }
 
 // Récupération des données depuis Supabase vers le local (Pull)
-async function pullAllDataFromSupabase(silent = false) {
+async function pullAllDataFromSupabase(silent = false, force = false) {
+  if (isPullingFromCloud || isSyncingToCloud) return;
   const client = getSupabaseClient();
   if (!client) {
     if (!silent) showToast('SDK Supabase introuvable', 'error');
     return;
   }
 
+  isPullingFromCloud = true;
   if (!silent) showToast('⏳ Téléchargement depuis Supabase en cours...', 'info');
 
   try {
-    // 1. Tenter d'abord la récupération du snapshot complet ultra-rapide
-    try {
-      const { data: fullCfg, error: errFull } = await client.from('app_config').select('*').eq('key', 'tagba_full_data').maybeSingle();
-      if (!errFull && fullCfg && fullCfg.value && Array.isArray(fullCfg.value.members) && fullCfg.value.members.length > 0) {
-        TAGBA_DB.save(fullCfg.value);
-        renderAllViews();
-        loadConfigForm();
-        if (!silent) showToast('✅ Données mises à jour avec succès depuis le Cloud Supabase !');
+    const localData = TAGBA_DB.get();
+    const localHasData = (localData.members && localData.members.length > 0) ||
+                         (localData.families && localData.families.length > 0) ||
+                         (localData.cotisations && localData.cotisations.length > 0);
+    const localLastModified = Number(localData.lastModified || 0);
+
+    // 1. Lire le snapshot atomique tagba_full_data dans app_config
+    const { data: fullCfg, error: errFull } = await client.from('app_config').select('*').eq('key', 'tagba_full_data').maybeSingle();
+
+    if (!errFull && fullCfg && fullCfg.value) {
+      const cloudSnap = fullCfg.value;
+      const cloudUpdatedAt = fullCfg.updated_at ? new Date(fullCfg.updated_at).getTime() : 0;
+      const cloudHasData = (cloudSnap.members && cloudSnap.members.length > 0) ||
+                           (cloudSnap.families && cloudSnap.families.length > 0) ||
+                           (cloudSnap.cotisations && cloudSnap.cotisations.length > 0) ||
+                           (cloudSnap.bureau && cloudSnap.bureau.length > 0);
+
+      // CAS A : Le Cloud est vierge, mais cet appareil local a des données réelles -> Auto-Push vers le Cloud !
+      if (!force && localHasData && !cloudHasData) {
+        console.log('[Supabase Sync] Données locales présentes alors que le Cloud est vierge -> Synchronisation push prioritaire');
+        isPullingFromCloud = false;
+        await pushAllDataToSupabase(true);
         return;
       }
-    } catch (eFull) {
-      console.warn('Fallback vers les tables individuelles:', eFull);
+
+      // CAS B : Le Cloud possède des données valides
+      if (cloudHasData) {
+        // Si forcé, ou si le Cloud est plus récent, ou si l'appareil local est vierge
+        if (force || cloudUpdatedAt >= localLastModified || !localHasData) {
+          console.log('[Supabase Sync] Application du snapshot Cloud le plus récent');
+          TAGBA_DB.save(cloudSnap, true); // skipSync = true évite la boucle d'écho
+          renderAllViews();
+          loadConfigForm();
+          updateSyncStatusBadge('connected');
+          if (!silent) showToast('✅ Données mises à jour avec succès depuis le Cloud Supabase !');
+          isPullingFromCloud = false;
+          return;
+        }
+      }
     }
 
-    const [famRes, memRes, burRes, cotRes, entRes, cerRes, depRes, donRes, cfgRes] = await Promise.all([
+    // 2. Fallback : Interroger les tables individuelles si tagba_full_data n'est pas encore initialisé
+    const [famRes, memRes, burRes, cotRes, entRes, cerRes, depRes, donRes, cfgRes] = await Promise.allSettled([
       client.from('families').select('*'),
       client.from('members').select('*'),
       client.from('bureau').select('*'),
@@ -335,129 +481,140 @@ async function pullAllDataFromSupabase(silent = false) {
       client.from('app_config').select('*').eq('key', 'main_config').maybeSingle()
     ]);
 
-    if (famRes.error) throw famRes.error;
+    const famData = famRes.status === 'fulfilled' && famRes.value.data ? famRes.value.data : [];
+    const memData = memRes.status === 'fulfilled' && memRes.value.data ? memRes.value.data : [];
+    const burData = burRes.status === 'fulfilled' && burRes.value.data ? burRes.value.data : [];
+    const cotData = cotRes.status === 'fulfilled' && cotRes.value.data ? cotRes.value.data : [];
+    const entData = entRes.status === 'fulfilled' && entRes.value.data ? entRes.value.data : [];
+    const cerData = cerRes.status === 'fulfilled' && cerRes.value.data ? cerRes.value.data : [];
+    const depData = depRes.status === 'fulfilled' && depRes.value.data ? depRes.value.data : [];
+    const donData = donRes.status === 'fulfilled' && donRes.value.data ? donRes.value.data : [];
+    const cfgData = cfgRes.status === 'fulfilled' && cfgRes.value.data && cfgRes.value.data.value ? cfgRes.value.data.value : null;
 
-    const currentLocal = TAGBA_DB.get();
+    const relationalHasData = famData.length > 0 || memData.length > 0 || burData.length > 0 || cotData.length > 0;
 
-    const cloudData = {
-      config: cfgRes.data && cfgRes.data.value ? cfgRes.data.value : currentLocal.config,
-      bureau: burRes.data && burRes.data.length > 0 ? burRes.data.map(b => ({
-        id: b.id,
-        role: b.role,
-        name: b.name,
-        phone: b.phone,
-        email: b.email,
-        bio: b.bio,
-        photoInitial: b.photo_initial,
-        level: b.level
-      })) : currentLocal.bureau,
-      families: famRes.data && famRes.data.length > 0 ? famRes.data.map(f => ({
-        id: f.id,
-        code: f.code || 'FAM',
-        name: f.name,
-        chefDeFamille: f.chef_de_famille || f.chefDeFamille || 'Chef de famille',
-        phone: f.phone || '',
-        city: f.city || '',
-        notes: f.notes || ''
-      })) : (currentLocal.families && currentLocal.families.length > 0 ? currentLocal.families : []),
-      members: memRes.data ? memRes.data.map(m => ({
-        id: m.id,
-        matricule: m.matricule,
-        fullName: m.full_name,
-        familyId: m.family_id,
-        isChef: m.is_chef,
-        relationToChef: m.relation_to_chef,
-        phone: m.phone,
-        profession: m.profession,
-        residence: m.residence,
-        statutCotisation: m.statut_cotisation
-      })) : [],
-      cotisations: cotRes.data ? cotRes.data.map(c => ({
-        id: c.id,
-        recuNum: c.recu_num,
-        memberId: c.member_id,
-        memberName: c.member_name,
-        familyId: c.family_id,
-        type: c.type,
-        periode: c.periode,
-        montant: Number(c.montant),
-        modePaiement: c.mode_paiement,
-        datePaiement: c.date_paiement,
-        agent: c.agent,
-        payeurChef: c.payeur_chef,
-        batchRef: c.batch_ref
-      })) : [],
-      entraide: entRes.data ? entRes.data.map(e => ({
-        id: e.id,
-        reference: e.reference,
-        memberId: e.member_id,
-        memberName: e.member_name,
-        nature: e.nature,
-        description: e.description,
-        montantAlloue: Number(e.montant_alloue),
-        statut: e.statut,
-        dateResolution: e.date_resolution
-      })) : [],
-      ceremonies: cerRes.data ? cerRes.data.map(c => ({
-        id: c.id,
-        titre: c.titre,
-        type: c.type,
-        familyId: c.family_id,
-        organisateur: c.organisateur,
-        date: c.date,
-        lieu: c.lieu,
-        enveloppeSoutien: Number(c.enveloppe_soutien),
-        delegationBureau: c.delegation_bureau,
-        description: c.description,
-        statut: c.statut
-      })) : [],
-      depenses: depRes.data ? depRes.data.map(d => ({
-        id: d.id,
-        recuNum: d.recu_num,
-        titre: d.titre,
-        categorie: d.categorie,
-        cibleType: d.cible_type,
-        cibleId: d.cible_id,
-        cibleTitre: d.cible_titre,
-        beneficiaire: d.beneficiaire,
-        montantTotal: Number(d.montant_total),
-        partCaisse: Number(d.part_caisse),
-        partVolontaire: Number(d.part_volontaire),
-        datePaiement: d.date_paiement,
-        modePaiement: d.mode_paiement,
-        justificatif: d.justificatif,
-        validePar: d.valide_par
-      })) : (currentLocal.depenses || []),
-      contributionsVolontaires: donRes.data ? donRes.data.map(don => ({
-        id: don.id,
-        recuNum: don.recu_num,
-        memberId: don.member_id,
-        memberName: don.member_name,
-        familyId: don.family_id,
-        familyChef: don.family_chef,
-        cibleType: don.cible_type,
-        cibleId: don.cible_id,
-        cibleTitre: don.cible_titre,
-        montant: Number(don.montant),
-        modePaiement: don.mode_paiement,
-        datePaiement: don.date_paiement,
-        note: don.note,
-        agent: don.agent
-      })) : (currentLocal.contributionsVolontaires || [])
-    };
+    if (relationalHasData || force) {
+      const reconstructedData = {
+        config: cfgData || localData.config,
+        bureau: burData.length > 0 ? burData.map(b => ({
+          id: b.id,
+          role: b.role,
+          name: b.name,
+          phone: b.phone || '',
+          email: b.email || '',
+          bio: b.bio || '',
+          photoInitial: b.photo_initial || 'MB',
+          level: b.level || 3
+        })) : localData.bureau,
+        families: famData.length > 0 ? famData.map(f => ({
+          id: f.id,
+          code: f.code || 'FAM',
+          name: f.name,
+          chefDeFamille: f.chef_de_famille || 'Chef de famille',
+          phone: f.phone || '',
+          city: f.city || '',
+          notes: f.notes || ''
+        })) : localData.families,
+        members: memData.length > 0 ? memData.map(m => ({
+          id: m.id,
+          matricule: m.matricule,
+          fullName: m.full_name,
+          familyId: m.family_id,
+          isChef: Boolean(m.is_chef),
+          relationToChef: m.relation_to_chef || 'Membre',
+          phone: m.phone || '',
+          profession: m.profession || '',
+          residence: m.residence || '',
+          statutCotisation: m.statut_cotisation || 'A_JOUR'
+        })) : localData.members,
+        cotisations: cotData.length > 0 ? cotData.map(c => ({
+          id: c.id,
+          recuNum: c.recu_num,
+          memberId: c.member_id,
+          memberName: c.member_name,
+          familyId: c.family_id,
+          type: c.type,
+          periode: c.periode,
+          montant: Number(c.montant || 0),
+          modePaiement: c.mode_paiement,
+          datePaiement: c.date_paiement,
+          agent: c.agent,
+          payeurChef: c.payeur_chef,
+          batchRef: c.batch_ref
+        })) : localData.cotisations,
+        entraide: entData.length > 0 ? entData.map(e => ({
+          id: e.id,
+          reference: e.reference,
+          memberId: e.member_id,
+          memberName: e.member_name,
+          nature: e.nature,
+          description: e.description,
+          montantAlloue: Number(e.montant_alloue || 0),
+          statut: e.statut,
+          dateResolution: e.date_resolution
+        })) : localData.entraide,
+        ceremonies: cerData.length > 0 ? cerData.map(c => ({
+          id: c.id,
+          titre: c.titre,
+          type: c.type,
+          familyId: c.family_id,
+          organisateur: c.organisateur,
+          date: c.date,
+          lieu: c.lieu,
+          enveloppeSoutien: Number(c.enveloppe_soutien || 0),
+          delegationBureau: c.delegation_bureau,
+          description: c.description,
+          statut: c.statut
+        })) : localData.ceremonies,
+        depenses: depData.length > 0 ? depData.map(d => ({
+          id: d.id,
+          recuNum: d.recu_num,
+          titre: d.titre,
+          categorie: d.categorie,
+          cibleType: d.cible_type,
+          cibleId: d.cible_id,
+          cibleTitre: d.cible_titre,
+          beneficiaire: d.beneficiaire,
+          montantTotal: Number(d.montant_total || 0),
+          partCaisse: Number(d.part_caisse || 0),
+          partVolontaire: Number(d.part_volontaire || 0),
+          datePaiement: d.date_paiement,
+          modePaiement: d.mode_paiement,
+          justificatif: d.justificatif,
+          validePar: d.valide_par
+        })) : (localData.depenses || []),
+        contributionsVolontaires: donData.length > 0 ? donData.map(don => ({
+          id: don.id,
+          recuNum: don.recu_num,
+          memberId: don.member_id,
+          memberName: don.member_name,
+          familyId: don.family_id,
+          familyChef: don.family_chef,
+          cibleType: don.cible_type,
+          cibleId: don.cible_id,
+          cibleTitre: don.cible_titre,
+          montant: Number(don.montant || 0),
+          modePaiement: don.mode_paiement,
+          datePaiement: don.date_paiement,
+          note: don.note,
+          agent: don.agent
+        })) : (localData.contributionsVolontaires || [])
+      };
 
-    // Mettre à jour en local seulement si le Cloud contient des données
-    if ((memRes.data && memRes.data.length > 0) || (famRes.data && famRes.data.length > 0)) {
-      TAGBA_DB.save(cloudData);
+      TAGBA_DB.save(reconstructedData, true);
       renderAllViews();
       loadConfigForm();
+      updateSyncStatusBadge('connected');
       if (!silent) showToast('✅ Données mises à jour avec succès depuis le Cloud Supabase !');
     } else {
-      if (!silent) showToast('ℹ️ Le Cloud Supabase est vide ou les tables ne contiennent pas encore de données.', 'info');
+      if (!silent) showToast('ℹ️ Le Cloud Supabase est actuellement vierge.', 'info');
     }
   } catch (err) {
     console.error('Erreur pull Supabase:', err);
+    updateSyncStatusBadge('error');
     if (!silent) showToast(`Erreur de récupération : ${err.message}`, 'error');
+  } finally {
+    isPullingFromCloud = false;
   }
 }
 
@@ -650,14 +807,43 @@ CREATE POLICY "Allow public read-write contributions_volontaires" ON public.cont
 }
 
 // ============================================================
-// AUTO-SYNCHRONISATION AU CHARGEMENT DE L'APPLICATION
+// ÉVÉNEMENTS D'AUTO-SYNCHRONISATION MULTI-APPAREILS & MOBILES
 // ============================================================
+
+// 1. Initialisation au chargement de la page
 window.addEventListener('DOMContentLoaded', () => {
+  setupSupabaseRealtime();
   setTimeout(() => {
-    if (navigator.onLine && typeof pullAllDataFromSupabase === 'function') {
+    if (navigator.onLine) {
       pullAllDataFromSupabase(true);
     }
-  }, 1000);
+  }, 350);
 });
 
+// 2. Synchronisation automatique lorsque le téléphone est déverrouillé ou l'onglet redevient actif
+window.addEventListener('visibilitychange', () => {
+  if (!document.hidden && navigator.onLine) {
+    console.log('[TAGBA Sync] Écran réactivé -> Vérification des données Cloud...');
+    setupSupabaseRealtime();
+    pullAllDataFromSupabase(true);
+  }
+});
 
+// 3. Synchronisation quand la fenêtre reprend le focus
+window.addEventListener('focus', () => {
+  if (navigator.onLine) {
+    setupSupabaseRealtime();
+    pullAllDataFromSupabase(true);
+  }
+});
+
+// 4. Synchronisation automatique au retour d'une connexion internet
+window.addEventListener('online', () => {
+  updateSyncStatusBadge('connected');
+  setupSupabaseRealtime();
+  pullAllDataFromSupabase(true);
+});
+
+window.addEventListener('offline', () => {
+  updateSyncStatusBadge('offline');
+});

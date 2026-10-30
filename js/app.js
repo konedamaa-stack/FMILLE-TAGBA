@@ -907,6 +907,9 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
               <button class="btn btn-sm btn-primary" onclick="quickAddMemberToFamily('${fam.id}')" title="Ajouter un membre rattaché à ce chef">
                 + Rattacher Membre
               </button>
+              <button class="btn btn-sm btn-outline-danger" onclick="deleteFamilyConfirm('${fam.id}')" title="Supprimer cette famille">
+                🗑️
+              </button>
             </div>
           </div>
         </div>
@@ -1836,9 +1839,28 @@ function deleteMemberConfirm(memberId) {
   if (!assertPermission('write', 'la suppression d’un membre')) return;
   if (confirm('Êtes-vous sûr de vouloir retirer ce membre de la mutuelle ?')) {
     TAGBA_DB.deleteMember(memberId);
+    if (typeof deleteMemberFromSupabase === 'function') {
+      deleteMemberFromSupabase(memberId);
+    }
     showToast('Membre supprimé avec succès');
     renderAllViews();
   }
+}
+
+function deleteFamilyConfirm(famId) {
+  if (!assertPermission('write', 'la suppression d’une famille')) return;
+  const data = TAGBA_DB.get();
+  const fam = (data.families || []).find(f => f.id === famId);
+  const memCount = (data.members || []).filter(m => m.familyId === famId).length;
+  const msg = `Êtes-vous sûr de vouloir supprimer la famille "${fam ? fam.name : famId}" ?` +
+              (memCount > 0 ? `\nAttention : ${memCount} membre(s) rattaché(s) seront détachés.` : '');
+  if (!confirm(msg)) return;
+  TAGBA_DB.deleteFamily(famId);
+  if (typeof deleteFamilyFromSupabase === 'function') {
+    deleteFamilyFromSupabase(famId);
+  }
+  showToast('Famille supprimée avec succès');
+  renderAllViews();
 }
 
 function accorderEntraide(casId) {

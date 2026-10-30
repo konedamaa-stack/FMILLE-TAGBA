@@ -32,7 +32,8 @@ const defaultData = {
   entraide: [],
   ceremonies: [],
   depenses: [],
-  contributionsVolontaires: []
+  contributionsVolontaires: [],
+  lastModified: 0
 };
 
 // Gestionnaire du Store
@@ -52,13 +53,15 @@ const TAGBA_DB = {
           parsed.ceremonies = Array.isArray(parsed.ceremonies) ? parsed.ceremonies : [];
           parsed.depenses = Array.isArray(parsed.depenses) ? parsed.depenses : [];
           parsed.contributionsVolontaires = Array.isArray(parsed.contributionsVolontaires) ? parsed.contributionsVolontaires : [];
+          parsed.lastModified = Number(parsed.lastModified || 0);
           return parsed;
         }
       }
     } catch (e) {
       console.warn('Erreur lecture localStorage, utilisation données initiales', e);
     }
-    this.save(defaultData);
+    // Nouvel appareil vierge : sauvegarder localement SANS déclencher de push
+    this.save(defaultData, true);
     return JSON.parse(JSON.stringify(defaultData));
   },
 
@@ -114,9 +117,15 @@ const TAGBA_DB = {
     return don;
   },
 
-  save: function(data) {
+  save: function(data, skipSync = false) {
     try {
+      if (!skipSync) {
+        data.lastModified = Date.now();
+      }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      if (!skipSync && typeof window !== 'undefined' && typeof window.autoSyncWithSupabase === 'function') {
+        window.autoSyncWithSupabase();
+      }
       return true;
     } catch (e) {
       console.error('Erreur écriture localStorage', e);
@@ -138,6 +147,20 @@ const TAGBA_DB = {
     data.families.push(fam);
     this.save(data);
     return fam;
+  },
+
+  deleteFamily: function(id) {
+    const data = this.get();
+    data.families = (data.families || []).filter(f => f.id !== id);
+    if (data.members) {
+      data.members.forEach(m => {
+        if (m.familyId === id) {
+          m.familyId = null;
+        }
+      });
+    }
+    this.save(data);
+    return true;
   },
 
   // Membres
