@@ -1271,7 +1271,23 @@
 
                   <div class="form-group">
                     <label class="form-label">Intitulé de l'Événement / Sacrifice en Cours *</label>
-                    <input type="text" class="form-control" id="cfgEvenementActuel" value="Cotisation Sacrifice de la Mutuelle" required placeholder="Ex: Cotisation Sacrifice de la Mutuelle, Tabaski...">
+                    <input type="text" list="evenementsSuggestions" class="form-control" id="cfgEvenementActuel" value="Cotisation Sacrifice de la Mutuelle" required placeholder="Ex: Cotisation Sacrifice de la Mutuelle, Tabaski...">
+                    <datalist id="evenementsSuggestions">
+                      <option value="Cotisation Sacrifice de la Mutuelle">
+                      <option value="Cotisation Sacrifice Tabaski">
+                      <option value="Sacrifice Annuel de Bénédiction">
+                      <option value="Cotisation Aïd el-Fitr">
+                      <option value="Cotisation Fête de Maouloud">
+                      <option value="Contribution Spéciale Funérailles">
+                      <option value="Cotisation Projet Rénovation & Village">
+                    </datalist>
+                    <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
+                      <span style="font-size: 11px; color: var(--text-muted);">Intitulés suggérés :</span>
+                      <button type="button" class="btn btn-xs btn-secondary" onclick="setQuickEvenementTitle('Cotisation Sacrifice de la Mutuelle')">🐑 Sacrifice Mutuelle</button>
+                      <button type="button" class="btn btn-xs btn-secondary" onclick="setQuickEvenementTitle('Cotisation Sacrifice Tabaski')">🕌 Tabaski</button>
+                      <button type="button" class="btn btn-xs btn-secondary" onclick="setQuickEvenementTitle('Sacrifice Annuel de Bénédiction')">✨ Sacrifice Annuel</button>
+                      <button type="button" class="btn btn-xs btn-secondary" onclick="setQuickEvenementTitle('Cotisation Aïd el-Fitr')">🌙 Aïd el-Fitr</button>
+                    </div>
                     <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">
                       Nom officiel qui figurera sur tous les reçus de versement pour cet événement.
                     </small>
@@ -1586,8 +1602,8 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Période concernée *</label>
-            <input type="text" class="form-control" id="cotPeriode" placeholder="Ex: T2 2026 ou Mai 2026" value="T2 2026" required>
+            <label class="form-label">Période concernée / Intitulé de l'Événement *</label>
+            <input type="text" list="evenementsSuggestions" class="form-control" id="cotPeriode" placeholder="Ex: Cotisation Sacrifice de la Mutuelle, T2 2026..." value="T2 2026" required>
           </div>
           <div class="form-group">
             <label class="form-label">Date de paiement *</label>

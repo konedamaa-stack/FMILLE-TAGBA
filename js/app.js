@@ -2815,6 +2815,14 @@ function setQuickCotisationEvenement(amount) {
   }
 }
 
+function setQuickEvenementTitle(title) {
+  const input = document.getElementById('cfgEvenementActuel');
+  if (input) {
+    input.value = title;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+
 function updateCurrencySuffixes(curr) {
   document.querySelectorAll('.cfgCurrencySuffix').forEach(el => {
     el.textContent = curr;
