@@ -224,6 +224,24 @@ async function testSupabaseCloudConnection(testOnly = false) {
   }
 }
 
+// Fonction de fusion sécurisée sans perte entre données locales et Cloud
+function mergeDatasets(local, remote) {
+  if (!remote || typeof remote !== 'object') return local;
+  if (!local || typeof local !== 'object') return remote;
+  const merged = { ...remote, ...local };
+  merged.config = { ...(remote.config || {}), ...(local.config || {}) };
+  const arrayKeys = ['families', 'members', 'bureau', 'cotisations', 'entraide', 'ceremonies', 'depenses', 'contributionsVolontaires'];
+  for (const k of arrayKeys) {
+    const localArr = Array.isArray(local[k]) ? local[k] : [];
+    const remoteArr = Array.isArray(remote[k]) ? remote[k] : [];
+    const map = new Map();
+    remoteArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
+    localArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
+    merged[k] = Array.from(map.values());
+  }
+  return merged;
+}
+
 // Envoi complet des données locales vers Supabase (Push)
 async function pushAllDataToSupabase(silent = false) {
   if (isSyncingToCloud) return;
@@ -256,9 +274,7 @@ async function pushAllDataToSupabase(silent = false) {
     ]);
     if (errFull) throw errFull;
 
-    // 2. Synchronisation parallèle des tables relationnelles
-    const promises = [];
-
+    // 2. Synchronisation ordonnée des tables relationnelles (respect absolu des clés étrangères)
     if (localData.families && localData.families.length > 0) {
       const famRows = localData.families.map(f => ({
         id: f.id,
@@ -269,7 +285,7 @@ async function pushAllDataToSupabase(silent = false) {
         city: f.city || '',
         notes: f.notes || ''
       }));
-      promises.push(client.from('families').upsert(famRows));
+      await client.from('families').upsert(famRows);
     }
 
     if (localData.members && localData.members.length > 0) {
@@ -285,8 +301,10 @@ async function pushAllDataToSupabase(silent = false) {
         residence: m.residence || '',
         statut_cotisation: m.statutCotisation || 'A_JOUR'
       }));
-      promises.push(client.from('members').upsert(memRows));
+      await client.from('members').upsert(memRows);
     }
+
+    const promises = [];
 
     if (localData.bureau && localData.bureau.length > 0) {
       const burRows = localData.bureau.map(b => ({
@@ -452,19 +470,33 @@ async function pullAllDataFromSupabase(silent = false, force = false) {
         return;
       }
 
-      // CAS B : Le Cloud possède des données valides
-      if (cloudHasData) {
-        // Si forcé, ou si le Cloud est plus récent, ou si l'appareil local est vierge
-        if (force || cloudUpdatedAt >= localLastModified || !localHasData) {
-          console.log('[Supabase Sync] Application du snapshot Cloud le plus récent');
-          TAGBA_DB.save(cloudSnap, true); // skipSync = true évite la boucle d'écho
-          renderAllViews();
-          loadConfigForm();
-          updateSyncStatusBadge('connected');
-          if (!silent) showToast('✅ Données mises à jour avec succès depuis le Cloud Supabase !');
-          isPullingFromCloud = false;
-          return;
+      const cloudHasUserData = (cloudSnap.members && cloudSnap.members.length > 0) ||
+                               (cloudSnap.families && cloudSnap.families.length > 0) ||
+                               (cloudSnap.cotisations && cloudSnap.cotisations.length > 0);
+
+      // Si le local a des données utilisateur et que le Cloud n'en a pas, auto-push prioritaire
+      if (!force && localHasData && !cloudHasUserData) {
+        console.log('[Supabase Sync] Données utilisateur locales présentes sans équivalent Cloud -> Auto-push immédiat');
+        if (cloudSnap.bureau && cloudSnap.bureau.length > 0 && (!localData.bureau || localData.bureau.length === 0)) {
+          localData.bureau = cloudSnap.bureau;
         }
+        TAGBA_DB.save(localData, true);
+        isPullingFromCloud = false;
+        await pushAllDataToSupabase(true);
+        return;
+      }
+
+      // CAS B : Fusion intelligente sécurisée (aucun écrasement de membres locaux)
+      if (cloudHasUserData || (cloudSnap.bureau && cloudSnap.bureau.length > 0)) {
+        console.log('[Supabase Sync] Application de la fusion sécurisée Cloud + Local');
+        const mergedData = mergeDatasets(localData, cloudSnap);
+        TAGBA_DB.save(mergedData, true);
+        renderAllViews();
+        loadConfigForm();
+        updateSyncStatusBadge('connected');
+        if (!silent) showToast('✅ Données synchronisées avec succès depuis le Cloud !');
+        isPullingFromCloud = false;
+        return;
       }
     }
 
