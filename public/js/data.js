@@ -217,6 +217,35 @@ const TAGBA_DB = {
     return fam;
   },
 
+  updateFamily: function(id, updatedFields) {
+    if (updatedFields.phone) {
+      const conflict = this.isPhoneTaken(updatedFields.phone, id);
+      if (conflict) {
+        throw new Error(`Le numéro ${updatedFields.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être attribué à deux personnes.`);
+      }
+    }
+    const data = this.get();
+    const idx = (data.families || []).findIndex(f => f.id === id);
+    if (idx !== -1) {
+      const oldChef = data.families[idx].chefDeFamille;
+      data.families[idx] = { ...data.families[idx], ...updatedFields };
+
+      // Si le nom du chef a été modifié, mettre également à jour le membre chef correspondant
+      if (updatedFields.chefDeFamille && updatedFields.chefDeFamille !== oldChef && data.members) {
+        const chefMem = data.members.find(m => m.familyId === id && (m.relationToChef === 'Chef de famille' || m.fullName === oldChef || m.isChef === true));
+        if (chefMem) {
+          chefMem.fullName = updatedFields.chefDeFamille;
+          if (updatedFields.phone) chefMem.phone = updatedFields.phone;
+          if (updatedFields.city) chefMem.residence = updatedFields.city;
+        }
+      }
+
+      this.save(data);
+      return data.families[idx];
+    }
+    return null;
+  },
+
   deleteFamily: function(id) {
     const data = this.get();
     data.families = (data.families || []).filter(f => f.id !== id);

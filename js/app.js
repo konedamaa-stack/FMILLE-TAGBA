@@ -987,6 +987,9 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
               <button class="btn btn-sm btn-gold" onclick="openFamilyBatchPayModal('${fam.id}')" title="Ouvrir la plage de versement groupé pour toute la famille">
                 💳 Payer la Famille
               </button>
+              <button class="btn btn-sm btn-secondary" onclick="openEditFamilyModal('${fam.id}')" title="Modifier les coordonnées du chef de famille et du foyer">
+                ✏️ Modifier Chef
+              </button>
               <button class="btn btn-sm btn-secondary" onclick="openFamilySheetModal('${fam.id}')" title="Imprimer la fiche officielle de ce foyer">
                 🖨️ Fiche de Famille
               </button>
@@ -1169,7 +1172,10 @@ function renderQuickFamilyCards() {
               <h3 style="font-size: 16px;">${fam.name}</h3>
               <span class="family-badge-chip">${familyMembers.length} membre(s)</span>
             </div>
-            <p style="font-size: 12px; color: var(--text-muted);">Chef de famille : <strong>${fam.chefDeFamille}</strong></p>
+            <p style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between;">
+              <span>Chef de famille : <strong>${fam.chefDeFamille}</strong></span>
+              <button class="btn btn-xs btn-secondary" style="padding: 2px 6px;" onclick="openEditFamilyModal('${fam.id}')" title="Modifier le chef">✏️</button>
+            </p>
             <p style="font-size: 11px; color: var(--text-dim);">📍 ${fam.city} • 📞 ${fam.phone}</p>
             <button class="btn btn-sm btn-gold" style="margin-top: 6px; padding: 3px 10px; font-size: 11px;" onclick="openFamilyBatchPayModal('${fam.id}')">💳 Payer la Famille</button>
           </div>
@@ -1938,6 +1944,39 @@ function deleteMemberConfirm(memberId) {
   }
 }
 
+function openEditFamilyModal(famId) {
+  if (!assertPermission('write', 'la modification d’une famille')) return;
+  const data = TAGBA_DB.get();
+  const fam = (data.families || []).find(f => f.id === famId);
+  if (!fam) return;
+
+  const idEl = document.getElementById('editFamId');
+  const chefEl = document.getElementById('editFamChef');
+  const nameEl = document.getElementById('editFamName');
+  const phoneEl = document.getElementById('editFamPhone');
+  const cityEl = document.getElementById('editFamCity');
+  const notesEl = document.getElementById('editFamNotes');
+
+  if (idEl) idEl.value = fam.id;
+  if (chefEl) chefEl.value = fam.chefDeFamille || '';
+  if (nameEl) nameEl.value = fam.name || '';
+  if (phoneEl) {
+    phoneEl.value = fam.phone || '';
+    phoneEl.style.borderColor = '';
+    phoneEl.style.background = '';
+  }
+  if (cityEl) cityEl.value = fam.city || '';
+  if (notesEl) notesEl.value = fam.notes || '';
+
+  const phoneErr = document.getElementById('editFamPhoneError');
+  if (phoneErr) {
+    phoneErr.style.display = 'none';
+    phoneErr.textContent = '';
+  }
+
+  openModal('modalEditFamily');
+}
+
 function deleteFamilyConfirm(famId) {
   if (!assertPermission('write', 'la suppression d’une famille')) return;
   const data = TAGBA_DB.get();
@@ -1971,6 +2010,7 @@ function openModal(modalId) {
     modalId === 'modalAddCotisation' ||
     modalId === 'modalAddMember' ||
     modalId === 'modalAddFamily' ||
+    modalId === 'modalEditFamily' ||
     modalId === 'modalAddEntraide' ||
     modalId === 'modalEditBureau' ||
     modalId === 'modalEditCotisation' ||
@@ -2163,6 +2203,44 @@ function populateSelectOptions() {
 
 // Form Submissions
 function bindFormSubmissions() {
+  // 1-Bis. Modifier Famille / Chef de Famille
+  const formEditFam = document.getElementById('formEditFamily');
+  if (formEditFam) {
+    formEditFam.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!assertPermission('write', 'la modification d’une famille')) return;
+      const famId = document.getElementById('editFamId').value;
+      const phoneVal = document.getElementById('editFamPhone').value.trim();
+
+      const conflict = TAGBA_DB.isPhoneTaken(phoneVal, famId);
+      if (conflict) {
+        showToast(`🚫 Numéro déjà attribué : Le numéro ${phoneVal} appartient déjà à "${conflict.name}" (${conflict.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+        const pInput = document.getElementById('editFamPhone');
+        if (pInput) { pInput.focus(); pInput.style.borderColor = 'var(--rose-500)'; }
+        return;
+      }
+
+      try {
+        const updated = TAGBA_DB.updateFamily(famId, {
+          chefDeFamille: document.getElementById('editFamChef').value.trim(),
+          name: document.getElementById('editFamName').value.trim(),
+          phone: phoneVal,
+          city: document.getElementById('editFamCity').value.trim(),
+          notes: document.getElementById('editFamNotes').value.trim()
+        });
+
+        showToast(`Chef de famille et foyer "${updated.name}" mis à jour avec succès !`, 'success');
+        closeModal('modalEditFamily');
+        renderAllViews();
+        if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+          pushAllDataToSupabase(true);
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  }
+
   // 1. Ajouter Famille
   const formAddFam = document.getElementById('formAddFamily');
   if (formAddFam) {

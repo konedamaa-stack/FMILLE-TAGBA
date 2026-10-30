@@ -1706,6 +1706,54 @@
     </div>
   </div>
 
+  <!-- Modal 3-Bis : Modifier Chef de Famille & Foyer -->
+  <div class="modal-overlay" id="modalEditFamily">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 22px;">👑</span>
+          <h3>Modifier le Chef de Famille & Foyer</h3>
+        </div>
+        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="closeModal('modalEditFamily')">&times;</button>
+      </div>
+      <form id="formEditFamily">
+        <input type="hidden" id="editFamId">
+        <div class="form-group">
+          <label class="form-label">Nom et Prénoms du Chef de Famille *</label>
+          <input type="text" class="form-control" id="editFamChef" placeholder="Ex: Koné Bourahima" required>
+          <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">Le représentant légal et patriarche de ce foyer familial.</small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Dénomination de la Famille *</label>
+            <input type="text" class="form-control" id="editFamName" placeholder="Ex: Famille Koné" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Téléphone du Chef de Famille (Unique) *</label>
+            <input type="tel" class="form-control" id="editFamPhone" placeholder="+225 07..." required oninput="checkPhoneLiveFeedback(this, 'editFamPhoneError', document.getElementById('editFamId').value)">
+            <div id="editFamPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Localisation / Ville principale</label>
+          <input type="text" class="form-control" id="editFamCity" placeholder="Ex: Divo, Abidjan...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Remarques ou historique familial</label>
+          <textarea class="form-control" id="editFamNotes" rows="2" placeholder="Informations complémentaires..."></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal('modalEditFamily')">Annuler</button>
+          <button type="submit" class="btn btn-gold">💾 Enregistrer les Modifications</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal 4 : Déclarer Cas Social (Entraide) -->
   <div class="modal-overlay" id="modalAddEntraide">
     <div class="modal-content">
