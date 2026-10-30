@@ -5,12 +5,11 @@
 
 const STORAGE_KEY = 'TAGBA_MUTUELLE_DATA_V3';
 
-// Purge automatique intégrale de tout ancien cache LocalStorage
+// Nettoyage des anciennes clés legacy uniquement
 try {
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('TAGBA_MUTUELLE_DATA_V1');
     localStorage.removeItem('TAGBA_MUTUELLE_DATA_V2');
-    localStorage.removeItem('TAGBA_MUTUELLE_DATA_V3');
   }
 } catch (e) {}
 

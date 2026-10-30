@@ -280,11 +280,12 @@ function selectRoleTab(roleKey) {
 
 function initSessionState() {
   const isAuth = localStorage.getItem('tagba_session_authenticated');
-  if (isAuth === 'true') {
-    hideAuthFullscreen();
-  } else {
+  if (isAuth === 'false') {
     showAuthFullscreen();
     selectRoleTab('admin');
+  } else {
+    localStorage.setItem('tagba_session_authenticated', 'true');
+    hideAuthFullscreen();
   }
 }
 
@@ -464,10 +465,15 @@ function applyActiveUserUI() {
 
 // Initialisation & Navigation par onglets
 document.addEventListener('DOMContentLoaded', () => {
+  initSessionState();
   initNavigation();
   initTheme();
   initFamilyViewSwitcher();
-  renderAllViews();
+  try {
+    renderAllViews();
+  } catch (err) {
+    console.warn('Rendu initial:', err);
+  }
   bindModalEvents();
   bindFormSubmissions();
   applyActiveUserUI();

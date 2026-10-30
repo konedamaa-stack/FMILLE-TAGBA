@@ -20,7 +20,7 @@
   <!-- ============================================================ -->
   <!-- ÉCRAN DE CONNEXION PRINCIPAL (DESIGN 2 COLONNES INSPIRÉ DU MODÈLE) -->
   <!-- ============================================================ -->
-  <div class="auth-fullscreen" id="authFullscreenScreen">
+  <div class="auth-fullscreen hidden" id="authFullscreenScreen">
     <div class="auth-split-card">
       
       <!-- Colonne Gauche : Panneau Visuel Vert -->
@@ -115,6 +115,22 @@
 
     </div>
   </div>
+
+  <script>
+    (function() {
+      try {
+        var isAuth = localStorage.getItem('tagba_session_authenticated');
+        var screen = document.getElementById('authFullscreenScreen');
+        if (screen) {
+          if (isAuth === 'false') {
+            screen.classList.remove('hidden');
+          } else {
+            screen.classList.add('hidden');
+          }
+        }
+      } catch(e) {}
+    })();
+  </script>
 
   <div class="app-container">
     
