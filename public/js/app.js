@@ -1578,23 +1578,40 @@ function renderCotisations() {
   const totalDisplay = document.getElementById('cotisationsSumDisplay');
   if (totalDisplay) totalDisplay.textContent = formatMoney(total, data.config.currency);
 
-  tbody.innerHTML = data.cotisations.map(cot => `
-    <tr>
-      <td><strong style="color: var(--emerald-400);">${cot.recuNum}</strong></td>
-      <td>
-        <div style="font-weight: 600;">${cot.memberName} ${cot.payeurChef ? `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: var(--gold-400); font-size: 10px; margin-left: 4px; border: 1px solid rgba(245, 158, 11, 0.3);">👑 Foyer ${cot.payeurChef}</span>` : ''}</div>
-        <div style="font-size: 11px; color: var(--text-muted);">Encaissé par: ${cot.agent || 'Bureau'}</div>
-      </td>
-      <td><span class="badge badge-info">${cot.type}</span></td>
-      <td>${cot.periode}</td>
-      <td><strong style="font-size: 14px;">${formatMoney(cot.montant, data.config.currency)}</strong></td>
-      <td><span class="badge badge-purple">${cot.modePaiement}</span></td>
-      <td>${cot.datePaiement}</td>
-      <td>
-        <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${cot.id}')">🖨️ Reçu</button>
-      </td>
-    </tr>
-  `).join('');
+  if (!data.cotisations || data.cotisations.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; padding: 36px 20px; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 8px;">💳</div>
+          <div style="font-weight: 600; margin-bottom: 4px;">Aucun versement enregistré pour le moment.</div>
+          <div style="font-size: 12px; margin-bottom: 16px;">Les reçus et encaissements apparaîtront ici avec possibilité de les modifier ou supprimer en cas d'erreur.</div>
+          <button class="btn btn-sm btn-primary" onclick="openModal('modalAddCotisation')">+ Encaisser un versement</button>
+        </td>
+      </tr>
+    `;
+  } else {
+    tbody.innerHTML = data.cotisations.map(cot => `
+      <tr>
+        <td><strong style="color: var(--emerald-400);">${cot.recuNum}</strong></td>
+        <td>
+          <div style="font-weight: 600;">${cot.memberName} ${cot.payeurChef ? `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: var(--gold-400); font-size: 10px; margin-left: 4px; border: 1px solid rgba(245, 158, 11, 0.3);">👑 Foyer ${cot.payeurChef}</span>` : ''}</div>
+          <div style="font-size: 11px; color: var(--text-muted);">Encaissé par: ${cot.agent || 'Bureau'}</div>
+        </td>
+        <td><span class="badge badge-info">${cot.type}</span></td>
+        <td>${cot.periode}</td>
+        <td><strong style="font-size: 14px;">${formatMoney(cot.montant, data.config.currency)}</strong></td>
+        <td><span class="badge badge-purple">${cot.modePaiement}</span></td>
+        <td>${cot.datePaiement}</td>
+        <td>
+          <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+            <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${cot.id}')" title="Imprimer le Reçu Officiel">🖨️ Reçu</button>
+            <button class="btn btn-sm btn-outline" style="border: 1px solid var(--border-color); padding: 5px 8px;" onclick="openEditCotisationModal('${cot.id}')" title="Modifier ce versement">✏️</button>
+            <button class="btn btn-sm btn-danger" style="padding: 5px 8px;" onclick="deleteCotisationPrompt('${cot.id}', '${cot.recuNum}', '${(cot.memberName || '').replace(/'/g, "\\'")}', ${cot.montant})" title="Supprimer ce versement en cas d'erreur">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
 
   // Rendu de la vue de suivi des mois chronologique
   renderCotisationsMonthsTracking();
@@ -1745,7 +1762,10 @@ function renderCeremonies() {
 }
 
 // 7. Reçu Imprimable
+let currentViewedReceiptCotId = null;
+
 function openReceiptModal(cotisationId) {
+  currentViewedReceiptCotId = cotisationId;
   const data = TAGBA_DB.get();
   const cot = data.cotisations.find(c => c.id === cotisationId);
   if (!cot) return;
@@ -1840,6 +1860,7 @@ function openModal(modalId) {
     modalId === 'modalAddFamily' ||
     modalId === 'modalAddEntraide' ||
     modalId === 'modalEditBureau' ||
+    modalId === 'modalEditCotisation' ||
     modalId === 'modalAddBureau' ||
     modalId === 'modalAddDepense' ||
     modalId === 'modalAddContributionVolontaire'
@@ -2205,6 +2226,57 @@ function bindFormSubmissions() {
         renderAllViews();
         openReceiptModal(saved.id);
       }
+    });
+  }
+
+  // 3-Bis. Modifier un Versement Existant
+  const formEditCot = document.getElementById('formEditCotisation');
+  if (formEditCot) {
+    formEditCot.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!assertPermission('write', 'la modification d’un versement')) return;
+      const cotId = document.getElementById('editCotId').value;
+      const type = document.getElementById('editCotType').value;
+      const montant = Number(document.getElementById('editCotMontant').value) || 0;
+      const periode = document.getElementById('editCotPeriode').value.trim();
+      const datePaiement = document.getElementById('editCotDate').value;
+      const modePaiement = document.getElementById('editCotMode').value;
+
+      const updated = TAGBA_DB.updateCotisation(cotId, {
+        type,
+        montant,
+        periode,
+        datePaiement,
+        modePaiement
+      });
+
+      if (updated) {
+        showToast(`Versement ${updated.recuNum} mis à jour avec succès !`, 'success');
+        closeModal('modalEditCotisation');
+        renderAllViews();
+        if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+          pushAllDataToSupabase(true);
+        }
+      }
+    });
+  }
+
+  // Recalcul automatique lors du changement de fréquence dans la modale d'édition
+  const editCotTypeSelect = document.getElementById('editCotType');
+  if (editCotTypeSelect) {
+    editCotTypeSelect.addEventListener('change', (e) => {
+      const type = e.target.value;
+      const data = TAGBA_DB.get();
+      const cfg = data.config || {};
+      const unitM = Number(cfg.cotisationMensuelle || 5000);
+      const montantInput = document.getElementById('editCotMontant');
+      if (!montantInput) return;
+
+      if (type === 'Mensuel') montantInput.value = unitM;
+      else if (type === '2 Mois') montantInput.value = unitM * 2;
+      else if (type === 'Trimestriel') montantInput.value = unitM * 3;
+      else if (type === 'Semestriel') montantInput.value = unitM * 6;
+      else if (type === 'Annuel') montantInput.value = unitM * 12;
     });
   }
 
@@ -4461,4 +4533,92 @@ function deleteCurrentBureauMemberModal() {
   const roleName = document.getElementById('editBureauRole').textContent;
   closeModal('modalEditBureau');
   deleteBureauMemberPrompt(burId, roleName);
+}
+
+
+// ============================================================
+// GESTION DES MODIFICATIONS ET SUPPRESSIONS DE VERSEMENTS (COTISATIONS)
+// ============================================================
+let currentEditingCotisationId = null;
+
+function openEditCotisationModal(cotId) {
+  if (!assertPermission('write', 'la modification d’un versement')) return;
+  const data = TAGBA_DB.get();
+  const cot = (data.cotisations || []).find(c => c.id === cotId);
+  if (!cot) return;
+
+  currentEditingCotisationId = cot.id;
+  const editIdEl = document.getElementById('editCotId');
+  const editRecuEl = document.getElementById('editCotRecuNum');
+  const editMemEl = document.getElementById('editCotMemberName');
+  const editTypeEl = document.getElementById('editCotType');
+  const editMontantEl = document.getElementById('editCotMontant');
+  const editPeriodeEl = document.getElementById('editCotPeriode');
+  const editDateEl = document.getElementById('editCotDate');
+  const editModeEl = document.getElementById('editCotMode');
+
+  if (editIdEl) editIdEl.value = cot.id;
+  if (editRecuEl) editRecuEl.textContent = cot.recuNum || '';
+  if (editMemEl) editMemEl.value = `${cot.memberName} (${cot.memberId || ''})`;
+  if (editTypeEl) editTypeEl.value = cot.type || 'Mensuel';
+  if (editMontantEl) editMontantEl.value = cot.montant || 0;
+  if (editPeriodeEl) editPeriodeEl.value = cot.periode || '';
+  if (editDateEl) editDateEl.value = cot.datePaiement || new Date().toISOString().split('T')[0];
+  if (editModeEl) editModeEl.value = cot.modePaiement || 'Wave';
+
+  openModal('modalEditCotisation');
+}
+
+function deleteCotisationPrompt(cotId, recuNum, memberName, montant) {
+  if (!assertPermission('write', 'la suppression d’un versement')) return;
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const formatted = formatMoney(montant, cfg.currency);
+
+  const msg = `⚠️ ATTENTION : Confirmez-vous la suppression définitive du versement suivant ?\n\n` +
+              `• N° Reçu : ${recuNum}\n` +
+              `• Membre : ${memberName}\n` +
+              `• Montant : ${formatted}\n\n` +
+              `Cette action réajustera la caisse et recalculera automatiquement l'état des cotisations et arriérés du membre.`;
+
+  if (!confirm(msg)) return;
+
+  // 1. Suppression locale et réajustement caisse
+  TAGBA_DB.deleteCotisation(cotId);
+
+  // 2. Suppression distante directe Supabase
+  if (typeof deleteCotisationFromSupabase === 'function') {
+    deleteCotisationFromSupabase(cotId);
+  }
+
+  showToast(`Versement ${recuNum} (${memberName}) supprimé avec succès. Caisse et audits réajustés.`, 'info');
+  renderAllViews();
+  if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+    pushAllDataToSupabase(true);
+  }
+}
+
+function deleteCurrentEditCotisation() {
+  const cotId = document.getElementById('editCotId')?.value;
+  if (!cotId) return;
+  const data = TAGBA_DB.get();
+  const cot = (data.cotisations || []).find(c => c.id === cotId);
+  if (!cot) return;
+  closeModal('modalEditCotisation');
+  deleteCotisationPrompt(cot.id, cot.recuNum, cot.memberName, cot.montant);
+}
+
+function editCotisationFromReceiptModal() {
+  if (!currentViewedReceiptCotId) return;
+  closeModal('modalReceipt');
+  openEditCotisationModal(currentViewedReceiptCotId);
+}
+
+function deleteCotisationFromReceiptModal() {
+  if (!currentViewedReceiptCotId) return;
+  const data = TAGBA_DB.get();
+  const cot = (data.cotisations || []).find(c => c.id === currentViewedReceiptCotId);
+  if (!cot) return;
+  closeModal('modalReceipt');
+  deleteCotisationPrompt(cot.id, cot.recuNum, cot.memberName, cot.montant);
 }

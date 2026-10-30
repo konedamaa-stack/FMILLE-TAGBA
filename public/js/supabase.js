@@ -1,3 +1,16 @@
+
+// Suppression directe d'une cotisation dans Supabase
+async function deleteCotisationFromSupabase(cotId) {
+  const client = getSupabaseClient();
+  if (!client) return;
+  try {
+    const { error } = await client.from('cotisations').delete().eq('id', cotId);
+    if (error) console.warn('[Supabase] Erreur suppression cotisation:', error);
+  } catch (err) {
+    console.warn('[Supabase] Erreur suppression:', err);
+  }
+}
+
 /**
  * TAGBA - Supabase Cloud Synchronization & Client
  * Projet : quxnhuelshtaflsxedoi

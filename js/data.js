@@ -172,13 +172,13 @@ const TAGBA_DB = {
   // Cotisations
   addCotisation: function(cot) {
     const data = this.get();
-    cot.id = 'cot-' + Date.now();
-    cot.recuNum = 'REC-2026-' + String(data.cotisations.length + 1).padStart(3, '0');
+    cot.id = cot.id || ('cot-' + Date.now());
+    cot.recuNum = cot.recuNum || ('REC-2026-' + String((data.cotisations || []).length + 1).padStart(3, '0'));
     cot.datePaiement = cot.datePaiement || new Date().toISOString().split('T')[0];
     cot.statut = 'Validé';
     
     // Mettre à jour la caisse
-    data.config.fondsCaisse += Number(cot.montant || 0);
+    data.config.fondsCaisse = (Number(data.config.fondsCaisse) || 0) + Number(cot.montant || 0);
 
     // Mettre à jour le statut du membre
     const mem = data.members.find(m => m.id === cot.memberId);
@@ -186,9 +186,41 @@ const TAGBA_DB = {
       mem.statutCotisation = 'A_JOUR';
     }
 
+    if (!data.cotisations) data.cotisations = [];
     data.cotisations.unshift(cot);
     this.save(data);
     return cot;
+  },
+
+  updateCotisation: function(cotId, updatedFields) {
+    const data = this.get();
+    const idx = (data.cotisations || []).findIndex(c => c.id === cotId);
+    if (idx !== -1) {
+      const oldCot = data.cotisations[idx];
+      const oldMontant = Number(oldCot.montant || 0);
+      const newMontant = updatedFields.montant !== undefined ? Number(updatedFields.montant || 0) : oldMontant;
+
+      // Ajuster la caisse avec la différence exacte
+      data.config.fondsCaisse = (Number(data.config.fondsCaisse) || 0) - oldMontant + newMontant;
+
+      data.cotisations[idx] = { ...oldCot, ...updatedFields, montant: newMontant };
+      this.save(data);
+      return data.cotisations[idx];
+    }
+    return null;
+  },
+
+  deleteCotisation: function(cotId) {
+    const data = this.get();
+    const cot = (data.cotisations || []).find(c => c.id === cotId);
+    if (cot) {
+      const montant = Number(cot.montant || 0);
+      data.config.fondsCaisse = Math.max(0, (Number(data.config.fondsCaisse) || 0) - montant);
+      data.cotisations = data.cotisations.filter(c => c.id !== cotId);
+      this.save(data);
+      return true;
+    }
+    return false;
   },
 
   // Entraide
