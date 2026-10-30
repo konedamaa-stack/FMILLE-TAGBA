@@ -138,8 +138,76 @@ const TAGBA_DB = {
     return JSON.parse(JSON.stringify(defaultData));
   },
 
+  // Utilitaires de validation & normalisation des numéros de téléphone
+  normalizePhone: function(phone) {
+    if (!phone) return '';
+    let clean = String(phone).replace(/\D/g, '');
+    if (clean.startsWith('225') && clean.length > 10) {
+      clean = clean.substring(3);
+    }
+    return clean;
+  },
+
+  // Règle absolue : Aucun numéro de téléphone ne peut être attribué à deux personnes
+  isPhoneTaken: function(phone, excludeId = null) {
+    const norm = this.normalizePhone(phone);
+    if (!norm || norm.length < 8) return null;
+
+    const data = this.get();
+
+    // 1. Membres
+    for (const m of (data.members || [])) {
+      if (excludeId && m.id === excludeId) continue;
+      if (this.normalizePhone(m.phone) === norm) {
+        return {
+          id: m.id,
+          name: m.fullName,
+          phone: m.phone,
+          type: 'Membre',
+          details: `Membre inscrit (${m.matricule})`
+        };
+      }
+    }
+
+    // 2. Chefs de Famille
+    for (const f of (data.families || [])) {
+      if (excludeId && f.id === excludeId) continue;
+      if (this.normalizePhone(f.phone) === norm) {
+        return {
+          id: f.id,
+          name: f.chefDeFamille,
+          phone: f.phone,
+          type: 'Chef de Famille',
+          details: `Chef de la ${f.name}`
+        };
+      }
+    }
+
+    // 3. Bureau Exécutif
+    for (const b of (data.bureau || [])) {
+      if (excludeId && b.id === excludeId) continue;
+      if (this.normalizePhone(b.phone) === norm) {
+        return {
+          id: b.id,
+          name: b.name,
+          phone: b.phone,
+          type: 'Membre du Bureau',
+          details: `Poste : ${b.role}`
+        };
+      }
+    }
+
+    return null;
+  },
+
   // Familles
   addFamily: function(fam) {
+    if (fam.phone) {
+      const conflict = this.isPhoneTaken(fam.phone);
+      if (conflict) {
+        throw new Error(`Le numéro ${fam.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être attribué à deux personnes.`);
+      }
+    }
     const data = this.get();
     fam.id = 'fam-' + Date.now();
     fam.code = 'FAM-' + String(data.families.length + 1).padStart(2, '0');
@@ -165,6 +233,12 @@ const TAGBA_DB = {
 
   // Membres
   addMember: function(mem) {
+    if (mem.phone) {
+      const conflict = this.isPhoneTaken(mem.phone);
+      if (conflict) {
+        throw new Error(`Le numéro ${mem.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être attribué à deux personnes.`);
+      }
+    }
     const data = this.get();
     mem.id = 'mem-' + Date.now();
     mem.matricule = 'TGB-' + String(data.members.length + 1).padStart(3, '0');
@@ -176,6 +250,12 @@ const TAGBA_DB = {
   },
 
   updateMember: function(id, updatedFields) {
+    if (updatedFields.phone) {
+      const conflict = this.isPhoneTaken(updatedFields.phone, id);
+      if (conflict) {
+        throw new Error(`Le numéro ${updatedFields.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être attribué à deux personnes.`);
+      }
+    }
     const data = this.get();
     const idx = data.members.findIndex(m => m.id === id);
     if (idx !== -1) {

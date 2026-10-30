@@ -1565,8 +1565,9 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Numéro de Téléphone *</label>
-            <input type="tel" class="form-control" id="memPhone" placeholder="+225 07..." required>
+            <label class="form-label">Numéro de Téléphone (Unique) *</label>
+            <input type="tel" class="form-control" id="memPhone" placeholder="+225 07..." required oninput="checkPhoneLiveFeedback(this, 'memPhoneError')">
+            <div id="memPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
           </div>
           <div class="form-group">
             <label class="form-label">Profession</label>
@@ -1597,6 +1598,66 @@
     </div>
   </div>
 
+  <!-- Modal 2-Bis : Modifier un Membre Existant -->
+  <div class="modal-overlay" id="modalEditMember">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Modifier le Membre <span id="editMemMatricule" style="color: var(--emerald-400);"></span></h3>
+        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="closeModal('modalEditMember')">&times;</button>
+      </div>
+      <form id="formEditMember">
+        <input type="hidden" id="editMemId">
+        <div class="form-group">
+          <label class="form-label">Nom et Prénoms Complets *</label>
+          <input type="text" class="form-control" id="editMemName" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Famille de Rattachement *</label>
+            <select class="form-control" id="editMemFamilySelect" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lien avec le Chef de Famille *</label>
+            <input type="text" class="form-control" id="editMemRelation" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Numéro de Téléphone (Unique) *</label>
+            <input type="tel" class="form-control" id="editMemPhone" required oninput="checkPhoneLiveFeedback(this, 'editMemPhoneError', document.getElementById('editMemId').value)">
+            <div id="editMemPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Profession</label>
+            <input type="text" class="form-control" id="editMemProfession">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Ville / Lieu de Résidence</label>
+            <input type="text" class="form-control" id="editMemResidence">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Statut Cotisation</label>
+            <select class="form-control" id="editMemStatutCotisation">
+              <option value="A_JOUR">À jour</option>
+              <option value="PARTIEL">Partiel</option>
+              <option value="EN_RETARD">En retard</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal('modalEditMember')">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer les Modifications</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal 3 : Nouvelle Famille -->
   <div class="modal-overlay" id="modalAddFamily">
     <div class="modal-content">
@@ -1616,8 +1677,9 @@
             <input type="text" class="form-control" id="famChef" placeholder="Ex: El Hadj Souleymane Sylla" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Téléphone du Chef de Famille *</label>
-            <input type="tel" class="form-control" id="famPhone" placeholder="+225 05..." required>
+            <label class="form-label">Téléphone du Chef de Famille (Unique) *</label>
+            <input type="tel" class="form-control" id="famPhone" placeholder="+225 05..." required oninput="checkPhoneLiveFeedback(this, 'famPhoneError')">
+            <div id="famPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
           </div>
         </div>
 
@@ -1791,8 +1853,9 @@
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Téléphone</label>
-            <input type="tel" class="form-control" id="addBureauPhone" placeholder="Ex: +225 07 00 00 00 00">
+            <label class="form-label">Téléphone (Unique)</label>
+            <input type="tel" class="form-control" id="addBureauPhone" placeholder="Ex: +225 07 00 00 00 00" oninput="checkPhoneLiveFeedback(this, 'addBureauPhoneError')">
+            <div id="addBureauPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
           </div>
           <div class="form-group">
             <label class="form-label">Email</label>
@@ -1827,8 +1890,9 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Téléphone *</label>
-            <input type="tel" class="form-control" id="editBureauPhone" required>
+            <label class="form-label">Téléphone (Unique) *</label>
+            <input type="tel" class="form-control" id="editBureauPhone" required oninput="checkPhoneLiveFeedback(this, 'editBureauPhoneError', document.getElementById('editBureauId').value)">
+            <div id="editBureauPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
           </div>
           <div class="form-group">
             <label class="form-label">Email</label>

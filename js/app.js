@@ -1,3 +1,88 @@
+// Contrôle en direct et instantané de l'unicité des numéros de téléphone
+function checkPhoneLiveFeedback(inputEl, errorDivId, excludeId = null) {
+  if (!inputEl) return true;
+  const errorEl = document.getElementById(errorDivId);
+  const rawPhone = inputEl.value.trim();
+
+  if (!rawPhone || rawPhone.length < 8) {
+    inputEl.style.borderColor = '';
+    inputEl.style.background = '';
+    if (errorEl) {
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+    }
+    return true;
+  }
+
+  const conflict = TAGBA_DB.isPhoneTaken(rawPhone, excludeId);
+  if (conflict) {
+    inputEl.style.borderColor = 'var(--rose-500)';
+    inputEl.style.background = 'rgba(244, 63, 94, 0.08)';
+    if (errorEl) {
+      errorEl.style.display = 'block';
+      errorEl.innerHTML = `⚠️ <strong>Numéro déjà attribué !</strong> Ce contact appartient déjà à <strong>${conflict.name}</strong> (${conflict.details}). Aucun numéro de téléphone ne peut être attribué à deux personnes.`;
+    }
+    return false;
+  } else {
+    inputEl.style.borderColor = 'var(--emerald-500)';
+    inputEl.style.background = 'rgba(16, 185, 129, 0.05)';
+    if (errorEl) {
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+    }
+    return true;
+  }
+}
+
+// Modal d'édition d'un membre existant
+function openEditMemberModal(memId) {
+  if (!assertPermission('write', 'la modification d’un membre')) return;
+  const data = TAGBA_DB.get();
+  const mem = (data.members || []).find(m => m.id === memId);
+  if (!mem) return;
+
+  const editIdEl = document.getElementById('editMemId');
+  const editMatEl = document.getElementById('editMemMatricule');
+  const editNameEl = document.getElementById('editMemName');
+  const editRelEl = document.getElementById('editMemRelation');
+  const editPhoneEl = document.getElementById('editMemPhone');
+  const editProfEl = document.getElementById('editMemProfession');
+  const editResEl = document.getElementById('editMemResidence');
+  const editStatEl = document.getElementById('editMemStatutCotisation');
+  const famSelect = document.getElementById('editMemFamilySelect');
+
+  if (editIdEl) editIdEl.value = mem.id;
+  if (editMatEl) editMatEl.textContent = mem.matricule;
+  if (editNameEl) editNameEl.value = mem.fullName || '';
+  if (editRelEl) editRelEl.value = mem.relationToChef || '';
+  if (editPhoneEl) {
+    editPhoneEl.value = mem.phone || '';
+    editPhoneEl.style.borderColor = '';
+    editPhoneEl.style.background = '';
+  }
+  if (editProfEl) editProfEl.value = mem.profession || '';
+  if (editResEl) editResEl.value = mem.residence || '';
+  if (editStatEl) editStatEl.value = mem.statutCotisation || 'A_JOUR';
+
+  if (famSelect) {
+    let html = `<option value="" disabled>-- Sélectionner une famille --</option>`;
+    (data.families || []).forEach(f => {
+      const chef = f.chefDeFamille || 'Chef';
+      const isSel = f.id === mem.familyId;
+      html += `<option value="${f.id}" ${isSel ? 'selected' : ''}>🏠 ${f.name} (Chef: ${chef})</option>`;
+    });
+    famSelect.innerHTML = html;
+  }
+
+  const phoneErr = document.getElementById('editMemPhoneError');
+  if (phoneErr) {
+    phoneErr.style.display = 'none';
+    phoneErr.textContent = '';
+  }
+
+  openModal('modalEditMember');
+}
+
 /**
  * TAGBA - Application Logic & Controllers
  */
@@ -959,6 +1044,7 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
                       </td>
                       <td style="text-align: right;">
                         <div style="display: inline-flex; gap: 6px;">
+                          <button class="btn btn-sm btn-secondary" onclick="openEditMemberModal('${mem.id}')" title="Modifier les coordonnées du membre">✏️</button>
                           <button class="btn btn-sm btn-secondary" onclick="openMemberMonthsAuditModal('${mem.id}')" title="Calendrier et mois payés">📅 Mois</button>
                           <button class="btn btn-sm btn-secondary" onclick="quickPayMember('${mem.id}')" title="Encaisser versement">💳 Payer</button>
                           <button class="btn btn-sm btn-outline-danger" onclick="deleteMemberConfirm('${mem.id}')" title="Retirer">🗑️</button>
@@ -1055,6 +1141,7 @@ function renderMembersTable(filterSearch = '', filterFamily = '') {
         <td><span class="badge ${getStatutBadgeClass(memStatut)}">${formatStatut(memStatut)}</span></td>
         <td>
           <div style="display: flex; gap: 6px;">
+            <button class="btn btn-sm btn-secondary" onclick="openEditMemberModal('${mem.id}')" title="Modifier le membre">✏️</button>
             <button class="btn btn-sm btn-secondary" onclick="openMemberMonthsAuditModal('${mem.id}')" title="Calendrier et mois payés">📅 Mois</button>
             <button class="btn btn-sm btn-secondary" onclick="quickPayMember('${mem.id}')" title="Enregistrer un versement">💳 Payer</button>
             <button class="btn btn-sm btn-outline-danger" onclick="deleteMemberConfirm('${mem.id}')" title="Supprimer">🗑️</button>
@@ -1884,6 +1971,7 @@ function openModal(modalId) {
     modalId === 'modalAddEntraide' ||
     modalId === 'modalEditBureau' ||
     modalId === 'modalEditCotisation' ||
+    modalId === 'modalEditMember' ||
     modalId === 'modalAddBureau' ||
     modalId === 'modalAddDepense' ||
     modalId === 'modalAddContributionVolontaire'
@@ -2078,18 +2166,32 @@ function bindFormSubmissions() {
     formAddFam.addEventListener('submit', (e) => {
       e.preventDefault();
       if (!assertPermission('write', 'l’ajout d’une famille')) return;
+      const phoneVal = document.getElementById('famPhone').value.trim();
+
+      const conflict = TAGBA_DB.isPhoneTaken(phoneVal);
+      if (conflict) {
+        showToast(`🚫 Numéro déjà attribué : Le numéro ${phoneVal} appartient déjà à "${conflict.name}" (${conflict.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+        const pInput = document.getElementById('famPhone');
+        if (pInput) { pInput.focus(); pInput.style.borderColor = 'var(--rose-500)'; }
+        return;
+      }
+
       const newFam = {
         name: document.getElementById('famName').value.trim(),
         chefDeFamille: document.getElementById('famChef').value.trim(),
-        phone: document.getElementById('famPhone').value.trim(),
+        phone: phoneVal,
         city: document.getElementById('famCity').value.trim(),
         notes: document.getElementById('famNotes').value.trim()
       };
-      TAGBA_DB.addFamily(newFam);
-      showToast('Nouvelle famille enregistrée avec succès');
-      closeModal('modalAddFamily');
-      formAddFam.reset();
-      renderAllViews();
+      try {
+        TAGBA_DB.addFamily(newFam);
+        showToast('Nouvelle famille enregistrée avec succès');
+        closeModal('modalAddFamily');
+        formAddFam.reset();
+        renderAllViews();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
     });
   }
 
@@ -2099,20 +2201,73 @@ function bindFormSubmissions() {
     formAddMem.addEventListener('submit', (e) => {
       e.preventDefault();
       if (!assertPermission('write', 'l’ajout d’un membre')) return;
+      const phoneVal = document.getElementById('memPhone').value.trim();
+
+      const conflict = TAGBA_DB.isPhoneTaken(phoneVal);
+      if (conflict) {
+        showToast(`🚫 Numéro déjà attribué : Le numéro ${phoneVal} appartient déjà à "${conflict.name}" (${conflict.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+        const pInput = document.getElementById('memPhone');
+        if (pInput) { pInput.focus(); pInput.style.borderColor = 'var(--rose-500)'; }
+        return;
+      }
+
       const newMem = {
         fullName: document.getElementById('memName').value.trim(),
         familyId: document.getElementById('memFamilySelect').value,
         relationToChef: document.getElementById('memRelation').value.trim(),
-        phone: document.getElementById('memPhone').value.trim(),
+        phone: phoneVal,
         profession: document.getElementById('memProfession').value.trim(),
         residence: document.getElementById('memResidence').value.trim(),
         statutCotisation: document.getElementById('memStatutCotisation').value
       };
-      TAGBA_DB.addMember(newMem);
-      showToast('Membre rattaché et enregistré avec succès !');
-      closeModal('modalAddMember');
-      formAddMem.reset();
-      renderAllViews();
+      try {
+        TAGBA_DB.addMember(newMem);
+        showToast('Membre rattaché et enregistré avec succès !');
+        closeModal('modalAddMember');
+        formAddMem.reset();
+        renderAllViews();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+  }
+
+  // 2-Bis. Modifier Membre
+  const formEditMem = document.getElementById('formEditMember');
+  if (formEditMem) {
+    formEditMem.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!assertPermission('write', 'la modification d’un membre')) return;
+      const memId = document.getElementById('editMemId').value;
+      const phoneVal = document.getElementById('editMemPhone').value.trim();
+
+      const conflict = TAGBA_DB.isPhoneTaken(phoneVal, memId);
+      if (conflict) {
+        showToast(`🚫 Numéro déjà attribué : Le numéro ${phoneVal} appartient déjà à "${conflict.name}" (${conflict.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+        const pInput = document.getElementById('editMemPhone');
+        if (pInput) { pInput.focus(); pInput.style.borderColor = 'var(--rose-500)'; }
+        return;
+      }
+
+      try {
+        TAGBA_DB.updateMember(memId, {
+          fullName: document.getElementById('editMemName').value.trim(),
+          familyId: document.getElementById('editMemFamilySelect').value,
+          relationToChef: document.getElementById('editMemRelation').value.trim(),
+          phone: phoneVal,
+          profession: document.getElementById('editMemProfession').value.trim(),
+          residence: document.getElementById('editMemResidence').value.trim(),
+          statutCotisation: document.getElementById('editMemStatutCotisation').value
+        });
+        showToast('Membre mis à jour avec succès', 'success');
+        closeModal('modalEditMember');
+        renderAllViews();
+        if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+          pushAllDataToSupabase(true);
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
     });
   }
 
@@ -2369,6 +2524,14 @@ function bindFormSubmissions() {
       const email = document.getElementById('editBureauEmail').value.trim();
       const bio = document.getElementById('editBureauBio').value.trim();
 
+      if (phone) {
+        const conflict = TAGBA_DB.isPhoneTaken(phone, burId);
+        if (conflict) {
+          showToast(`🚫 Numéro déjà attribué : Le numéro ${phone} appartient déjà à "${conflict.name}" (${conflict.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+          return;
+        }
+      }
+
       TAGBA_DB.updateBureauMember(burId, name, phone, email, bio);
       showToast('Poste du Bureau mis à jour', 'success');
       closeModal('modalEditBureau');
@@ -2390,6 +2553,14 @@ function bindFormSubmissions() {
       const phone = document.getElementById('addBureauPhone').value.trim();
       const email = document.getElementById('addBureauEmail').value.trim();
       const bio = document.getElementById('addBureauBio').value.trim();
+
+      if (phone) {
+        const conflict = TAGBA_DB.isPhoneTaken(phone);
+        if (conflict) {
+          showToast(`🚫 Numéro déjà attribué : Le numéro ${phone} appartient déjà à "${conflict.name}" (${conflict.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+          return;
+        }
+      }
 
       TAGBA_DB.addBureauMember({
         role,
