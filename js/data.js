@@ -327,29 +327,29 @@ const TAGBA_DB = {
 
   initStatutoryBureau: function() {
     const statutoryRoles = [
-      { role: 'Président', bio: 'Garant de la vision, de la cohésion et des orientations stratégiques de la Mutuelle.', level: 3 },
+      { role: 'Président', bio: 'Garant de la vision, de la cohésion et des orientations stratégiques de la Mutuelle.', level: 3, name: 'BAMBA Mamadou', email: 'mamadou.bamba@tagba.ci', photoInitial: 'BM' },
       { role: 'Vice-Président', bio: 'Assiste le Président et assure la coordination opérationnelle des commissions.', level: 3 },
       { role: 'Secrétaire Général', bio: 'En charge des procès-verbaux, courriers, archives et communication officielle.', level: 3 },
       { role: 'Vice-Secrétaire', bio: 'Appuie le Secrétaire général et gère le registre des membres et les présences.', level: 3 },
       { role: 'Trésorier Général', bio: 'Responsable de la caisse, des encaissements des cotisations et des états financiers.', level: 1 },
       { role: 'Vice-Trésorier', bio: 'Émet les reçus de versement et tient le livre journal des entrées et sorties.', level: 1 },
-      { role: 'Commissaire aux Comptes', bio: 'Audite et vérifie la régularité des comptes, des reçus et des dépenses de solidarité. Pleins droits d’administration (Niveau 1).', level: 1 },
+      { role: 'Commissaire aux Comptes', bio: 'Audite et vérifie la régularité des comptes, des reçus et des dépenses de solidarité. Pleins droits d’administration (Niveau 1).', level: 1, name: 'Drissa Ouattara', email: 'drissa.ouattara@tagba.ci', photoInitial: 'DO' },
       { role: 'Vice-Commissaire aux Comptes', bio: 'Assiste le Commissaire aux comptes lors des contrôles périodiques et inventaires.', level: 1 },
       { role: 'Conseiller 1 (Sagesse & Médiation)', bio: 'Doyen et sage, chargé du règlement pacifique des conflits et de la médiation interne.', level: 3 },
       { role: 'Conseiller 2 (Organisation & Protocole)', bio: 'Supervise la logistique, les cérémonies et la mobilisation des familles.', level: 3 },
       { role: 'Conseiller 3 (Jeunesse & Projets)', bio: 'Anime les initiatives de la jeunesse et l’insertion socioprofessionnelle.', level: 3 },
-      { role: 'Porte-Parole', bio: 'Porte la voix officielle du bureau, assure les déclarations officielles et coordonne les annonces pour les cérémonies (Niveau 2).', level: 2 },
-      { role: 'Porte-Parole Adjoint', bio: 'Assiste le porte-parole principal et le seconde dans l’organisation et l’animation des cérémonies et assemblées.', level: 2 }
+      { role: 'Porte-Parole', bio: 'Porte la voix officielle du bureau, assure les déclarations officielles et coordonne les annonces pour les cérémonies (Niveau 2).', level: 2, name: 'Salif Koné', email: 'salif.kone@tagba.ci', photoInitial: 'SK' },
+      { role: 'Porte-Parole Adjoint', bio: 'Assiste le porte-parole principal et le seconde dans l’organisation et l’animation des cérémonies et assemblées.', level: 2, name: 'Yacouba Bamba', email: 'yacouba.bamba@tagba.ci', photoInitial: 'YB' }
     ];
     const data = this.get();
     data.bureau = statutoryRoles.map((r, idx) => ({
       id: 'bur-' + (idx + 1),
       role: r.role,
-      name: '[Poste vacant - À désigner]',
+      name: r.name || '[Poste vacant - À désigner]',
       phone: '',
-      email: '',
+      email: r.email || '',
       bio: r.bio,
-      photoInitial: 'PV',
+      photoInitial: r.photoInitial || 'PV',
       level: r.level
     }));
     this.save(data);

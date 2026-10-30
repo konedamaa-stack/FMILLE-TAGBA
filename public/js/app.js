@@ -77,9 +77,10 @@ const AUTH_USERS = {
   'usr-president': {
     id: 'usr-president',
     login: 'president',
-    email: 'ibrahim.kone@tagba.ci',
+    email: 'mamadou.bamba@tagba.ci',
     matricule: 'TAGBA-2026-001',
-    name: 'Ibrahim Koné',
+    name: 'BAMBA Mamadou',
+    initials: 'BM',
     title: 'Président du Bureau',
     level: 3,
     levelName: 'Niveau 3 : Président (Lecture Seule)',
@@ -1187,7 +1188,7 @@ function openFamilySheetModal(familyId) {
         </div>
         <div style="text-align: center;">
           <p style="font-weight: 700; margin-bottom: 35px;">Pour le Bureau Exécutif TAGBA</p>
-          <p style="color: #047857; font-weight: 700;">Ibrahim Koné (Président)</p>
+          <p style="color: #047857; font-weight: 700;">BAMBA Mamadou (Président)</p>
         </div>
       </div>
     </div>
