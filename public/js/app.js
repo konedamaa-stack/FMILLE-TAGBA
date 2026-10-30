@@ -1630,6 +1630,9 @@ function renderCotisationsMonthsTracking() {
         </td>
         <td style="text-align: right;">
           <div style="display: inline-flex; gap: 6px;">
+            <button class="btn btn-sm btn-secondary" onclick="openEditMemberModal('${mem.id}')" title="Modifier les informations du membre">
+              ✏️
+            </button>
             <button class="btn btn-sm btn-secondary" onclick="openMemberMonthsAuditModal('${mem.id}')" title="Voir l'audit chronologique mois par mois">
               🔍 Calendrier
             </button>
@@ -3102,11 +3105,14 @@ function openMemberMonthsAuditModal(memberId) {
             </div>
           </div>
         </div>
-        <div style="text-align: right;">
+        <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
           <span class="badge ${audit.badgeClass}" style="font-size: 13px; padding: 6px 14px;">
             ${audit.statutLabel}
           </span>
-          <div style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">
+          <button class="btn btn-xs btn-secondary" onclick="closeModal('modalMemberMonthsAudit'); openEditMemberModal('${mem.id}')" style="margin-top: 4px;" title="Modifier les coordonnées du membre">
+            ✏️ Modifier Informations
+          </button>
+          <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">
             Date de début : ${audit.dateDebutCotisations}
           </div>
         </div>
