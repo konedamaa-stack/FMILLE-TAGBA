@@ -4096,12 +4096,19 @@ function renderContributionsVolontaires() {
           <code style="color: #a78bfa; font-size: 11px; font-weight: 700;">${don.recuNum || don.id}</code>
         </td>
         <td>
-          <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">
-            ❤️ ${don.memberName}
-          </div>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-            Foyer de : <strong>${don.familyChef || 'Famille'}</strong>
-          </div>
+          ${(() => {
+            const isExt = !don.familyId || (don.familyChef && (don.familyChef.includes('Association') || don.familyChef.includes('Partenaire') || don.familyChef.includes('Contact')));
+            const icon = isExt ? '🏢' : '❤️';
+            const sub = isExt ? `<span style="color: var(--gold-400); font-weight: 600;">${don.familyChef || 'Autre Association'}</span>` : `Foyer de : <strong>${don.familyChef || 'Famille'}</strong>`;
+            return `
+              <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">
+                ${icon} ${don.memberName}
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                ${sub}
+              </div>
+            `;
+          })()}
         </td>
         <td>
           <span class="badge ${targetBadgeClass}" style="font-size: 10px;">${don.cibleType}</span>
@@ -4176,7 +4183,10 @@ function renderLivreCaisse() {
       type: `Don Volontaire (${d.cibleType})`,
       badgeClass: 'badge-gold',
       libelle: `Don pour ${d.cibleTitre}`,
-      tiers: `❤️ ${d.memberName} (Foyer ${d.familyChef})`,
+      tiers: (() => {
+        const isExt = !d.familyId || (d.familyChef && (d.familyChef.includes('Association') || d.familyChef.includes('Partenaire') || d.familyChef.includes('Contact')));
+        return isExt ? `🏢 ${d.memberName} (${d.familyChef})` : `❤️ ${d.memberName} (Foyer ${d.familyChef})`;
+      })(),
       entree: Number(d.montant) || 0,
       sortie: 0,
       mode: d.modePaiement || 'Wave',
@@ -4439,8 +4449,33 @@ function populateDonMemberSelect(membersList) {
   }).join('');
 }
 
+function toggleDonOriginType(type) {
+  const grpMembre = document.getElementById('grpDonMembreInterne');
+  const grpExt = document.getElementById('grpDonExterne');
+  const donCibleType = document.getElementById('donCibleType');
+  const donMemberSelect = document.getElementById('donMemberSelect');
+  const donNomExt = document.getElementById('donNomExterne');
+
+  if (type === 'externe') {
+    if (grpMembre) grpMembre.style.display = 'none';
+    if (grpExt) grpExt.style.display = 'block';
+    if (donNomExt) donNomExt.focus();
+    if (donCibleType && (donCibleType.value === 'Cérémonie' || donCibleType.value === 'Entraide')) {
+      donCibleType.value = 'Subvention / Partenariat';
+    }
+    onDonCibleTypeChanged();
+  } else {
+    if (grpMembre) grpMembre.style.display = 'block';
+    if (grpExt) grpExt.style.display = 'none';
+    if (donCibleType && donCibleType.value === 'Subvention / Partenariat') {
+      donCibleType.value = 'Caisse Solidarité';
+    }
+    onDonCibleTypeChanged();
+  }
+}
+
 function onDonCibleTypeChanged(targetIdToSelect, targetTitreToSelect) {
-  const cibleType = document.getElementById('donCibleType')?.value || 'Cérémonie';
+  const cibleType = document.getElementById('donCibleType')?.value || 'Caisse Solidarité';
   const cibleSelect = document.getElementById('donCibleSelect');
   if (!cibleSelect) return;
 
@@ -4475,6 +4510,8 @@ function onDonCibleTypeChanged(targetIdToSelect, targetTitreToSelect) {
         `;
       });
     }
+  } else if (cibleType === 'Subvention / Partenariat') {
+    cibleSelect.innerHTML = '<option value="subvention-partenaire|Subvention / Appui Financier Partenaire">🤝 Subvention / Appui Financier d’une Autre Association ou Partenaire</option>';
   } else {
     // Caisse Solidarité
     cibleSelect.innerHTML = '<option value="caisse-solidarite|Caisse de Solidarité Générale">🏛️ Caisse Générale de Secours & Solidarité TAGBA</option>';
@@ -4519,15 +4556,22 @@ function openReceiptDonationModal(donId) {
       </div>
 
       <!-- Corps du Reçu -->
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 18px;">
-        <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">BIENFAITEUR / MEMBRE DONATEUR :</div>
-        <div style="font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 4px;">
-          ❤️ ${don.memberName}
+      ${(() => {
+        const isExt = !don.familyId || (don.familyChef && (don.familyChef.includes('Association') || don.familyChef.includes('Partenaire') || don.familyChef.includes('Contact')));
+        return `
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 18px;">
+          <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">
+            ${isExt ? 'ORGANISATION / ASSOCIATION DONATRICE :' : 'BIENFAITEUR / MEMBRE DONATEUR :'}
+          </div>
+          <div style="font-size: 18px; font-weight: 800; color: #0f172a; margin-top: 4px;">
+            ${isExt ? '🏢' : '❤️'} ${don.memberName}
+          </div>
+          <div style="font-size: 13px; color: #475569; margin-top: 2px;">
+            ${isExt ? `Origine / Info : <strong>${don.familyChef || 'Partenaire Extérieur'}</strong>` : `Foyer familial : <strong>Famille ${don.familyChef || 'TAGBA'}</strong>`}
+          </div>
         </div>
-        <div style="font-size: 13px; color: #475569; margin-top: 2px;">
-          Foyer familial : <strong>Famille ${don.familyChef || 'TAGBA'}</strong>
-        </div>
-      </div>
+        `;
+      })()}
 
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 13px;">
         <tbody>
@@ -4652,16 +4696,42 @@ function setupFinanceEventListeners() {
       e.preventDefault();
       if (!assertPermission('write', 'l’enregistrement d’un don')) return;
 
-      const memberId = document.getElementById('donMemberSelect')?.value;
+      const originType = document.querySelector('input[name="donOriginType"]:checked')?.value || 'membre';
       const data = TAGBA_DB.get();
-      const member = (data.members || []).find(m => m.id === memberId);
-      if (!member) {
-        showToast('Veuillez sélectionner un membre donateur valide', 'error');
-        return;
-      }
 
-      const family = (data.families || []).find(f => f.id === member.familyId);
-      const familyChef = family ? family.chefFamille : 'Famille TAGBA';
+      let memberId = null;
+      let memberName = '';
+      let familyId = null;
+      let familyChef = '';
+
+      if (originType === 'externe') {
+        const extNomInput = document.getElementById('donNomExterne');
+        const extContactInput = document.getElementById('donContactExterne');
+        const nomExt = extNomInput ? extNomInput.value.trim() : '';
+        const contactExt = extContactInput ? extContactInput.value.trim() : '';
+
+        if (!nomExt) {
+          showToast('Veuillez saisir le nom de l’association ou du donateur externe', 'error');
+          if (extNomInput) extNomInput.focus();
+          return;
+        }
+
+        memberId = 'EXT-' + Date.now();
+        memberName = nomExt;
+        familyId = null;
+        familyChef = contactExt ? `Contact : ${contactExt}` : 'Autre Association / Partenaire Externe';
+      } else {
+        memberId = document.getElementById('donMemberSelect')?.value;
+        const member = (data.members || []).find(m => m.id === memberId);
+        if (!member) {
+          showToast('Veuillez sélectionner un membre donateur valide', 'error');
+          return;
+        }
+        memberName = member.fullName;
+        familyId = member.familyId;
+        const family = (data.families || []).find(f => f.id === member.familyId);
+        familyChef = family ? (family.chefFamille || family.chefDeFamille) : 'Famille TAGBA';
+      }
 
       const cibleType = document.getElementById('donCibleType')?.value;
       const cibleRaw = document.getElementById('donCibleSelect')?.value;
@@ -4681,9 +4751,9 @@ function setupFinanceEventListeners() {
       const currentUser = getCurrentUser();
 
       const don = {
-        memberId: member.id,
-        memberName: member.fullName,
-        familyId: member.familyId,
+        memberId: memberId,
+        memberName: memberName,
+        familyId: familyId,
         familyChef: familyChef,
         cibleType: cibleType,
         cibleId: cibleId,
@@ -4692,13 +4762,17 @@ function setupFinanceEventListeners() {
         modePaiement: modePaiement,
         datePaiement: datePaiement,
         note: note,
-        agent: currentUser.nom
+        agent: currentUser.name || currentUser.nom || 'Trésorier'
       };
 
       const newDon = TAGBA_DB.addContributionVolontaire(don);
-      showToast(`❤️ Don de ${formatMoney(montant, 'FCFA')} enregistré pour ${member.fullName} !`);
+      const iconSuccess = originType === 'externe' ? '🏢' : '❤️';
+      showToast(`${iconSuccess} Don de ${formatMoney(montant, 'FCFA')} de "${memberName}" enregistré avec succès !`, 'success');
       closeModal('modalAddContributionVolontaire');
       formDon.reset();
+
+      // Réinitialiser les sections du formulaire
+      toggleDonOriginType('membre');
 
       renderFinances();
       renderDashboard();

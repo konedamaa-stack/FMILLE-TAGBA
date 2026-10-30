@@ -2093,26 +2093,56 @@
       </div>
       <form id="formAddContributionVolontaire">
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
-          Enregistrez les dons volontaires des membres pour les cérémonies et cas d'entraide avec délivrance d'un reçu nominatif.
+          Enregistrez les dons et contributions des membres, ou les fonds et subventions reçus d'une autre association ou partenaire extérieur.
         </p>
 
-        <div class="form-group">
-          <label class="form-label">Membre Donateur / Bienfaiteur *</label>
+        <!-- Choix de l'origine du don : Membre ou Autre Association -->
+        <div class="form-group" style="margin-bottom: 16px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <label class="form-label" style="margin-bottom: 8px;">Origine du Don / Bienfaiteur *</label>
+          <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; font-weight: 600;">
+              <input type="radio" name="donOriginType" value="membre" checked onchange="toggleDonOriginType('membre')">
+              👤 Membre inscrit de la Mutuelle
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; font-weight: 600; color: var(--gold-400);">
+              <input type="radio" name="donOriginType" value="externe" onchange="toggleDonOriginType('externe')">
+              🏢 Autre Association / Partenaire Extérieur / Donateur Externe
+            </label>
+          </div>
+        </div>
+
+        <!-- Origine 1 : Membre interne -->
+        <div class="form-group" id="grpDonMembreInterne">
+          <label class="form-label">Membre Donateur *</label>
           <div style="position: relative; margin-bottom: 6px;">
             <input type="text" class="form-control" id="donMemberSearchInput" placeholder="🔍 Rechercher le membre par nom ou matricule...">
           </div>
-          <select class="form-control" id="donMemberSelect" required>
+          <select class="form-control" id="donMemberSelect">
             <!-- Rempli dynamiquement par JS -->
           </select>
         </div>
 
+        <!-- Origine 2 : Autre Association / Organisation Externe -->
+        <div id="grpDonExterne" style="display: none;">
+          <div class="form-group">
+            <label class="form-label">Nom de l'Autre Association / Organisation Donatrice *</label>
+            <input type="text" class="form-control" id="donNomExterne" placeholder="Ex: Association Fraternelle de..., ONG Solidarité, Mutuelle Soeur...">
+            <small style="color: var(--text-dim); font-size: 11px; margin-top: 4px; display: block;">Nom complet de la structure, de l'association amie ou du bienfaiteur externe.</small>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Responsable / Contact de l'Association (Optionnel)</label>
+            <input type="text" class="form-control" id="donContactExterne" placeholder="Ex: M. Traoré (Président) - 07 00 00 00 00">
+          </div>
+        </div>
+
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Destination du Don *</label>
+            <label class="form-label">Destination / Affectation des Fonds *</label>
             <select class="form-control" id="donCibleType" required onchange="onDonCibleTypeChanged()">
+              <option value="Caisse Solidarité" selected>🏛️ Don Général à la Caisse de Solidarité</option>
+              <option value="Subvention / Partenariat">🤝 Subvention / Appui Financier Partenaire</option>
               <option value="Cérémonie">🎉 Pour une Cérémonie (Mariage, Obsèques...)</option>
               <option value="Entraide">🤝 Pour un Cas Social (Urgence, Maladie...)</option>
-              <option value="Caisse Solidarité">🏛️ Don Général à la Caisse de Solidarité</option>
             </select>
           </div>
 
