@@ -2393,6 +2393,22 @@ function loadConfigForm() {
   if (inputTagline) inputTagline.value = cfg.tagline || 'Union • Solidarité • Entraide Familiale';
 
   updateCurrencySuffixes(cfg.currency || 'FCFA');
+
+  // Listener temps réel sur la cotisation mensuelle unique
+  if (inputMensuel && !inputMensuel.dataset.boundLive) {
+    inputMensuel.dataset.boundLive = 'true';
+    inputMensuel.addEventListener('input', (e) => {
+      const val = Number(e.target.value) || 0;
+      const curr = selectCurrency ? selectCurrency.value : (cfg.currency || 'FCFA');
+      if (inputTrimestriel) inputTrimestriel.value = val * 3;
+      const autoTri = document.getElementById('cfgAutoTrimestre');
+      const autoSem = document.getElementById('cfgAutoSemestre');
+      const autoAnn = document.getElementById('cfgAutoAnnee');
+      if (autoTri) autoTri.textContent = formatMoney(val * 3, curr);
+      if (autoSem) autoSem.textContent = formatMoney(val * 6, curr);
+      if (autoAnn) autoAnn.textContent = formatMoney(val * 12, curr);
+    });
+  }
 }
 
 function updateCurrencySuffixes(curr) {
@@ -2404,11 +2420,47 @@ function updateCurrencySuffixes(curr) {
 function updateBaremeDisplays() {
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
+  const unitM = Number(cfg.cotisationMensuelle || 5000);
+  const curr = cfg.currency || 'FCFA';
+
   const dispM = document.getElementById('cfgDisplayMensuel');
   const dispT = document.getElementById('cfgDisplayTrimestriel');
+  const badgeM = document.getElementById('cfgDisplayMensuelBadge');
+  const noticeM = document.getElementById('cotNoticeUnitTarif');
+  
+  const autoTri = document.getElementById('cfgAutoTrimestre');
+  const autoSem = document.getElementById('cfgAutoSemestre');
+  const autoAnn = document.getElementById('cfgAutoAnnee');
 
-  if (dispM) dispM.textContent = formatMoney(cfg.cotisationMensuelle || 5000, cfg.currency) + ' / mois';
-  if (dispT) dispT.textContent = formatMoney(cfg.cotisationTrimestrielle || 15000, cfg.currency) + ' / trimestre';
+  if (dispM) dispM.textContent = formatMoney(unitM, curr) + ' / mois';
+  if (dispT) dispT.textContent = formatMoney(unitM * 3, curr) + ' / trimestre';
+  if (badgeM) badgeM.textContent = formatMoney(unitM, curr) + ' / mois';
+  if (noticeM) noticeM.textContent = formatMoney(unitM, curr);
+
+  if (autoTri) autoTri.textContent = formatMoney(unitM * 3, curr);
+  if (autoSem) autoSem.textContent = formatMoney(unitM * 6, curr);
+  if (autoAnn) autoAnn.textContent = formatMoney(unitM * 12, curr);
+
+  updateAnticipationButtonLabels();
+}
+
+function updateAnticipationButtonLabels() {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const unitM = Number(cfg.cotisationMensuelle || 5000);
+  const curr = cfg.currency || 'FCFA';
+
+  const btn1 = document.querySelector('.btn-anticipate[data-months="1"]');
+  const btn2 = document.querySelector('.btn-anticipate[data-months="2"]');
+  const btn3 = document.querySelector('.btn-anticipate[data-months="3"]');
+  const btn6 = document.querySelector('.btn-anticipate[data-months="6"]');
+  const btn12 = document.querySelector('.btn-anticipate[data-months="12"]');
+
+  if (btn1) btn1.textContent = `1 Mois (${formatMoney(unitM, curr)})`;
+  if (btn2) btn2.textContent = `2 Mois (${formatMoney(unitM * 2, curr)})`;
+  if (btn3) btn3.textContent = `3 Mois - Trimestre (${formatMoney(unitM * 3, curr)})`;
+  if (btn6) btn6.textContent = `6 Mois (${formatMoney(unitM * 6, curr)})`;
+  if (btn12) btn12.textContent = `12 Mois - 1 An (${formatMoney(unitM * 12, curr)})`;
 }
 
 // Détection si un membre est un Chef de Famille
@@ -3303,10 +3355,37 @@ function syncCotisationMontantField() {
   } else {
     const cotTypeSelect = document.getElementById('cotType');
     const cotType = cotTypeSelect ? cotTypeSelect.value : 'Mensuel';
-    const unitMontant = cotType === 'Trimestriel'
-      ? (cfg.cotisationTrimestrielle || 15000)
-      : (cfg.cotisationMensuelle || 5000);
-    cotMontantInput.value = unitMontant;
+    const lockIcon = document.getElementById('cotMontantLockIcon');
+    const noticeEl = document.getElementById('cotMontantNotice');
+
+    if (cotType === 'Exceptionnel') {
+      cotMontantInput.readOnly = false;
+      cotMontantInput.style.cursor = 'text';
+      cotMontantInput.placeholder = 'Saisir montant exceptionnel';
+      if (lockIcon) lockIcon.textContent = '✏️';
+      if (noticeEl) {
+        noticeEl.innerHTML = '✏️ <em>Saisie libre pour don ou contribution exceptionnelle</em>';
+      }
+    } else {
+      let multiplier = 1;
+      if (cotType === '2 Mois') multiplier = 2;
+      else if (cotType === 'Trimestriel') multiplier = 3;
+      else if (cotType === 'Semestriel') multiplier = 6;
+      else if (cotType === 'Annuel') multiplier = 12;
+
+      if (currentAnticipationSelectedMonths && [1, 2, 3, 6, 12].includes(currentAnticipationSelectedMonths)) {
+        multiplier = currentAnticipationSelectedMonths;
+      }
+
+      const totalVal = unitMonthly * multiplier;
+      cotMontantInput.value = totalVal;
+      cotMontantInput.readOnly = true;
+      cotMontantInput.style.cursor = 'not-allowed';
+      if (lockIcon) lockIcon.textContent = '🔒';
+      if (noticeEl) {
+        noticeEl.innerHTML = `🔒 Calculé selon le tarif unique : <strong>${formatMoney(unitMonthly, cfg.currency)}</strong> × ${multiplier} mois = <strong>${formatMoney(totalVal, cfg.currency)}</strong>`;
+      }
+    }
   }
 }
 

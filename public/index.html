@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261030-v8">
+  <link rel="stylesheet" href="css/style.css?v=20261030-v9">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -1083,23 +1083,25 @@
             <form id="formConfigSettings" onsubmit="return enregistrerParametres(event);">
               <div class="form-row">
                 <div class="form-group">
-                  <label class="form-label">💰 Cotisation Mensuelle par Défaut *</label>
+                  <label class="form-label">💰 Montant Unique de Cotisation Mensuelle (par Membre) *</label>
                   <div style="position: relative;">
-                    <input type="number" class="form-control" id="cfgCotisationMensuelle" min="0" step="500" value="5000" required>
-                    <span class="cfgCurrencySuffix" style="position: absolute; right: 14px; top: 10px; color: var(--text-muted); font-size: 13px; font-weight: 600;">FCFA</span>
+                    <input type="number" class="form-control" id="cfgCotisationMensuelle" min="0" step="500" value="5000" required style="font-weight: 700; font-size: 16px; color: var(--emerald-400);">
+                    <span class="cfgCurrencySuffix" style="position: absolute; right: 14px; top: 12px; color: var(--text-muted); font-size: 13px; font-weight: 600;">FCFA</span>
                   </div>
-                  <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">Montant pré-rempli automatiquement lors de chaque enregistrement de versement mensuel.</small>
+                  <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">
+                    Ce montant unique s'applique obligatoirement à tous les membres sans exception pour chaque mois d'adhésion.
+                  </small>
                 </div>
 
                 <div class="form-group">
-                  <label class="form-label">📅 Cotisation Trimestrielle par Défaut *</label>
-                  <div style="position: relative;">
-                    <input type="number" class="form-control" id="cfgCotisationTrimestrielle" min="0" step="500" value="15000" required>
-                    <span class="cfgCurrencySuffix" style="position: absolute; right: 14px; top: 10px; color: var(--text-muted); font-size: 13px; font-weight: 600;">FCFA</span>
+                  <label class="form-label">⚡ Barème Dérivé Automatique</label>
+                  <input type="hidden" id="cfgCotisationTrimestrielle" value="15000">
+                  <div style="padding: 10px 14px; border-radius: var(--radius-md); background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); font-size: 13px;">
+                    <div>Trimestre (3 mois) : <strong id="cfgAutoTrimestre" style="color: var(--emerald-400);">15 000 FCFA</strong></div>
+                    <div style="margin-top: 4px; font-size: 12px; color: var(--text-secondary);">
+                      Semestre (6 mois) : <span id="cfgAutoSemestre" style="font-weight: 600;">30 000 FCFA</span> • Année (12 mois) : <span id="cfgAutoAnnee" style="font-weight: 600;">60 000 FCFA</span>
+                    </div>
                   </div>
-                  <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">
-                    <a href="javascript:void(0)" id="btnCalcTrimestriel" style="color: var(--emerald-400); text-decoration: underline; font-weight: 600;">⚡ Calculer automatiquement (3 × mensuel)</a>
-                  </small>
                 </div>
               </div>
 
@@ -1429,8 +1431,14 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Montant Total (FCFA) *</label>
-            <input type="number" class="form-control" id="cotMontant" value="5000" required>
+            <label class="form-label">Montant à Encaisser (<span class="cfgCurrencySuffix">FCFA</span>) *</label>
+            <div style="position: relative;">
+              <input type="number" class="form-control" id="cotMontant" value="5000" required readonly style="background: rgba(255,255,255,0.03); font-weight: 700; font-size: 16px; color: var(--emerald-400); cursor: not-allowed;">
+              <span id="cotMontantLockIcon" style="position: absolute; right: 12px; top: 10px; font-size: 14px;" title="Montant calculé automatiquement selon le tarif unique configuré dans les Paramètres">🔒</span>
+            </div>
+            <small id="cotMontantNotice" style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">
+              🔒 Calculé selon le tarif unique : <strong id="cotNoticeUnitTarif">5 000 FCFA</strong> / mois
+            </small>
           </div>
         </div>
 
@@ -2139,9 +2147,9 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261030-v8"></script>
-  <script src="js/supabase.js?v=20261030-v8"></script>
-  <script src="js/app.js?v=20261030-v8"></script>
+  <script src="js/data.js?v=20261030-v9"></script>
+  <script src="js/supabase.js?v=20261030-v9"></script>
+  <script src="js/app.js?v=20261030-v9"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
