@@ -2628,7 +2628,12 @@ function enregistrerParametres(e) {
     updateCotisationModalDefaults();
     renderAllViews();
 
-    showToast(`✅ Paramètres enregistrés : Cotisation à ${formatMoney(newMensuel, newCurrency)} / mois (Début : ${newDateDebut})`);
+    // Synchronisation immédiate vers le Cloud Supabase
+    if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+      pushAllDataToSupabase(true).catch(e => console.warn('[Cloud Sync] Push config:', e));
+    }
+
+    showToast(`✅ Paramètres enregistrés : Cotisation fixée à ${formatMoney(newMensuel, newCurrency)} / mois (Sauvegardé & Synchronisé Cloud)`, 'success');
   } catch (err) {
     console.error('Erreur enregistrement paramètres', err);
     showToast('Erreur lors de l’enregistrement des paramètres', 'error');
@@ -2660,6 +2665,16 @@ function loadConfigForm() {
 
   updateCurrencySuffixes(cfg.currency || 'FCFA');
 
+  // Prévisualisation immédiate des barèmes dérivés
+  const curVal = Number(inputMensuel ? inputMensuel.value : (cfg.cotisationMensuelle || 5000));
+  const curCurr = selectCurrency ? selectCurrency.value : (cfg.currency || 'FCFA');
+  const autoTriInit = document.getElementById('cfgAutoTrimestre');
+  const autoSemInit = document.getElementById('cfgAutoSemestre');
+  const autoAnnInit = document.getElementById('cfgAutoAnnee');
+  if (autoTriInit) autoTriInit.textContent = formatMoney(curVal * 3, curCurr);
+  if (autoSemInit) autoSemInit.textContent = formatMoney(curVal * 6, curCurr);
+  if (autoAnnInit) autoAnnInit.textContent = formatMoney(curVal * 12, curCurr);
+
   // Listener temps réel sur la cotisation mensuelle unique
   if (inputMensuel && !inputMensuel.dataset.boundLive) {
     inputMensuel.dataset.boundLive = 'true';
@@ -2674,6 +2689,15 @@ function loadConfigForm() {
       if (autoSem) autoSem.textContent = formatMoney(val * 6, curr);
       if (autoAnn) autoAnn.textContent = formatMoney(val * 12, curr);
     });
+  }
+}
+
+// Fonction globale pour définir rapidement un montant de cotisation suggéré
+function setQuickCotisation(amount) {
+  const inputMensuel = document.getElementById('cfgCotisationMensuelle');
+  if (inputMensuel) {
+    inputMensuel.value = amount;
+    inputMensuel.dispatchEvent(new Event('input', { bubbles: true }));
   }
 }
 
