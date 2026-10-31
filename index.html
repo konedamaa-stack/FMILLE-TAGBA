@@ -734,10 +734,10 @@
                 </div>
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <button type="button" class="btn btn-sm btn-gold" onclick="openModalCreateEvenement()" style="font-weight: 700; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);">
+                  <button type="button" id="btnOpenCreateEventModal" class="btn btn-sm btn-gold" data-action="open-modal-create-evenement" onclick="openModalCreateEvenement()" style="font-weight: 700; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);">
                     ➕ Créer un Événement
                   </button>
-                  <button type="button" class="btn btn-sm btn-secondary" onclick="openModalEditEvenement()" title="Modifier le montant ou les informations de cet événement">
+                  <button type="button" id="btnOpenEditEventModal" class="btn btn-sm btn-secondary" data-action="open-modal-edit-evenement" onclick="openModalEditEvenement()" title="Modifier le montant ou les informations de cet événement">
                     ✏️ Modifier
                   </button>
                   <button type="button" class="btn btn-sm btn-secondary" onclick="openEventBatchPayModal()">
@@ -1259,9 +1259,12 @@
 
               <!-- Configuration de la Cotisation par Événement / Sacrifice -->
               <div class="card-panel" style="margin-top: 18px; margin-bottom: 18px; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.3);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
-                  <span style="font-size: 20px;">🎯</span>
-                  <h3 style="font-size: 15px; color: var(--gold-400); margin: 0;">Cotisation Spéciale par Événement (Sacrifice, Fête, Cérémonie)</h3>
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">🎯</span>
+                    <h3 style="font-size: 15px; color: var(--gold-400); margin: 0;">Cotisation Spéciale par Événement (Sacrifice, Fête, Cérémonie)</h3>
+                  </div>
+                  <button type="button" class="btn btn-xs btn-gold" data-action="open-modal-create-evenement" onclick="openModalCreateEvenement()">➕ Créer un Événement</button>
                 </div>
                 <div class="form-row">
                   <div class="form-group">
@@ -1617,7 +1620,7 @@
         <div class="form-group" id="cotEventChoiceBox" style="display: none; background: rgba(217, 119, 6, 0.08); padding: 12px; border-radius: var(--radius-md); border: 1px solid rgba(217, 119, 6, 0.3); margin-bottom: 14px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <label class="form-label" style="margin-bottom: 0; color: var(--gold-400); font-weight: 700;">🎯 Choisir l'Événement & Montant Associé *</label>
-            <button type="button" class="btn btn-xs btn-outline" onclick="openModalCreateEvenement()">+ Créer un Événement</button>
+            <button type="button" class="btn btn-xs btn-outline" data-action="open-modal-create-evenement" onclick="openModalCreateEvenement()">+ Créer un Événement</button>
           </div>
           <select class="form-control" id="cotEventSelect" onchange="onCotEventSelectChanged(this.value)">
             <!-- Rempli dynamiquement en JS -->
@@ -2548,7 +2551,7 @@
           <span style="font-size: 22px;">🎯</span>
           <h3>Créer un Nouvel Événement & Fixer le Montant</h3>
         </div>
-        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+        <button type="button" class="modal-close-btn" aria-label="Fermer">&times;</button>
       </div>
       <form id="formCreateEvenement">
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
@@ -2610,7 +2613,7 @@
           <span style="font-size: 22px;">✏️</span>
           <h3>Modifier l'Événement & le Montant</h3>
         </div>
-        <button class="modal-close-btn" aria-label="Fermer">&times;</button>
+        <button type="button" class="modal-close-btn" aria-label="Fermer">&times;</button>
       </div>
       <form id="formEditEvenement">
         <input type="hidden" id="editEvtId">
@@ -2667,16 +2670,19 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261030-v11"></script>
-  <script src="js/supabase.js?v=20261030-v11"></script>
-  <script src="js/app.js?v=20261030-v11"></script>
+  <script src="js/data.js?v=20261031-v12"></script>
+  <script src="js/supabase.js?v=20261031-v12"></script>
+  <script src="js/app.js?v=20261031-v12"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
-          .then((reg) => console.log('✅ ServiceWorker actif (Mode Hors-Ligne opérationnel) :', reg.scope))
+          .then((reg) => {
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v12) :', reg.scope);
+            if (reg.update) reg.update();
+          })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));
       });
     }

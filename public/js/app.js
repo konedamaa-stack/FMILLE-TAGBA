@@ -413,8 +413,8 @@ function handleManualLogin(e) {
 
 function canUserPerform(actionType) {
   const user = getActiveAuthUser();
-  if (actionType === 'ceremonies') {
-    return user.canCreateCeremonies; // Niveau 1 & 2
+  if (actionType === 'ceremonies' || actionType === 'evenements') {
+    return user.canCreateCeremonies || user.canWriteAll; // Niveau 1 & 2
   }
   // Tout le reste (cotisations, membres, familles, entraide, paramètres, suppression)
   return user.canWriteAll; // Uniquement Niveau 1
@@ -424,8 +424,8 @@ function assertPermission(actionType, actionLabel = 'cette action') {
   if (canUserPerform(actionType)) return true;
 
   const user = getActiveAuthUser();
-  if (actionType === 'ceremonies') {
-    showToast(`🔒 Accès refusé pour ${actionLabel} : Seuls le Porte-Parole et le Commissaire aux comptes ont le rôle de programmer les cérémonies. Votre compte (${user.title}) est en lecture seule.`, 'warning');
+  if (actionType === 'ceremonies' || actionType === 'evenements') {
+    showToast(`🔒 Accès refusé pour ${actionLabel} : Seuls le Commissaire aux comptes et le Porte-Parole ont les droits de créer et gérer les événements. Votre compte (${user.title}) est en lecture seule.`, 'warning');
   } else {
     showToast(`🔒 Accès restreint pour ${actionLabel} : Seul le Commissaire aux comptes détient tous les droits d'écriture et de modification. Votre compte (${user.title}) est en lecture seule stricte.`, 'warning');
   }
@@ -2112,6 +2112,20 @@ function bindModalEvents() {
     }
   });
 
+  // 3. Écouteurs directs garantis pour l'ouverture des modales Événements
+  document.querySelectorAll('[data-action="open-modal-create-evenement"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModalCreateEvenement();
+    });
+  });
+  document.querySelectorAll('[data-action="open-modal-edit-evenement"]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModalEditEvenement();
+    });
+  });
+
   // Changement de fréquence dans le modal versement
   const cotTypeSelect = document.getElementById('cotType');
   if (cotTypeSelect) {
@@ -2696,7 +2710,7 @@ function bindFormSubmissions() {
   if (formCreateEvt) {
     formCreateEvt.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (!assertPermission('write', 'la création d’un événement')) return;
+      if (!assertPermission('evenements', 'la création d’un événement')) return;
       const titre = document.getElementById('createEvtTitre').value.trim();
       const montant = Number(document.getElementById('createEvtMontant').value) || 5000;
       const dateLimite = document.getElementById('createEvtDate').value;
@@ -2726,7 +2740,7 @@ function bindFormSubmissions() {
   if (formEditEvt) {
     formEditEvt.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (!assertPermission('write', 'la modification d’un événement')) return;
+      if (!assertPermission('evenements', 'la modification d’un événement')) return;
       const id = document.getElementById('editEvtId').value;
       const titre = document.getElementById('editEvtTitre').value.trim();
       const montant = Number(document.getElementById('editEvtMontant').value) || 5000;
@@ -5197,7 +5211,6 @@ function onCotEventSelectChanged(eventId) {
 }
 
 function openModalCreateEvenement() {
-  if (!assertPermission('write', 'la création d’un événement')) return;
   const form = document.getElementById('formCreateEvenement');
   if (form) form.reset();
   const inputMontant = document.getElementById('createEvtMontant');
@@ -5208,11 +5221,15 @@ function openModalCreateEvenement() {
     d.setDate(d.getDate() + 15);
     inputDate.value = d.toISOString().split('T')[0];
   }
-  openModal('modalCreateEvenement');
+  const modal = document.getElementById('modalCreateEvenement');
+  if (modal) {
+    modal.classList.add('active');
+  } else {
+    openModal('modalCreateEvenement');
+  }
 }
 
 function openModalEditEvenement(eventId = null) {
-  if (!assertPermission('write', 'la modification d’un événement')) return;
   const data = TAGBA_DB.get();
   const targetId = eventId || data.config?.activeEventId;
   const evts = data.evenements || [];
@@ -5221,17 +5238,29 @@ function openModalEditEvenement(eventId = null) {
     showToast('Aucun événement à modifier', 'warning');
     return;
   }
-  document.getElementById('editEvtId').value = evt.id;
-  document.getElementById('editEvtTitre').value = evt.titre;
-  document.getElementById('editEvtMontant').value = evt.montant;
-  document.getElementById('editEvtDate').value = evt.dateLimite || '';
-  document.getElementById('editEvtStatut').value = evt.statut || 'Actif';
-  document.getElementById('editEvtDesc').value = evt.description || '';
-  openModal('modalEditEvenement');
+  const idEl = document.getElementById('editEvtId');
+  const titEl = document.getElementById('editEvtTitre');
+  const montEl = document.getElementById('editEvtMontant');
+  const dateEl = document.getElementById('editEvtDate');
+  const statEl = document.getElementById('editEvtStatut');
+  const descEl = document.getElementById('editEvtDesc');
+  if (idEl) idEl.value = evt.id;
+  if (titEl) titEl.value = evt.titre;
+  if (montEl) montEl.value = evt.montant;
+  if (dateEl) dateEl.value = evt.dateLimite || '';
+  if (statEl) statEl.value = evt.statut || 'Actif';
+  if (descEl) descEl.value = evt.description || '';
+  
+  const modal = document.getElementById('modalEditEvenement');
+  if (modal) {
+    modal.classList.add('active');
+  } else {
+    openModal('modalEditEvenement');
+  }
 }
 
 function deleteCurrentEvenementConfirm() {
-  if (!assertPermission('write', 'la suppression d’un événement')) return;
+  if (!assertPermission('evenements', 'la suppression d’un événement')) return;
   const id = document.getElementById('editEvtId').value;
   if (!id) return;
   const data = TAGBA_DB.get();
@@ -5512,4 +5541,20 @@ function openEventBatchPayModal(familyId = null, eventId = null) {
   }
 
   syncCotisationMontantField();
+}
+
+// ============================================================
+// EXPOSITION GLOBALE EXPLICITE SUR WINDOW (Garantie Anti-ReferenceError)
+// ============================================================
+if (typeof window !== 'undefined') {
+  window.openModalCreateEvenement = openModalCreateEvenement;
+  window.openModalEditEvenement = openModalEditEvenement;
+  window.deleteCurrentEvenementConfirm = deleteCurrentEvenementConfirm;
+  window.changeActiveEvent = changeActiveEvent;
+  window.openEventAddCotisationModal = openEventAddCotisationModal;
+  window.openEventBatchPayModal = openEventBatchPayModal;
+  window.quickPayMemberForEvent = quickPayMemberForEvent;
+  window.renderCotisationsEventsTracking = renderCotisationsEventsTracking;
+  window.populateEventSelects = populateEventSelects;
+  window.onCotEventSelectChanged = onCotEventSelectChanged;
 }
