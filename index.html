@@ -20,6 +20,16 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
 
+  <style>
+    .modal-overlay.active {
+      display: flex !important;
+      z-index: 99999 !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+  </style>
+
   <!-- Polyfill & Bouclier Multi-Navigateurs (Safari Privé, Incognito, WebViews, Anciens Navigateurs) -->
   <script>
     (function() {
@@ -734,16 +744,16 @@
                 </div>
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <button type="button" id="btnOpenCreateEventModal" class="btn btn-sm btn-gold" data-action="open-modal-create-evenement" onclick="openModalCreateEvenement()" style="font-weight: 700; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);">
+                  <button type="button" id="btnOpenCreateEventModal" class="btn btn-sm btn-gold" onclick="openModal('modalCreateEvenement')" style="font-weight: 700; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35); cursor: pointer;">
                     ➕ Créer un Événement
                   </button>
-                  <button type="button" id="btnOpenEditEventModal" class="btn btn-sm btn-secondary" data-action="open-modal-edit-evenement" onclick="openModalEditEvenement()" title="Modifier le montant ou les informations de cet événement">
+                  <button type="button" id="btnOpenEditEventModal" class="btn btn-sm btn-secondary" onclick="openModal('modalEditEvenement')" title="Modifier le montant ou les informations de cet événement" style="cursor: pointer;">
                     ✏️ Modifier
                   </button>
-                  <button type="button" class="btn btn-sm btn-secondary" onclick="openEventBatchPayModal()">
+                  <button type="button" class="btn btn-sm btn-secondary" onclick="openEventBatchPayModal()" style="cursor: pointer;">
                     👨‍👩‍👧‍👦 Famille
                   </button>
-                  <button type="button" class="btn btn-sm btn-primary" onclick="openEventAddCotisationModal()">
+                  <button type="button" class="btn btn-sm btn-primary" onclick="openEventAddCotisationModal()" style="cursor: pointer;">
                     💳 + Encaisser
                   </button>
                 </div>
@@ -2670,9 +2680,9 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261031-v12"></script>
-  <script src="js/supabase.js?v=20261031-v12"></script>
-  <script src="js/app.js?v=20261031-v12"></script>
+  <script src="js/data.js?v=20261031-v14"></script>
+  <script src="js/supabase.js?v=20261031-v14"></script>
+  <script src="js/app.js?v=20261031-v14"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>

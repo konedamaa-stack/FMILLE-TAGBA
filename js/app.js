@@ -2029,6 +2029,7 @@ function openModal(modalId) {
   const m = document.getElementById(modalId);
   if (m) {
     m.classList.add('active');
+    m.style.display = 'flex';
     if (modalId === 'modalAddCotisation') {
       updateCotisationModalDefaults();
     } else if (modalId === 'modalAddMember') {
@@ -2037,6 +2038,21 @@ function openModal(modalId) {
       initModalAddDepense();
     } else if (modalId === 'modalAddContributionVolontaire') {
       initModalAddContribution();
+    } else if (modalId === 'modalCreateEvenement') {
+      const form = document.getElementById('formCreateEvenement');
+      if (form) form.reset();
+      const inputMontant = document.getElementById('createEvtMontant');
+      if (inputMontant) inputMontant.value = 5000;
+      const inputDate = document.getElementById('createEvtDate');
+      if (inputDate) {
+        const d = new Date();
+        d.setDate(d.getDate() + 15);
+        inputDate.value = d.toISOString().split('T')[0];
+      }
+    } else if (modalId === 'modalEditEvenement') {
+      if (typeof openModalEditEvenement === 'function') {
+        openModalEditEvenement();
+      }
     }
   }
 }
@@ -2068,17 +2084,29 @@ function initModalAddMember(selectedFamilyId = null) {
 
 function closeModal(target) {
   if (!target) {
-    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    document.querySelectorAll('.modal-overlay.active').forEach(m => {
+      m.classList.remove('active');
+      m.style.display = 'none';
+    });
     return;
   }
   if (typeof target === 'string') {
     const m = document.getElementById(target);
-    if (m) m.classList.remove('active');
+    if (m) {
+      m.classList.remove('active');
+      m.style.display = 'none';
+    }
   } else if (target && target.closest) {
     const m = target.closest('.modal-overlay');
-    if (m) m.classList.remove('active');
+    if (m) {
+      m.classList.remove('active');
+      m.style.display = 'none';
+    }
   } else {
-    document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+    document.querySelectorAll('.modal-overlay.active').forEach(m => {
+      m.classList.remove('active');
+      m.style.display = 'none';
+    });
   }
 }
 
@@ -2092,8 +2120,12 @@ function bindModalEvents() {
       const modal = closeBtn.closest('.modal-overlay');
       if (modal) {
         modal.classList.remove('active');
+        modal.style.display = 'none';
       } else {
-        document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+        document.querySelectorAll('.modal-overlay.active').forEach(m => {
+          m.classList.remove('active');
+          m.style.display = 'none';
+        });
       }
       return;
     }
@@ -2102,13 +2134,17 @@ function bindModalEvents() {
     if (e.target.classList && e.target.classList.contains('modal-overlay')) {
       e.preventDefault();
       e.target.classList.remove('active');
+      e.target.style.display = 'none';
     }
   }, true);
 
   // 2. Touche Échap (Escape) pour fermer instantanément n'importe quelle modale
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' || e.key === 'Esc') {
-      document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+      document.querySelectorAll('.modal-overlay.active').forEach(m => {
+        m.classList.remove('active');
+        m.style.display = 'none';
+      });
     }
   });
 
@@ -5224,6 +5260,7 @@ function openModalCreateEvenement() {
   const modal = document.getElementById('modalCreateEvenement');
   if (modal) {
     modal.classList.add('active');
+    modal.style.display = 'flex';
   } else {
     openModal('modalCreateEvenement');
   }
@@ -5233,20 +5270,24 @@ function openModalEditEvenement(eventId = null) {
   const data = TAGBA_DB.get();
   const targetId = eventId || data.config?.activeEventId;
   const evts = data.evenements || [];
-  const evt = evts.find(e => e.id === targetId) || TAGBA_DB.getActiveEvenement();
-  if (!evt) {
-    showToast('Aucun événement à modifier', 'warning');
-    return;
-  }
+  const evt = evts.find(e => e.id === targetId) || TAGBA_DB.getActiveEvenement() || {
+    id: 'evt-1',
+    titre: data.config?.evenementActuel || 'Cotisation Sacrifice de la Mutuelle',
+    montant: Number(data.config?.cotisationEvenement || 5000),
+    dateLimite: '',
+    statut: 'Actif',
+    description: ''
+  };
+
   const idEl = document.getElementById('editEvtId');
   const titEl = document.getElementById('editEvtTitre');
   const montEl = document.getElementById('editEvtMontant');
   const dateEl = document.getElementById('editEvtDate');
   const statEl = document.getElementById('editEvtStatut');
   const descEl = document.getElementById('editEvtDesc');
-  if (idEl) idEl.value = evt.id;
-  if (titEl) titEl.value = evt.titre;
-  if (montEl) montEl.value = evt.montant;
+  if (idEl) idEl.value = evt.id || 'evt-1';
+  if (titEl) titEl.value = evt.titre || '';
+  if (montEl) montEl.value = evt.montant || 5000;
   if (dateEl) dateEl.value = evt.dateLimite || '';
   if (statEl) statEl.value = evt.statut || 'Actif';
   if (descEl) descEl.value = evt.description || '';
@@ -5254,6 +5295,7 @@ function openModalEditEvenement(eventId = null) {
   const modal = document.getElementById('modalEditEvenement');
   if (modal) {
     modal.classList.add('active');
+    modal.style.display = 'flex';
   } else {
     openModal('modalEditEvenement');
   }
@@ -5470,7 +5512,11 @@ function openEventAddCotisationModal(memberId = null, eventId = null) {
     data.config.activeEventId = eventId;
     TAGBA_DB.save(data, true);
   }
-  const activeEvt = TAGBA_DB.getActiveEvenement();
+  const activeEvt = TAGBA_DB.getActiveEvenement() || {
+    id: 'evt-1',
+    titre: data.config?.evenementActuel || 'Cotisation Sacrifice de la Mutuelle',
+    montant: Number(data.config?.cotisationEvenement || 5000)
+  };
 
   openModal('modalAddCotisation');
   setVersementFormMode('individual', false);
@@ -5493,13 +5539,13 @@ function openEventAddCotisationModal(memberId = null, eventId = null) {
   }
 
   const cotPeriodeInput = document.getElementById('cotPeriode');
-  if (cotPeriodeInput) {
-    cotPeriodeInput.value = activeEvt.titre;
+  if (cotPeriodeInput && activeEvt) {
+    cotPeriodeInput.value = activeEvt.titre || '';
   }
 
   const cotMontantInput = document.getElementById('cotMontant');
-  if (cotMontantInput) {
-    cotMontantInput.value = activeEvt.montant;
+  if (cotMontantInput && activeEvt) {
+    cotMontantInput.value = activeEvt.montant || 5000;
   }
 }
 
@@ -5510,7 +5556,11 @@ function openEventBatchPayModal(familyId = null, eventId = null) {
     data.config.activeEventId = eventId;
     TAGBA_DB.save(data, true);
   }
-  const activeEvt = TAGBA_DB.getActiveEvenement();
+  const activeEvt = TAGBA_DB.getActiveEvenement() || {
+    id: 'evt-1',
+    titre: data.config?.evenementActuel || 'Cotisation Sacrifice de la Mutuelle',
+    montant: Number(data.config?.cotisationEvenement || 5000)
+  };
 
   openModal('modalAddCotisation');
   setVersementFormMode('group', true);
@@ -5536,8 +5586,8 @@ function openEventBatchPayModal(familyId = null, eventId = null) {
   }
 
   const cotPeriodeInput = document.getElementById('cotPeriode');
-  if (cotPeriodeInput) {
-    cotPeriodeInput.value = activeEvt.titre;
+  if (cotPeriodeInput && activeEvt) {
+    cotPeriodeInput.value = activeEvt.titre || '';
   }
 
   syncCotisationMontantField();
