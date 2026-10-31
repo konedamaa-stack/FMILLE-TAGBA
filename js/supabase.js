@@ -242,7 +242,7 @@ function mergeDatasets(local, remote) {
 
   const merged = { ...remote, ...local };
   merged.config = { ...(remote.config || {}), ...(local.config || {}) };
-  const arrayKeys = ['families', 'members', 'bureau', 'cotisations', 'entraide', 'ceremonies', 'depenses', 'contributionsVolontaires'];
+  const arrayKeys = ['families', 'members', 'bureau', 'cotisations', 'entraide', 'ceremonies', 'depenses', 'contributionsVolontaires', 'evenements'];
   for (const k of arrayKeys) {
     const localArr = Array.isArray(local[k]) ? local[k] : [];
     const remoteArr = Array.isArray(remote[k]) ? remote[k] : [];

@@ -23,10 +23,22 @@ const defaultData = {
     cotisationTrimestrielle: 15000,
     cotisationEvenement: 5000,
     evenementActuel: 'Cotisation Sacrifice de la Mutuelle',
+    activeEventId: 'evt-1',
     dateDebutCotisations: '2026-10-04',
     fondsCaisse: 0,
     year: 2026
   },
+  evenements: [
+    {
+      id: 'evt-1',
+      titre: 'Cotisation Sacrifice de la Mutuelle',
+      montant: 5000,
+      dateLimite: '2026-11-15',
+      statut: 'Actif',
+      description: 'Cotisation collective pour le sacrifice annuel et les bénédictions de la mutuelle',
+      createdAt: '2026-10-30'
+    }
+  ],
   bureau: [],
   families: [],
   members: [],
@@ -55,6 +67,9 @@ const TAGBA_DB = {
           parsed.ceremonies = Array.isArray(parsed.ceremonies) ? parsed.ceremonies : [];
           parsed.depenses = Array.isArray(parsed.depenses) ? parsed.depenses : [];
           parsed.contributionsVolontaires = Array.isArray(parsed.contributionsVolontaires) ? parsed.contributionsVolontaires : [];
+          parsed.evenements = Array.isArray(parsed.evenements) && parsed.evenements.length > 0 
+            ? parsed.evenements 
+            : JSON.parse(JSON.stringify(defaultData.evenements));
           parsed.lastModified = Number(parsed.lastModified || 0);
 
           // Nettoyage de sécurité : dédoublonner les cotisations mensuelles par membre et période
@@ -137,6 +152,72 @@ const TAGBA_DB = {
     data.contributionsVolontaires.unshift(don);
     this.save(data);
     return don;
+  },
+
+  // Gestion des Événements & Montants par membre
+  addEvenement: function(evt) {
+    const data = this.get();
+    evt.id = evt.id || ('evt-' + Date.now());
+    evt.titre = (evt.titre || 'Nouvel Événement').trim();
+    evt.montant = Number(evt.montant || 5000);
+    evt.statut = evt.statut || 'Actif';
+    evt.dateLimite = evt.dateLimite || new Date().toISOString().split('T')[0];
+    evt.createdAt = evt.createdAt || new Date().toISOString().split('T')[0];
+    if (!data.evenements) data.evenements = [];
+    data.evenements.unshift(evt);
+    data.config.activeEventId = evt.id;
+    data.config.evenementActuel = evt.titre;
+    data.config.cotisationEvenement = evt.montant;
+    this.save(data);
+    return evt;
+  },
+
+  updateEvenement: function(id, updates) {
+    const data = this.get();
+    if (!data.evenements) data.evenements = [];
+    const idx = data.evenements.findIndex(e => e.id === id);
+    if (idx !== -1) {
+      data.evenements[idx] = { ...data.evenements[idx], ...updates };
+      if (data.config.activeEventId === id || !data.config.activeEventId) {
+        if (updates.titre) data.config.evenementActuel = updates.titre;
+        if (updates.montant) data.config.cotisationEvenement = Number(updates.montant);
+      }
+      this.save(data);
+      return data.evenements[idx];
+    }
+    return null;
+  },
+
+  deleteEvenement: function(id) {
+    const data = this.get();
+    if (!data.evenements) return false;
+    data.evenements = data.evenements.filter(e => e.id !== id);
+    if (data.config.activeEventId === id) {
+      data.config.activeEventId = data.evenements[0]?.id || null;
+      if (data.evenements[0]) {
+        data.config.evenementActuel = data.evenements[0].titre;
+        data.config.cotisationEvenement = data.evenements[0].montant;
+      }
+    }
+    this.save(data);
+    return true;
+  },
+
+  getActiveEvenement: function() {
+    const data = this.get();
+    const evts = data.evenements || [];
+    if (evts.length === 0) {
+      return {
+        id: 'evt-1',
+        titre: data.config?.evenementActuel || 'Cotisation Sacrifice de la Mutuelle',
+        montant: Number(data.config?.cotisationEvenement || 5000),
+        dateLimite: '2026-11-15',
+        statut: 'Actif',
+        description: 'Cotisation collective pour le sacrifice annuel'
+      };
+    }
+    const active = evts.find(e => e.id === data.config?.activeEventId) || evts.find(e => e.statut === 'Actif') || evts[0];
+    return active;
   },
 
   save: function(data, skipSync = false) {

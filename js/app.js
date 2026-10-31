@@ -2116,14 +2116,18 @@ function bindModalEvents() {
   const cotTypeSelect = document.getElementById('cotType');
   if (cotTypeSelect) {
     cotTypeSelect.addEventListener('change', () => {
-      const cfg = TAGBA_DB.get().config || {};
+      const activeEvt = TAGBA_DB.getActiveEvenement();
       const quickBox = document.getElementById('cotQuickAnticipationBox');
+      const eventChoiceBox = document.getElementById('cotEventChoiceBox');
       const cotPeriodeInput = document.getElementById('cotPeriode');
       if (cotTypeSelect.value === 'Événement') {
         if (quickBox) quickBox.style.display = 'none';
-        if (cotPeriodeInput) cotPeriodeInput.value = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+        if (eventChoiceBox) eventChoiceBox.style.display = 'block';
+        populateEventSelects();
+        if (cotPeriodeInput) cotPeriodeInput.value = activeEvt.titre;
       } else {
         if (quickBox) quickBox.style.display = 'block';
+        if (eventChoiceBox) eventChoiceBox.style.display = 'none';
       }
       syncCotisationMontantField();
     });
@@ -2432,12 +2436,14 @@ function bindFormSubmissions() {
 
           const memberPeriode = isEventMode ? periode : (months === 1 ? periode : `${periode} (${months} mois)`);
 
+          const selectedEventId = isEventMode ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
           const cotRecord = {
             memberId: targetMemId,
             memberName: targetMem ? targetMem.fullName : 'Membre',
             familyId: targetMem ? targetMem.familyId : (mem ? mem.familyId : 'fam-1'),
             type: isEventMode ? 'Événement' : (months === 1 ? 'Mensuel' : (months === 3 ? 'Trimestriel' : `${months} Mois`)),
             periode: memberPeriode,
+            eventId: selectedEventId,
             montant: lineMontant,
             modePaiement: modePaiement,
             datePaiement: datePaiement,
@@ -2480,12 +2486,14 @@ function bindFormSubmissions() {
 
       } else {
         // Mode Versement Individuel
+        const selectedEventId = cotType === 'Événement' ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
         const newCot = {
           memberId: memberId,
           memberName: mem ? mem.fullName : 'Membre',
           familyId: mem ? mem.familyId : 'fam-1',
           type: cotType,
           periode: periode,
+          eventId: selectedEventId,
           montant: Number(document.getElementById('cotMontant').value),
           modePaiement: modePaiement,
           datePaiement: datePaiement,
@@ -2680,6 +2688,66 @@ function bindFormSubmissions() {
   if (formCfg) {
     formCfg.addEventListener('submit', (e) => {
       enregistrerParametres(e);
+    });
+  }
+
+  // 8. Créer un Événement & Fixer la Cotisation
+  const formCreateEvt = document.getElementById('formCreateEvenement');
+  if (formCreateEvt) {
+    formCreateEvt.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!assertPermission('write', 'la création d’un événement')) return;
+      const titre = document.getElementById('createEvtTitre').value.trim();
+      const montant = Number(document.getElementById('createEvtMontant').value) || 5000;
+      const dateLimite = document.getElementById('createEvtDate').value;
+      const statut = document.getElementById('createEvtStatut').value;
+      const description = document.getElementById('createEvtDesc').value.trim();
+
+      const newEvt = TAGBA_DB.addEvenement({
+        titre,
+        montant,
+        dateLimite,
+        statut,
+        description
+      });
+
+      showToast(`🎯 Événement "${titre}" créé ! Montant : ${new Intl.NumberFormat('fr-FR').format(montant)} FCFA / membre`, 'success');
+      closeModal('modalCreateEvenement');
+      formCreateEvt.reset();
+      renderAllViews();
+      if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+        pushAllDataToSupabase(true);
+      }
+    });
+  }
+
+  // 9. Modifier un Événement Existant
+  const formEditEvt = document.getElementById('formEditEvenement');
+  if (formEditEvt) {
+    formEditEvt.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!assertPermission('write', 'la modification d’un événement')) return;
+      const id = document.getElementById('editEvtId').value;
+      const titre = document.getElementById('editEvtTitre').value.trim();
+      const montant = Number(document.getElementById('editEvtMontant').value) || 5000;
+      const dateLimite = document.getElementById('editEvtDate').value;
+      const statut = document.getElementById('editEvtStatut').value;
+      const description = document.getElementById('editEvtDesc').value.trim();
+
+      TAGBA_DB.updateEvenement(id, {
+        titre,
+        montant,
+        dateLimite,
+        statut,
+        description
+      });
+
+      showToast(`Événement "${titre}" mis à jour avec succès !`, 'success');
+      closeModal('modalEditEvenement');
+      renderAllViews();
+      if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+        pushAllDataToSupabase(true);
+      }
     });
   }
 }
@@ -3746,7 +3814,8 @@ function syncCotisationMontantField() {
 
     const cotTypeSelect = document.getElementById('cotType');
     const isEventType = cotTypeSelect && cotTypeSelect.value === 'Événement';
-    const unitRate = isEventType ? Number(cfg.cotisationEvenement || 5000) : unitMonthly;
+    const activeEvt = isEventType ? TAGBA_DB.getActiveEvenement() : null;
+    const unitRate = isEventType ? Number(activeEvt?.montant || cfg.cotisationEvenement || 5000) : unitMonthly;
 
     checkedRows.forEach(row => {
       const months = isEventType ? 1 : Number(row.querySelector('.plage-member-months-select')?.value || 1);
@@ -3780,13 +3849,14 @@ function syncCotisationMontantField() {
     const noticeEl = document.getElementById('cotMontantNotice');
 
     if (cotType === 'Événement') {
-      const unitEvent = Number(cfg.cotisationEvenement || 5000);
+      const activeEvt = TAGBA_DB.getActiveEvenement();
+      const unitEvent = Number(activeEvt?.montant || cfg.cotisationEvenement || 5000);
       cotMontantInput.value = unitEvent;
       cotMontantInput.readOnly = true;
       cotMontantInput.style.cursor = 'not-allowed';
       if (lockIcon) lockIcon.textContent = '🎯';
       if (noticeEl) {
-        noticeEl.innerHTML = `🎯 Tarif fixé dans les Paramètres : <strong>${formatMoney(unitEvent, cfg.currency)}</strong> pour cet événement/sacrifice`;
+        noticeEl.innerHTML = `🎯 Montant fixé pour <strong>${activeEvt.titre}</strong> : <strong>${formatMoney(unitEvent, cfg.currency)}</strong> / membre`;
       }
     } else if (cotType === 'Exceptionnel') {
       cotMontantInput.readOnly = false;
@@ -5058,28 +5128,162 @@ function deleteCotisationFromReceiptModal() {
 }
 
 
-// 4.3. Rendu du Suivi des Cotisations par Événement / Sacrifice
+// 4.3. Gestion & Rendu Multi-Événements avec Montant Obligatoire par Membre
+
+function populateEventSelects() {
+  const data = TAGBA_DB.get();
+  const evts = data.evenements || [];
+  const activeEvt = TAGBA_DB.getActiveEvenement();
+  const curr = data.config?.currency || 'FCFA';
+
+  // 1. Sélecteur dans le panneau de suivi des événements
+  const selectActive = document.getElementById('selectActiveEvent');
+  if (selectActive) {
+    if (evts.length === 0) {
+      selectActive.innerHTML = '<option value="" disabled selected>Aucun événement créé</option>';
+    } else {
+      selectActive.innerHTML = evts.map(e => `
+        <option value="${e.id}" ${e.id === activeEvt.id ? 'selected' : ''}>
+          ${e.titre} — ${formatMoney(e.montant, curr)} / membre (${e.statut || 'Actif'})
+        </option>
+      `).join('');
+    }
+  }
+
+  // 2. Sélecteur dans le modal de paiement
+  const selectModal = document.getElementById('cotEventSelect');
+  if (selectModal) {
+    if (evts.length === 0) {
+      selectModal.innerHTML = '<option value="" disabled selected>Aucun événement disponible</option>';
+    } else {
+      selectModal.innerHTML = evts.map(e => `
+        <option value="${e.id}" ${e.id === activeEvt.id ? 'selected' : ''} data-amount="${e.montant}" data-title="${e.titre}">
+          ${e.titre} — ${formatMoney(e.montant, curr)} / membre
+        </option>
+      `).join('');
+    }
+  }
+}
+
+function changeActiveEvent(eventId) {
+  const data = TAGBA_DB.get();
+  data.config = data.config || {};
+  data.config.activeEventId = eventId;
+  const evt = (data.evenements || []).find(e => e.id === eventId);
+  if (evt) {
+    data.config.evenementActuel = evt.titre;
+    data.config.cotisationEvenement = evt.montant;
+  }
+  TAGBA_DB.save(data);
+  renderCotisationsEventsTracking();
+}
+
+function onCotEventSelectChanged(eventId) {
+  const data = TAGBA_DB.get();
+  const evt = (data.evenements || []).find(e => e.id === eventId);
+  if (evt) {
+    const cotMontantInput = document.getElementById('cotMontant');
+    const cotPeriodeInput = document.getElementById('cotPeriode');
+    const noticeEl = document.getElementById('cotEventChoiceNotice');
+    const curr = data.config?.currency || 'FCFA';
+
+    if (cotMontantInput) cotMontantInput.value = evt.montant;
+    if (cotPeriodeInput) cotPeriodeInput.value = evt.titre;
+    if (noticeEl) {
+      noticeEl.innerHTML = `Montant requis : <strong style="color: var(--emerald-400);">${formatMoney(evt.montant, curr)} / membre</strong> (${evt.titre})`;
+    }
+    syncCotisationMontantField();
+  }
+}
+
+function openModalCreateEvenement() {
+  if (!assertPermission('write', 'la création d’un événement')) return;
+  const form = document.getElementById('formCreateEvenement');
+  if (form) form.reset();
+  const inputMontant = document.getElementById('createEvtMontant');
+  if (inputMontant) inputMontant.value = 5000;
+  const inputDate = document.getElementById('createEvtDate');
+  if (inputDate) {
+    const d = new Date();
+    d.setDate(d.getDate() + 15);
+    inputDate.value = d.toISOString().split('T')[0];
+  }
+  openModal('modalCreateEvenement');
+}
+
+function openModalEditEvenement(eventId = null) {
+  if (!assertPermission('write', 'la modification d’un événement')) return;
+  const data = TAGBA_DB.get();
+  const targetId = eventId || data.config?.activeEventId;
+  const evts = data.evenements || [];
+  const evt = evts.find(e => e.id === targetId) || TAGBA_DB.getActiveEvenement();
+  if (!evt) {
+    showToast('Aucun événement à modifier', 'warning');
+    return;
+  }
+  document.getElementById('editEvtId').value = evt.id;
+  document.getElementById('editEvtTitre').value = evt.titre;
+  document.getElementById('editEvtMontant').value = evt.montant;
+  document.getElementById('editEvtDate').value = evt.dateLimite || '';
+  document.getElementById('editEvtStatut').value = evt.statut || 'Actif';
+  document.getElementById('editEvtDesc').value = evt.description || '';
+  openModal('modalEditEvenement');
+}
+
+function deleteCurrentEvenementConfirm() {
+  if (!assertPermission('write', 'la suppression d’un événement')) return;
+  const id = document.getElementById('editEvtId').value;
+  if (!id) return;
+  const data = TAGBA_DB.get();
+  const evt = (data.evenements || []).find(e => e.id === id);
+  if (confirm(`Êtes-vous sûr de vouloir supprimer l'événement "${evt ? evt.titre : 'cet événement'}" ?`)) {
+    TAGBA_DB.deleteEvenement(id);
+    closeModal('modalEditEvenement');
+    showToast('Événement supprimé avec succès');
+    renderAllViews();
+  }
+}
+
 function renderCotisationsEventsTracking() {
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
   const tbody = document.getElementById('tableCotisationsEventsBody');
   if (!tbody) return;
 
-  const unitEvent = Number(cfg.cotisationEvenement || 5000);
-  const eventTitle = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+  populateEventSelects();
+
+  const activeEvt = TAGBA_DB.getActiveEvenement();
+  const unitEvent = Number(activeEvt.montant || cfg.cotisationEvenement || 5000);
+  const eventTitle = activeEvt.titre || 'Événement Spécial';
   const currency = cfg.currency || 'FCFA';
 
   // Mise à jour de la bannière
-  const titleEl = document.getElementById('eventCurrentTitleDisplay');
+  const badgeStatusEl = document.getElementById('badgeEventStatus');
+  const dateLimiteEl = document.getElementById('eventDateLimiteDisplay');
   const badgeEl = document.getElementById('cfgDisplayEvenementBadge');
-  if (titleEl) titleEl.textContent = eventTitle;
-  if (badgeEl) badgeEl.textContent = `${formatMoney(unitEvent, currency)} / membre`;
+  const descEl = document.getElementById('eventDescDisplay');
 
-  // Trouver tous les versements pour cet événement
+  if (badgeStatusEl) {
+    const isActif = activeEvt.statut === 'Actif';
+    badgeStatusEl.className = isActif ? 'badge badge-success' : 'badge badge-secondary';
+    badgeStatusEl.textContent = isActif ? '🟢 Actif (En cours)' : '🏁 Clôturé (Terminé)';
+  }
+
+  if (dateLimiteEl) {
+    dateLimiteEl.textContent = activeEvt.dateLimite ? `📅 Échéance : ${formatDate(activeEvt.dateLimite)}` : '';
+  }
+
+  if (badgeEl) badgeEl.textContent = `${formatMoney(unitEvent, currency)} / membre`;
+  if (descEl) descEl.textContent = activeEvt.description || 'Chaque membre cotise individuellement ou via son chef de famille pour financer cet événement.';
+
+  // Trouver tous les versements pour cet événement spécifique
   const eventCotisations = (data.cotisations || []).filter(c => 
-    c.type === 'Événement' || 
-    c.type === 'Sacrifice' ||
-    (c.periode && (c.periode === eventTitle || c.periode.toLowerCase().includes('sacrifice') || c.periode.toLowerCase().includes('événement')))
+    c.type === 'Événement' && 
+    (
+      (c.eventId && c.eventId === activeEvt.id) ||
+      (c.periode && c.periode === eventTitle) ||
+      (c.periode && c.periode.includes(eventTitle))
+    )
   );
 
   const totalMembers = (data.members || []).length;
@@ -5161,7 +5365,7 @@ function renderCotisationsEventsTracking() {
       dateRecuCell = `<span style="color: var(--text-dim);">-</span>`;
       modeCell = `<span style="color: var(--text-dim);">-</span>`;
       actionBtn = `
-        <button class="btn btn-sm btn-primary" onclick="quickPayMemberForEvent('${m.id}')" title="Encaisser la cotisation pour cet événement">
+        <button class="btn btn-sm btn-primary" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Encaisser la cotisation pour ${activeEvt.titre}">
           💳 Encaisser
         </button>
       `;
@@ -5190,12 +5394,14 @@ function renderCotisationsEventsTracking() {
   }).join('');
 }
 
-// Raccourci pour encaisser un membre spécifique pour l'événement / sacrifice en cours
-function quickPayMemberForEvent(memberId) {
+// Raccourci pour encaisser un membre spécifique pour l'événement sélectionné
+function quickPayMemberForEvent(memberId, eventId = null) {
   const data = TAGBA_DB.get();
-  const cfg = data.config || {};
-  const unitEvent = Number(cfg.cotisationEvenement || 5000);
-  const eventTitle = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+  if (eventId) {
+    data.config.activeEventId = eventId;
+    TAGBA_DB.save(data, true);
+  }
+  const activeEvt = TAGBA_DB.getActiveEvenement();
 
   openModal('modalAddCotisation');
   setVersementFormMode('individual', false);
@@ -5212,26 +5418,39 @@ function quickPayMemberForEvent(memberId) {
     cotTypeSelect.dispatchEvent(new Event('change'));
   }
 
+  const cotEventSelect = document.getElementById('cotEventSelect');
+  if (cotEventSelect && activeEvt) {
+    cotEventSelect.value = activeEvt.id;
+  }
+
   const cotPeriodeInput = document.getElementById('cotPeriode');
   if (cotPeriodeInput) {
-    cotPeriodeInput.value = eventTitle;
+    cotPeriodeInput.value = activeEvt.titre;
   }
 
   const cotMontantInput = document.getElementById('cotMontant');
   if (cotMontantInput) {
-    cotMontantInput.value = unitEvent;
+    cotMontantInput.value = activeEvt.montant;
   }
 }
 
 // Raccourci pour ouvrir le modal d'encaissement d'événement
-function openEventAddCotisationModal() {
+function openEventAddCotisationModal(memberId = null, eventId = null) {
   const data = TAGBA_DB.get();
-  const cfg = data.config || {};
-  const unitEvent = Number(cfg.cotisationEvenement || 5000);
-  const eventTitle = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+  if (eventId) {
+    data.config.activeEventId = eventId;
+    TAGBA_DB.save(data, true);
+  }
+  const activeEvt = TAGBA_DB.getActiveEvenement();
 
   openModal('modalAddCotisation');
   setVersementFormMode('individual', false);
+
+  if (memberId) {
+    const memberSelect = document.getElementById('cotMemberSelect');
+    if (memberSelect) memberSelect.value = memberId;
+    updateCotMemberAuditPreview(memberId);
+  }
 
   const cotTypeSelect = document.getElementById('cotType');
   if (cotTypeSelect) {
@@ -5239,23 +5458,30 @@ function openEventAddCotisationModal() {
     cotTypeSelect.dispatchEvent(new Event('change'));
   }
 
+  const cotEventSelect = document.getElementById('cotEventSelect');
+  if (cotEventSelect && activeEvt) {
+    cotEventSelect.value = activeEvt.id;
+  }
+
   const cotPeriodeInput = document.getElementById('cotPeriode');
   if (cotPeriodeInput) {
-    cotPeriodeInput.value = eventTitle;
+    cotPeriodeInput.value = activeEvt.titre;
   }
 
   const cotMontantInput = document.getElementById('cotMontant');
   if (cotMontantInput) {
-    cotMontantInput.value = unitEvent;
+    cotMontantInput.value = activeEvt.montant;
   }
 }
 
-// Raccourci pour encaisser toute une famille pour l'événement / sacrifice
-function openEventBatchPayModal(familyId = null) {
+// Raccourci pour encaisser toute une famille pour l'événement sélectionné
+function openEventBatchPayModal(familyId = null, eventId = null) {
   const data = TAGBA_DB.get();
-  const cfg = data.config || {};
-  const unitEvent = Number(cfg.cotisationEvenement || 5000);
-  const eventTitle = cfg.evenementActuel || 'Cotisation Sacrifice de la Mutuelle';
+  if (eventId) {
+    data.config.activeEventId = eventId;
+    TAGBA_DB.save(data, true);
+  }
+  const activeEvt = TAGBA_DB.getActiveEvenement();
 
   openModal('modalAddCotisation');
   setVersementFormMode('group', true);
@@ -5275,9 +5501,14 @@ function openEventBatchPayModal(familyId = null) {
     cotTypeSelect.dispatchEvent(new Event('change'));
   }
 
+  const cotEventSelect = document.getElementById('cotEventSelect');
+  if (cotEventSelect && activeEvt) {
+    cotEventSelect.value = activeEvt.id;
+  }
+
   const cotPeriodeInput = document.getElementById('cotPeriode');
   if (cotPeriodeInput) {
-    cotPeriodeInput.value = eventTitle;
+    cotPeriodeInput.value = activeEvt.titre;
   }
 
   syncCotisationMontantField();
