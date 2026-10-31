@@ -1931,6 +1931,7 @@ function quickPayMember(memberId) {
   const select = document.getElementById('cotMemberSelect');
   if (select) {
     select.value = memberId;
+    currentAnticipationSelectedMonths = 1;
     onCotMemberSelected();
   }
 }
@@ -3055,8 +3056,9 @@ function onCotMemberSelected() {
   // Afficher l'aperçu du statut du membre et ses échéances
   updateCotMemberAuditPreview(memberId);
 
-  // Mettre à jour les champs montant et période selon l'anticipation par défaut
-  setAnticipationMonths(currentAnticipationSelectedMonths || 1);
+  // Verrouiller en priorité le premier mois échu (1 mois par défaut)
+  currentAnticipationSelectedMonths = 1;
+  setAnticipationMonths(1);
 
   const data = TAGBA_DB.get();
   const member = data.members.find(m => m.id === memberId);
@@ -3859,7 +3861,9 @@ function updateCotisationModalDefaults() {
 
   // 5. Réinitialiser la durée globale à 1 mois et synchroniser le montant
   currentPlageGlobalDuration = 1;
+  currentAnticipationSelectedMonths = 1;
   currentGroupPaymentMode = 'group';
+  setAnticipationMonths(1);
   syncCotisationMontantField();
 }
 
