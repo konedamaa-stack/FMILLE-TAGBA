@@ -56,6 +56,26 @@ const TAGBA_DB = {
           parsed.depenses = Array.isArray(parsed.depenses) ? parsed.depenses : [];
           parsed.contributionsVolontaires = Array.isArray(parsed.contributionsVolontaires) ? parsed.contributionsVolontaires : [];
           parsed.lastModified = Number(parsed.lastModified || 0);
+
+          // Nettoyage de sécurité : dédoublonner les cotisations mensuelles par membre et période
+          if (parsed.cotisations && parsed.cotisations.length > 0) {
+            const seen = new Set();
+            const deduplicated = [];
+            for (const c of parsed.cotisations) {
+              const mId = c.memberId || c.member_id;
+              const per = (c.periode || '').trim().toLowerCase();
+              const key = `${mId}_${per}`;
+              if (!seen.has(key)) {
+                seen.add(key);
+                deduplicated.push(c);
+              }
+            }
+            if (deduplicated.length !== parsed.cotisations.length) {
+              parsed.cotisations = deduplicated;
+              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {}
+            }
+          }
+
           return parsed;
         }
       }

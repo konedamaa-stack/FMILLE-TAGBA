@@ -228,6 +228,18 @@ async function testSupabaseCloudConnection(testOnly = false) {
 function mergeDatasets(local, remote) {
   if (!remote || typeof remote !== 'object') return local;
   if (!local || typeof local !== 'object') return remote;
+
+  const localTime = Number(local.lastModified || 0);
+  const remoteTime = Number(remote.lastModified || 0);
+
+  // Si le Cloud est plus récent ou identique, le Cloud fait foi
+  // (évite de ressusciter d'anciens doublons ou versements supprimés)
+  if (remoteTime >= localTime) {
+    const merged = { ...local, ...remote };
+    merged.config = { ...(local.config || {}), ...(remote.config || {}) };
+    return merged;
+  }
+
   const merged = { ...remote, ...local };
   merged.config = { ...(remote.config || {}), ...(local.config || {}) };
   const arrayKeys = ['families', 'members', 'bureau', 'cotisations', 'entraide', 'ceremonies', 'depenses', 'contributionsVolontaires'];
@@ -235,8 +247,8 @@ function mergeDatasets(local, remote) {
     const localArr = Array.isArray(local[k]) ? local[k] : [];
     const remoteArr = Array.isArray(remote[k]) ? remote[k] : [];
     const map = new Map();
-    remoteArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
     localArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
+    remoteArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
     merged[k] = Array.from(map.values());
   }
   return merged;
