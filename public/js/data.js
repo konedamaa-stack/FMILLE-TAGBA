@@ -11,7 +11,7 @@ try {
     localStorage.removeItem('TAGBA_MUTUELLE_DATA_V1');
     localStorage.removeItem('TAGBA_MUTUELLE_DATA_V2');
   }
-} catch (e) {}
+} catch (e) { }
 
 // Données initiales par défaut : 100% VIERGE
 const defaultData = {
@@ -52,7 +52,7 @@ const defaultData = {
 
 // Gestionnaire du Store
 const TAGBA_DB = {
-  get: function() {
+  get: function () {
     try {
       if (typeof localStorage !== 'undefined') {
         const stored = localStorage.getItem(STORAGE_KEY);
@@ -67,8 +67,8 @@ const TAGBA_DB = {
           parsed.ceremonies = Array.isArray(parsed.ceremonies) ? parsed.ceremonies : [];
           parsed.depenses = Array.isArray(parsed.depenses) ? parsed.depenses : [];
           parsed.contributionsVolontaires = Array.isArray(parsed.contributionsVolontaires) ? parsed.contributionsVolontaires : [];
-          parsed.evenements = Array.isArray(parsed.evenements) && parsed.evenements.length > 0 
-            ? parsed.evenements 
+          parsed.evenements = Array.isArray(parsed.evenements) && parsed.evenements.length > 0
+            ? parsed.evenements
             : JSON.parse(JSON.stringify(defaultData.evenements));
           parsed.lastModified = Number(parsed.lastModified || 0);
 
@@ -87,7 +87,7 @@ const TAGBA_DB = {
             }
             if (deduplicated.length !== parsed.cotisations.length) {
               parsed.cotisations = deduplicated;
-              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) {}
+              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) { }
             }
           }
 
@@ -103,12 +103,12 @@ const TAGBA_DB = {
   },
 
   // Calcul du Bilan & Solde Réel en Caisse
-  getCaisseFinances: function() {
+  getCaisseFinances: function () {
     const data = this.get();
     const fondsDepart = Number(data.config.fondsCaisse || 0);
     const totalCotisations = (data.cotisations || []).reduce((acc, c) => acc + Number(c.montant || 0), 0);
     const totalDonsVolontaires = (data.contributionsVolontaires || []).reduce((acc, d) => acc + Number(d.montant || 0), 0);
-    
+
     // Total des dépenses décaissées de la Caisse
     const totalDecaisseCaisse = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.partCaisse || 0), 0);
     // Total des dépenses couvertes par dons volontaires
@@ -131,7 +131,7 @@ const TAGBA_DB = {
   },
 
   // Dépenses de la Caisse & Événements
-  addDepense: function(dep) {
+  addDepense: function (dep) {
     const data = this.get();
     dep.id = 'dep-' + Date.now();
     dep.recuNum = 'DEP-2026-' + String(((data.depenses || []).length + 1)).padStart(3, '0');
@@ -143,7 +143,7 @@ const TAGBA_DB = {
   },
 
   // Contributions & Dons Volontaires
-  addContributionVolontaire: function(don) {
+  addContributionVolontaire: function (don) {
     const data = this.get();
     don.id = 'don-' + Date.now();
     don.recuNum = 'DON-2026-' + String(((data.contributionsVolontaires || []).length + 1)).padStart(3, '0');
@@ -155,7 +155,7 @@ const TAGBA_DB = {
   },
 
   // Gestion des Événements & Montants par membre
-  addEvenement: function(evt) {
+  addEvenement: function (evt) {
     const data = this.get();
     evt.id = evt.id || ('evt-' + Date.now());
     evt.titre = (evt.titre || 'Nouvel Événement').trim();
@@ -172,10 +172,13 @@ const TAGBA_DB = {
     return evt;
   },
 
-  updateEvenement: function(id, updates) {
+  updateEvenement: function (id, updates) {
     const data = this.get();
     if (!data.evenements) data.evenements = [];
-    const idx = data.evenements.findIndex(e => e.id === id);
+    let idx = data.evenements.findIndex(e => e.id === id);
+    if (idx === -1 && data.evenements.length > 0) {
+      idx = 0;
+    }
     if (idx !== -1) {
       data.evenements[idx] = { ...data.evenements[idx], ...updates };
       if (data.config.activeEventId === id || !data.config.activeEventId) {
@@ -184,11 +187,25 @@ const TAGBA_DB = {
       }
       this.save(data);
       return data.evenements[idx];
+    } else {
+      const newEvt = {
+        id: id || ('evt-' + Date.now()),
+        titre: updates.titre || 'Événement',
+        montant: Number(updates.montant || 5000),
+        statut: updates.statut || 'Actif',
+        dateLimite: updates.dateLimite || new Date().toISOString().split('T')[0],
+        ...updates
+      };
+      data.evenements.push(newEvt);
+      data.config.activeEventId = newEvt.id;
+      if (updates.titre) data.config.evenementActuel = updates.titre;
+      if (updates.montant) data.config.cotisationEvenement = Number(updates.montant);
+      this.save(data);
+      return newEvt;
     }
-    return null;
   },
 
-  deleteEvenement: function(id) {
+  deleteEvenement: function (id) {
     const data = this.get();
     if (!data.evenements) return false;
     data.evenements = data.evenements.filter(e => e.id !== id);
@@ -203,7 +220,7 @@ const TAGBA_DB = {
     return true;
   },
 
-  getActiveEvenement: function() {
+  getActiveEvenement: function () {
     const data = this.get();
     const evts = data.evenements || [];
     if (evts.length === 0) {
@@ -220,7 +237,7 @@ const TAGBA_DB = {
     return active;
   },
 
-  save: function(data, skipSync = false) {
+  save: function (data, skipSync = false) {
     try {
       if (!skipSync) {
         data.lastModified = Date.now();
@@ -236,13 +253,13 @@ const TAGBA_DB = {
     }
   },
 
-  resetToDefault: function() {
+  resetToDefault: function () {
     this.save(defaultData);
     return JSON.parse(JSON.stringify(defaultData));
   },
 
   // Utilitaires de validation & normalisation des numéros de téléphone
-  normalizePhone: function(phone) {
+  normalizePhone: function (phone) {
     if (!phone) return '';
     let clean = String(phone).replace(/\D/g, '');
     if (clean.startsWith('225') && clean.length > 10) {
@@ -252,7 +269,7 @@ const TAGBA_DB = {
   },
 
   // Règle absolue : Aucun numéro de téléphone ne peut être attribué à deux personnes
-  isPhoneTaken: function(phone, excludeId = null) {
+  isPhoneTaken: function (phone, excludeId = null) {
     const norm = this.normalizePhone(phone);
     if (!norm || norm.length < 8) return null;
 
@@ -304,7 +321,7 @@ const TAGBA_DB = {
   },
 
   // Familles
-  addFamily: function(fam) {
+  addFamily: function (fam) {
     if (fam.phone) {
       const conflict = this.isPhoneTaken(fam.phone);
       if (conflict) {
@@ -320,7 +337,7 @@ const TAGBA_DB = {
     return fam;
   },
 
-  updateFamily: function(id, updatedFields) {
+  updateFamily: function (id, updatedFields) {
     if (updatedFields.phone) {
       const conflict = this.isPhoneTaken(updatedFields.phone, id);
       if (conflict) {
@@ -349,7 +366,7 @@ const TAGBA_DB = {
     return null;
   },
 
-  deleteFamily: function(id) {
+  deleteFamily: function (id) {
     const data = this.get();
     data.families = (data.families || []).filter(f => f.id !== id);
     if (data.members) {
@@ -364,7 +381,7 @@ const TAGBA_DB = {
   },
 
   // Membres
-  addMember: function(mem) {
+  addMember: function (mem) {
     if (mem.phone) {
       const conflict = this.isPhoneTaken(mem.phone);
       if (conflict) {
@@ -381,7 +398,7 @@ const TAGBA_DB = {
     return mem;
   },
 
-  updateMember: function(id, updatedFields) {
+  updateMember: function (id, updatedFields) {
     if (updatedFields.phone) {
       const conflict = this.isPhoneTaken(updatedFields.phone, id);
       if (conflict) {
@@ -398,20 +415,20 @@ const TAGBA_DB = {
     return null;
   },
 
-  deleteMember: function(id) {
+  deleteMember: function (id) {
     const data = this.get();
     data.members = data.members.filter(m => m.id !== id);
     this.save(data);
   },
 
   // Cotisations
-  addCotisation: function(cot) {
+  addCotisation: function (cot) {
     const data = this.get();
     cot.id = cot.id || ('cot-' + Date.now());
     cot.recuNum = cot.recuNum || ('REC-2026-' + String((data.cotisations || []).length + 1).padStart(3, '0'));
     cot.datePaiement = cot.datePaiement || new Date().toISOString().split('T')[0];
     cot.statut = 'Validé';
-    
+
     // Mettre à jour la caisse
     data.config.fondsCaisse = (Number(data.config.fondsCaisse) || 0) + Number(cot.montant || 0);
 
@@ -427,7 +444,7 @@ const TAGBA_DB = {
     return cot;
   },
 
-  updateCotisation: function(cotId, updatedFields) {
+  updateCotisation: function (cotId, updatedFields) {
     const data = this.get();
     const idx = (data.cotisations || []).findIndex(c => c.id === cotId);
     if (idx !== -1) {
@@ -445,7 +462,7 @@ const TAGBA_DB = {
     return null;
   },
 
-  deleteCotisation: function(cotId) {
+  deleteCotisation: function (cotId) {
     const data = this.get();
     const cot = (data.cotisations || []).find(c => c.id === cotId);
     if (cot) {
@@ -459,30 +476,30 @@ const TAGBA_DB = {
   },
 
   // Entraide
-  addEntraide: function(cas) {
+  addEntraide: function (cas) {
     const data = this.get();
     cas.id = 'cas-' + Date.now();
     cas.reference = 'CAS-2026-' + String(data.entraide.length + 1).padStart(2, '0');
     cas.dateDemande = cas.dateDemande || new Date().toISOString().split('T')[0];
-    
+
     // Si déjà validé/accordé, déduire de la caisse
     if (cas.statut === 'Accordé & Décaissé') {
       data.config.fondsCaisse -= Number(cas.montantAlloue || 0);
     }
-    
+
     data.entraide.unshift(cas);
     this.save(data);
     return cas;
   },
 
-  updateEntraideStatut: function(id, nouveauStatut, montantAlloue) {
+  updateEntraideStatut: function (id, nouveauStatut, montantAlloue) {
     const data = this.get();
     const cas = data.entraide.find(c => c.id === id);
     if (cas) {
       const oldStatut = cas.statut;
       cas.statut = nouveauStatut;
       if (montantAlloue) cas.montantAlloue = Number(montantAlloue);
-      
+
       if (nouveauStatut === 'Accordé & Décaissé' && oldStatut !== 'Accordé & Décaissé') {
         data.config.fondsCaisse -= Number(cas.montantAlloue || 0);
         cas.dateResolution = new Date().toISOString().split('T')[0];
@@ -494,7 +511,7 @@ const TAGBA_DB = {
   },
 
   // Cérémonies
-  addCeremonie: function(cer) {
+  addCeremonie: function (cer) {
     const data = this.get();
     cer.id = 'cer-' + Date.now();
     if (!cer.statut) cer.statut = 'À venir';
@@ -504,7 +521,7 @@ const TAGBA_DB = {
   },
 
   // Bureau
-  addBureauMember: function(bur) {
+  addBureauMember: function (bur) {
     const data = this.get();
     bur.id = bur.id || ('bur-' + Date.now());
     bur.photoInitial = (bur.name || 'MB').trim().split(/\s+/).map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'MB';
@@ -515,7 +532,7 @@ const TAGBA_DB = {
     return bur;
   },
 
-  updateBureauMember: function(bureauId, name, phone, email, bio) {
+  updateBureauMember: function (bureauId, name, phone, email, bio) {
     const data = this.get();
     const item = data.bureau.find(b => b.id === bureauId);
     if (item) {
@@ -530,14 +547,14 @@ const TAGBA_DB = {
     return null;
   },
 
-  deleteBureauMember: function(bureauId) {
+  deleteBureauMember: function (bureauId) {
     const data = this.get();
     data.bureau = (data.bureau || []).filter(b => b.id !== bureauId);
     this.save(data);
     return true;
   },
 
-  initStatutoryBureau: function() {
+  initStatutoryBureau: function () {
     const statutoryRoles = [
       { role: 'Président', bio: 'Garant de la vision, de la cohésion et des orientations stratégiques de la Mutuelle.', level: 3, name: 'BAMBA Mamadou', email: 'mamadou.bamba@tagba.ci', photoInitial: 'BM' },
       { role: 'Vice-Président', bio: 'Assiste le Président et assure la coordination opérationnelle des commissions.', level: 3 },
@@ -569,7 +586,7 @@ const TAGBA_DB = {
   },
 
   // Configuration des montants et paramètres
-  updateConfig: function(newConfig) {
+  updateConfig: function (newConfig) {
     const data = this.get();
     data.config = { ...data.config, ...newConfig };
     this.save(data);
