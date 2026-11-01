@@ -97,6 +97,26 @@ function formatMoney(amount, currency = 'FCFA') {
   }
 }
 
+// Helper de formatage de date (JJ/MM/AAAA)
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const s = String(dateStr).split('T')[0];
+    const parts = s.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('fr-FR');
+    }
+    return String(dateStr);
+  } catch (e) {
+    return String(dateStr);
+  }
+}
+window.formatDate = formatDate;
+
 // Helper Toast Notification (Sécurisé tous navigateurs)
 function showToast(message, type = 'success') {
   let container = document.getElementById('toastContainer');
@@ -682,6 +702,7 @@ function renderAllViews() {
   renderBureau();
   renderFamiliesAndMembers();
   renderCotisations();
+  renderCotisationsEventsTracking();
   renderEntraide();
   renderCeremonies();
   renderFinances();
@@ -5367,153 +5388,163 @@ function deleteCurrentEvenementConfirm() {
 }
 
 function renderCotisationsEventsTracking() {
-  const data = TAGBA_DB.get();
-  const cfg = data.config || {};
-  const tbody = document.getElementById('tableCotisationsEventsBody');
-  if (!tbody) return;
+  try {
+    const data = TAGBA_DB.get();
+    const cfg = data.config || {};
+    const tbody = document.getElementById('tableCotisationsEventsBody');
+    if (!tbody) return;
 
-  populateEventSelects();
+    populateEventSelects();
 
-  const activeEvt = TAGBA_DB.getActiveEvenement();
-  const unitEvent = Number(activeEvt.montant || cfg.cotisationEvenement || 5000);
-  const eventTitle = activeEvt.titre || 'Événement Spécial';
-  const currency = cfg.currency || 'FCFA';
+    const activeEvt = TAGBA_DB.getActiveEvenement() || {
+      id: 'evt-1',
+      titre: data.config?.evenementActuel || 'Cotisation Sacrifice de la Mutuelle',
+      montant: Number(data.config?.cotisationEvenement || 5000),
+      dateLimite: '2026-11-15',
+      statut: 'Actif',
+      description: 'Cotisation collective pour le sacrifice annuel et les bénédictions de la mutuelle'
+    };
+    const unitEvent = Number(activeEvt.montant || cfg.cotisationEvenement || 5000);
+    const eventTitle = activeEvt.titre || 'Événement Spécial';
+    const currency = cfg.currency || 'FCFA';
 
-  // Mise à jour de la bannière
-  const badgeStatusEl = document.getElementById('badgeEventStatus');
-  const dateLimiteEl = document.getElementById('eventDateLimiteDisplay');
-  const badgeEl = document.getElementById('cfgDisplayEvenementBadge');
-  const descEl = document.getElementById('eventDescDisplay');
+    // Mise à jour de la bannière
+    const badgeStatusEl = document.getElementById('badgeEventStatus');
+    const dateLimiteEl = document.getElementById('eventDateLimiteDisplay');
+    const badgeEl = document.getElementById('cfgDisplayEvenementBadge');
+    const descEl = document.getElementById('eventDescDisplay');
 
-  if (badgeStatusEl) {
-    const isActif = activeEvt.statut === 'Actif';
-    badgeStatusEl.className = isActif ? 'badge badge-success' : 'badge badge-secondary';
-    badgeStatusEl.textContent = isActif ? '🟢 Actif (En cours)' : '🏁 Clôturé (Terminé)';
-  }
-
-  if (dateLimiteEl) {
-    dateLimiteEl.textContent = activeEvt.dateLimite ? `📅 Échéance : ${formatDate(activeEvt.dateLimite)}` : '';
-  }
-
-  if (badgeEl) badgeEl.textContent = `${formatMoney(unitEvent, currency)} / membre`;
-  if (descEl) descEl.textContent = activeEvt.description || 'Chaque membre cotise individuellement ou via son chef de famille pour financer cet événement.';
-
-  // Trouver tous les versements pour cet événement spécifique
-  const eventCotisations = (data.cotisations || []).filter(c => 
-    c.type === 'Événement' && 
-    (
-      (c.eventId && c.eventId === activeEvt.id) ||
-      (c.periode && c.periode === eventTitle) ||
-      (c.periode && c.periode.includes(eventTitle))
-    )
-  );
-
-  const totalMembers = (data.members || []).length;
-  const paidMemberIds = new Set(eventCotisations.map(c => c.memberId));
-  const paidCount = (data.members || []).filter(m => paidMemberIds.has(m.id)).length;
-  const pendingCount = Math.max(0, totalMembers - paidCount);
-  const totalEncaiss = eventCotisations.reduce((acc, c) => acc + Number(c.montant || 0), 0);
-  const totalAttendu = totalMembers * unitEvent;
-  const resteRecouvrer = Math.max(0, totalAttendu - totalEncaiss);
-  const percentPaid = totalMembers > 0 ? Math.round((paidCount / totalMembers) * 100) : 0;
-
-  // KPIs
-  const kpiTotal = document.getElementById('kpiEventTotalEncaiss');
-  const kpiPaidCountSub = document.getElementById('kpiEventPaidCountSub');
-  const kpiPaidMembers = document.getElementById('kpiEventPaidMembersCount');
-  const kpiPercentSub = document.getElementById('kpiEventPercentSub');
-  const kpiReste = document.getElementById('kpiEventResteRecouvrer');
-  const kpiPendingSub = document.getElementById('kpiEventPendingCountSub');
-  const kpiAttendu = document.getElementById('kpiEventTotalAttendu');
-
-  if (kpiTotal) kpiTotal.textContent = formatMoney(totalEncaiss, currency);
-  if (kpiPaidCountSub) kpiPaidCountSub.textContent = `${eventCotisations.length} versement(s) reçu(s)`;
-  if (kpiPaidMembers) kpiPaidMembers.textContent = `${paidCount} / ${totalMembers}`;
-  if (kpiPercentSub) kpiPercentSub.textContent = `${percentPaid}% de participation`;
-  if (kpiReste) kpiReste.textContent = formatMoney(resteRecouvrer, currency);
-  if (kpiPendingSub) kpiPendingSub.textContent = `${pendingCount} membre(s) en attente`;
-  if (kpiAttendu) kpiAttendu.textContent = formatMoney(totalAttendu, currency);
-
-  // Filtre recherche
-  const searchInput = document.getElementById('filterEventMemberSearch');
-  const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
-
-  let membersToDisplay = (data.members || []);
-  if (query) {
-    membersToDisplay = membersToDisplay.filter(m => 
-      (m.fullName || '').toLowerCase().includes(query) ||
-      (m.matricule || '').toLowerCase().includes(query) ||
-      (m.phone || '').includes(query)
-    );
-  }
-
-  if (membersToDisplay.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">
-          Aucun membre trouvé pour ce filtre.
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = membersToDisplay.map(m => {
-    const fam = (data.families || []).find(f => f.id === m.familyId);
-    const famName = fam ? fam.name : 'Famille TAGBA';
-    const cotsForMem = eventCotisations.filter(c => c.memberId === m.id);
-    const hasPaid = cotsForMem.length > 0;
-    const lastCot = hasPaid ? cotsForMem[0] : null;
-
-    let statutBadge = '';
-    let dateRecuCell = '';
-    let modeCell = '';
-    let actionBtn = '';
-
-    if (hasPaid) {
-      statutBadge = `<span class="badge badge-success">✅ Payé (${formatMoney(lastCot.montant, currency)})</span>`;
-      dateRecuCell = `
-        <div style="font-weight: 600; font-size: 12px; color: var(--text-main);">${formatDate(lastCot.datePaiement)}</div>
-        <div style="font-size: 11px; color: var(--emerald-400);">${lastCot.recuNum}</div>
-      `;
-      modeCell = `<span class="badge badge-purple" style="font-size: 10px;">${lastCot.modePaiement}</span>`;
-      actionBtn = `
-        <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${lastCot.id}')" title="Voir le Reçu Officiel">
-          🧾 Reçu
-        </button>
-      `;
-    } else {
-      statutBadge = `<span class="badge badge-warning">⏳ En attente (${formatMoney(unitEvent, currency)})</span>`;
-      dateRecuCell = `<span style="color: var(--text-dim);">-</span>`;
-      modeCell = `<span style="color: var(--text-dim);">-</span>`;
-      actionBtn = `
-        <button class="btn btn-sm btn-primary" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Encaisser la cotisation pour ${activeEvt.titre}">
-          💳 Encaisser
-        </button>
-      `;
+    if (badgeStatusEl) {
+      const isActif = activeEvt.statut === 'Actif';
+      badgeStatusEl.className = isActif ? 'badge badge-success' : 'badge badge-secondary';
+      badgeStatusEl.textContent = isActif ? '🟢 Actif (En cours)' : '🏁 Clôturé (Terminé)';
     }
 
-    return `
-      <tr>
-        <td><strong style="color: var(--emerald-400);">${m.matricule}</strong></td>
-        <td>
-          <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">
-            ${m.fullName}
-          </div>
-          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-            👑 ${famName} • 📞 ${m.phone}
-          </div>
-        </td>
-        <td>
-          <strong style="color: var(--gold-400);">${formatMoney(unitEvent, currency)}</strong>
-        </td>
-        <td>${statutBadge}</td>
-        <td>${dateRecuCell}</td>
-        <td>${modeCell}</td>
-        <td style="text-align: right;">${actionBtn}</td>
-      </tr>
-    `;
-  }).join('');
+    if (dateLimiteEl) {
+      dateLimiteEl.textContent = activeEvt.dateLimite ? `📅 Échéance : ${formatDate(activeEvt.dateLimite)}` : '';
+    }
+
+    if (badgeEl) badgeEl.textContent = `${formatMoney(unitEvent, currency)} / membre`;
+    if (descEl) descEl.textContent = activeEvt.description || 'Chaque membre cotise individuellement ou via son chef de famille pour financer cet événement.';
+
+    // Trouver tous les versements pour cet événement spécifique
+    const eventCotisations = (data.cotisations || []).filter(c => {
+      const isEvtType = c.type === 'Événement' || c.type === 'Evenement' || c.type === 'Évenement';
+      const matchesEvent = (c.eventId && c.eventId === activeEvt.id) ||
+        (c.periode && c.periode === eventTitle) ||
+        (c.periode && c.periode.includes(eventTitle));
+      return isEvtType && matchesEvent;
+    });
+
+    const totalMembers = (data.members || []).length;
+    const paidMemberIds = new Set(eventCotisations.map(c => c.memberId || c.member_id));
+    const paidCount = (data.members || []).filter(m => paidMemberIds.has(m.id)).length;
+    const pendingCount = Math.max(0, totalMembers - paidCount);
+    const totalEncaiss = eventCotisations.reduce((acc, c) => acc + Number(c.montant || 0), 0);
+    const totalAttendu = totalMembers * unitEvent;
+    const resteRecouvrer = Math.max(0, totalAttendu - totalEncaiss);
+    const percentPaid = totalMembers > 0 ? Math.round((paidCount / totalMembers) * 100) : 0;
+
+    // KPIs
+    const kpiTotal = document.getElementById('kpiEventTotalEncaiss');
+    const kpiPaidCountSub = document.getElementById('kpiEventPaidCountSub');
+    const kpiPaidMembers = document.getElementById('kpiEventPaidMembersCount');
+    const kpiPercentSub = document.getElementById('kpiEventPercentSub');
+    const kpiReste = document.getElementById('kpiEventResteRecouvrer');
+    const kpiPendingSub = document.getElementById('kpiEventPendingCountSub');
+    const kpiAttendu = document.getElementById('kpiEventTotalAttendu');
+
+    if (kpiTotal) kpiTotal.textContent = formatMoney(totalEncaiss, currency);
+    if (kpiPaidCountSub) kpiPaidCountSub.textContent = `${eventCotisations.length} versement(s) reçu(s)`;
+    if (kpiPaidMembers) kpiPaidMembers.textContent = `${paidCount} / ${totalMembers}`;
+    if (kpiPercentSub) kpiPercentSub.textContent = `${percentPaid}% de participation`;
+    if (kpiReste) kpiReste.textContent = formatMoney(resteRecouvrer, currency);
+    if (kpiPendingSub) kpiPendingSub.textContent = `${pendingCount} membre(s) en attente`;
+    if (kpiAttendu) kpiAttendu.textContent = formatMoney(totalAttendu, currency);
+
+    // Filtre recherche
+    const searchInput = document.getElementById('filterEventMemberSearch');
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+    let membersToDisplay = (data.members || []);
+    if (query) {
+      membersToDisplay = membersToDisplay.filter(m => 
+        (m.fullName || '').toLowerCase().includes(query) ||
+        (m.matricule || '').toLowerCase().includes(query) ||
+        (m.phone || '').includes(query)
+      );
+    }
+
+    if (membersToDisplay.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">
+            Aucun membre trouvé pour ce filtre.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = membersToDisplay.map(m => {
+      const fam = (data.families || []).find(f => f.id === m.familyId);
+      const famName = fam ? fam.name : 'Famille TAGBA';
+      const cotsForMem = eventCotisations.filter(c => (c.memberId === m.id || c.member_id === m.id));
+      const hasPaid = cotsForMem.length > 0;
+      const lastCot = hasPaid ? cotsForMem[0] : null;
+
+      let statutBadge = '';
+      let dateRecuCell = '';
+      let modeCell = '';
+      let actionBtn = '';
+
+      if (hasPaid) {
+        statutBadge = `<span class="badge badge-success">✅ Payé (${formatMoney(lastCot.montant, currency)})</span>`;
+        dateRecuCell = `
+          <div style="font-weight: 600; font-size: 12px; color: var(--text-main);">${formatDate(lastCot.datePaiement || lastCot.date_paiement)}</div>
+          <div style="font-size: 11px; color: var(--emerald-400);">${lastCot.recuNum || lastCot.recu_num}</div>
+        `;
+        modeCell = `<span class="badge badge-purple" style="font-size: 10px;">${lastCot.modePaiement || lastCot.mode_paiement}</span>`;
+        actionBtn = `
+          <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${lastCot.id}')" title="Voir le Reçu Officiel">
+            🧾 Reçu
+          </button>
+        `;
+      } else {
+        statutBadge = `<span class="badge badge-warning">⏳ En attente (${formatMoney(unitEvent, currency)})</span>`;
+        dateRecuCell = `<span style="color: var(--text-dim);">-</span>`;
+        modeCell = `<span style="color: var(--text-dim);">-</span>`;
+        actionBtn = `
+          <button class="btn btn-sm btn-primary" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Encaisser la cotisation pour ${activeEvt.titre}">
+            💳 Encaisser
+          </button>
+        `;
+      }
+
+      return `
+        <tr>
+          <td><strong style="color: var(--emerald-400);">${m.matricule}</strong></td>
+          <td>
+            <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">
+              ${m.fullName}
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+              👑 ${famName} • 📞 ${m.phone}
+            </div>
+          </td>
+          <td>
+            <strong style="color: var(--gold-400);">${formatMoney(unitEvent, currency)}</strong>
+          </td>
+          <td>${statutBadge}</td>
+          <td>${dateRecuCell}</td>
+          <td>${modeCell}</td>
+          <td style="text-align: right;">${actionBtn}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Erreur renderCotisationsEventsTracking:', err);
+  }
 }
 
 // Raccourci pour encaisser un membre spécifique pour l'événement sélectionné
