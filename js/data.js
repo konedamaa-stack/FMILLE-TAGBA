@@ -107,19 +107,22 @@ const TAGBA_DB = {
     const data = this.get();
     const fondsDepart = Number(data.config.fondsCaisse || 0);
 
-    // 1. Cotisations Mensuelles & Périodiques Ordinaires
-    const cotisationsMensuelles = (data.cotisations || []).filter(c => {
-      const t = (c.type || '').toLowerCase();
-      return !t.includes('venement') && !t.includes('vènement');
-    });
-    const totalCotisationsMensuelles = cotisationsMensuelles.reduce((acc, c) => acc + Number(c.montant || 0), 0);
-
-    // 2. Cotisations Événements Spécifiques (Sacrifice, etc.)
+    // 1. Cotisations Événements Spécifiques (Sacrifice, etc.)
     const cotisationsEvenements = (data.cotisations || []).filter(c => {
       const t = (c.type || '').toLowerCase();
-      return t.includes('venement') || t.includes('vènement');
+      const p = (c.periode || '').toLowerCase();
+      return !!c.eventId || t.includes('venement') || t.includes('vènement') || p.includes('sacrifice');
     });
     const totalCotisationsEvenements = cotisationsEvenements.reduce((acc, c) => acc + Number(c.montant || 0), 0);
+
+    // 2. Cotisations Mensuelles & Périodiques Ordinaires
+    const cotisationsMensuelles = (data.cotisations || []).filter(c => {
+      const t = (c.type || '').toLowerCase();
+      const p = (c.periode || '').toLowerCase();
+      const isEvt = !!c.eventId || t.includes('venement') || t.includes('vènement') || p.includes('sacrifice');
+      return !isEvt;
+    });
+    const totalCotisationsMensuelles = cotisationsMensuelles.reduce((acc, c) => acc + Number(c.montant || 0), 0);
 
     // Total de toutes les cotisations
     const totalCotisationsGlobal = totalCotisationsMensuelles + totalCotisationsEvenements;

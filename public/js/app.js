@@ -745,8 +745,19 @@ function renderDashboard() {
   if (kpiCotisMensuelles) kpiCotisMensuelles.textContent = formatMoney(fin.totalCotisationsMensuelles, fin.currency);
   if (kpiCotisMensuellesSub) kpiCotisMensuellesSub.textContent = `${cotisMensuellesCount} versement(s) ordinaire(s)`;
 
+  const activeEvt = TAGBA_DB.getActiveEvenement() || { montant: 5000, titre: 'Cotisation Sacrifice de la Mutuelle' };
+  const unitEvt = Number(activeEvt.montant || 5000);
+  const totalMembres = (data.members || []).length;
+  const budgetObjectifEvt = totalMembres * unitEvt;
+
   if (kpiCotisEvents) kpiCotisEvents.textContent = formatMoney(fin.totalCotisationsEvenements, fin.currency);
-  if (kpiCotisEventsSub) kpiCotisEventsSub.textContent = `${cotisEventsCount} versement(s) événement(s)`;
+  if (kpiCotisEventsSub) {
+    if (fin.totalCotisationsEvenements === 0) {
+      kpiCotisEventsSub.innerHTML = `Objectif fixé : <strong style="color: var(--gold-400);">${formatMoney(budgetObjectifEvt, fin.currency)}</strong> (0/${totalMembres} réglé)`;
+    } else {
+      kpiCotisEventsSub.innerHTML = `${cotisEventsCount}/${totalMembres} membre(s) • Objectif : ${formatMoney(budgetObjectifEvt, fin.currency)}`;
+    }
+  }
 
   if (kpiAides) kpiAides.textContent = formatMoney(fin.totalAidesDecaissees, fin.currency);
   if (kpiAidesSub) kpiAidesSub.textContent = `${decaissesAidesCount} dossier(s) secouru(s)`;
