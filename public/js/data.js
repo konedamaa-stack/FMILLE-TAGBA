@@ -72,12 +72,13 @@ const TAGBA_DB = {
             : JSON.parse(JSON.stringify(defaultData.evenements));
           parsed.lastModified = Number(parsed.lastModified || 0);
 
-          // Réinitialisation / Purge intégrale de tous les versements (mensuels et événements)
-          if (!localStorage.getItem('tagba_cotisations_purged_v1')) {
+          // Réinitialisation / Purge intégrale de tous les versements (mensuels et événements) & solde caisse
+          if (!localStorage.getItem('tagba_cotisations_purged_v2')) {
             parsed.cotisations = [];
+            if (parsed.config) parsed.config.fondsCaisse = 0;
             parsed.lastModified = Date.now();
             try {
-              localStorage.setItem('tagba_cotisations_purged_v1', 'true');
+              localStorage.setItem('tagba_cotisations_purged_v2', 'true');
               localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
             } catch (e) { }
           }
@@ -467,9 +468,6 @@ const TAGBA_DB = {
     cot.datePaiement = cot.datePaiement || new Date().toISOString().split('T')[0];
     cot.statut = 'Validé';
 
-    // Mettre à jour la caisse
-    data.config.fondsCaisse = (Number(data.config.fondsCaisse) || 0) + Number(cot.montant || 0);
-
     // Mettre à jour le statut du membre
     const mem = data.members.find(m => m.id === cot.memberId);
     if (mem) {
@@ -487,11 +485,7 @@ const TAGBA_DB = {
     const idx = (data.cotisations || []).findIndex(c => c.id === cotId);
     if (idx !== -1) {
       const oldCot = data.cotisations[idx];
-      const oldMontant = Number(oldCot.montant || 0);
-      const newMontant = updatedFields.montant !== undefined ? Number(updatedFields.montant || 0) : oldMontant;
-
-      // Ajuster la caisse avec la différence exacte
-      data.config.fondsCaisse = (Number(data.config.fondsCaisse) || 0) - oldMontant + newMontant;
+      const newMontant = updatedFields.montant !== undefined ? Number(updatedFields.montant || 0) : Number(oldCot.montant || 0);
 
       data.cotisations[idx] = { ...oldCot, ...updatedFields, montant: newMontant };
       this.save(data);
@@ -504,8 +498,6 @@ const TAGBA_DB = {
     const data = this.get();
     const cot = (data.cotisations || []).find(c => c.id === cotId);
     if (cot) {
-      const montant = Number(cot.montant || 0);
-      data.config.fondsCaisse = Math.max(0, (Number(data.config.fondsCaisse) || 0) - montant);
       data.cotisations = data.cotisations.filter(c => c.id !== cotId);
       this.save(data);
       return true;
@@ -519,11 +511,6 @@ const TAGBA_DB = {
     cas.id = 'cas-' + Date.now();
     cas.reference = 'CAS-2026-' + String(data.entraide.length + 1).padStart(2, '0');
     cas.dateDemande = cas.dateDemande || new Date().toISOString().split('T')[0];
-
-    // Si déjà validé/accordé, déduire de la caisse
-    if (cas.statut === 'Accordé & Décaissé') {
-      data.config.fondsCaisse -= Number(cas.montantAlloue || 0);
-    }
 
     data.entraide.unshift(cas);
     this.save(data);
@@ -539,7 +526,6 @@ const TAGBA_DB = {
       if (montantAlloue) cas.montantAlloue = Number(montantAlloue);
 
       if (nouveauStatut === 'Accordé & Décaissé' && oldStatut !== 'Accordé & Décaissé') {
-        data.config.fondsCaisse -= Number(cas.montantAlloue || 0);
         cas.dateResolution = new Date().toISOString().split('T')[0];
       }
       this.save(data);
