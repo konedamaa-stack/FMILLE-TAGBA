@@ -21,22 +21,22 @@ const defaultData = {
     currency: 'FCFA',
     cotisationMensuelle: 5000,
     cotisationTrimestrielle: 15000,
-    cotisationEvenement: 5000,
-    evenementActuel: 'Cotisation Sacrifice de la Mutuelle',
-    activeEventId: 'evt-1',
+    cotisationEvenement: 4000,
+    evenementActuel: 'Cotisation Sacrifice a Khoroko',
+    activeEventId: 'evt-1793537365392',
     dateDebutCotisations: '2026-10-04',
     fondsCaisse: 0,
     year: 2026
   },
   evenements: [
     {
-      id: 'evt-1',
-      titre: 'Cotisation Sacrifice de la Mutuelle',
-      montant: 5000,
-      dateLimite: '2026-11-15',
+      id: 'evt-1793537365392',
+      titre: 'Cotisation Sacrifice a Khoroko',
+      montant: 4000,
+      dateLimite: '2026-11-16',
       statut: 'Actif',
-      description: 'Cotisation collective pour le sacrifice annuel et les bénédictions de la mutuelle',
-      createdAt: '2026-10-30'
+      description: 'Cotisation collective pour le sacrifice à Khoroko',
+      createdAt: '2026-11-01'
     }
   ],
   bureau: [],
@@ -79,6 +79,30 @@ const TAGBA_DB = {
             parsed.lastModified = Date.now();
             try {
               localStorage.setItem('tagba_cotisations_purged_v2', 'true');
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            } catch (e) { }
+          }
+
+          // Nettoyage de la liste des événements : ne conserver que "Cotisation Sacrifice a Khoroko"
+          if (!localStorage.getItem('tagba_events_cleaned_khoroko_v1')) {
+            const khorokoEvt = (parsed.evenements || []).find(e => (e.titre || '').toLowerCase().includes('khoroko')) || {
+              id: 'evt-1793537365392',
+              titre: 'Cotisation Sacrifice a Khoroko',
+              montant: 4000,
+              dateLimite: '2026-11-16',
+              statut: 'Actif',
+              description: 'Cotisation collective pour le sacrifice à Khoroko',
+              createdAt: '2026-11-01'
+            };
+            parsed.evenements = [khorokoEvt];
+            if (parsed.config) {
+              parsed.config.activeEventId = khorokoEvt.id;
+              parsed.config.evenementActuel = khorokoEvt.titre;
+              parsed.config.cotisationEvenement = khorokoEvt.montant;
+            }
+            parsed.lastModified = Date.now();
+            try {
+              localStorage.setItem('tagba_events_cleaned_khoroko_v1', 'true');
               localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
             } catch (e) { }
           }
