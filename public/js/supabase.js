@@ -571,7 +571,7 @@ async function pullAllDataFromSupabase(silent = false, force = false) {
           residence: m.residence || '',
           statutCotisation: m.statut_cotisation || 'A_JOUR'
         })) : localData.members,
-        cotisations: cotData.length > 0 ? cotData.map(c => ({
+        cotisations: cotRes.status === 'fulfilled' ? cotData.map(c => ({
           id: c.id,
           recuNum: c.recu_num,
           memberId: c.member_id,
@@ -585,7 +585,7 @@ async function pullAllDataFromSupabase(silent = false, force = false) {
           agent: c.agent,
           payeurChef: c.payeur_chef,
           batchRef: c.batch_ref
-        })) : localData.cotisations,
+        })) : (localData.cotisations || []),
         entraide: entData.length > 0 ? entData.map(e => ({
           id: e.id,
           reference: e.reference,

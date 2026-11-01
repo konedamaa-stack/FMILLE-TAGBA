@@ -72,6 +72,16 @@ const TAGBA_DB = {
             : JSON.parse(JSON.stringify(defaultData.evenements));
           parsed.lastModified = Number(parsed.lastModified || 0);
 
+          // Réinitialisation / Purge intégrale de tous les versements (mensuels et événements)
+          if (!localStorage.getItem('tagba_cotisations_purged_v1')) {
+            parsed.cotisations = [];
+            parsed.lastModified = Date.now();
+            try {
+              localStorage.setItem('tagba_cotisations_purged_v1', 'true');
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+            } catch (e) { }
+          }
+
           // Nettoyage de sécurité : dédoublonner les cotisations mensuelles par membre et période
           if (parsed.cotisations && parsed.cotisations.length > 0) {
             const seen = new Set();
