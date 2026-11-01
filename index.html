@@ -234,21 +234,21 @@
           </button>
         </li>
         <li class="nav-item">
-          <button class="nav-btn" data-tab="tab-cotisations" data-title="Cotisations & Versements" data-subtitle="Versements mensuels ou trimestriels et reçus de paiement">
+          <button class="nav-btn" data-tab="tab-cotisations" data-title="Cotisations & Versements" data-subtitle="Versements mensuels ou trimestriels, suivi des mois et calendrier d'échéances">
             <span class="icon">💳</span>
-            <span>Versements</span>
+            <span>Cotisations</span>
           </button>
         </li>
         <li class="nav-item">
-          <button class="nav-btn" data-tab="tab-entraide" data-title="Entraide & Cas Sociaux" data-subtitle="Prise en charge des problèmes, urgences et santé des membres">
+          <button class="nav-btn" data-tab="tab-ceremonies" data-title="Événements & Sacrifices" data-subtitle="Création d'événements, cotisations spéciales (Sacrifice) et cérémonies familiales">
+            <span class="icon">🎯</span>
+            <span>Événements</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-btn" data-tab="tab-entraide" data-title="Aides & Entraide" data-subtitle="Assistance médicale, urgences, santé, décès et fonds de secours mutuel">
             <span class="icon">🤝</span>
-            <span>Entraide Membres</span>
-          </button>
-        </li>
-        <li class="nav-item">
-          <button class="nav-btn" data-tab="tab-ceremonies" data-title="Cérémonies & Événements" data-subtitle="Mariages, baptêmes, funérailles et présence de la mutuelle">
-            <span class="icon">🎉</span>
-            <span>Cérémonies</span>
+            <span>Aides & Entraide</span>
           </button>
         </li>
         <li class="nav-item">
@@ -595,13 +595,10 @@
             </div>
           </div>
 
-          <!-- Sous-navigation des Cotisations : Suivi des Mois vs Événements/Sacrifice vs Registre Reçus -->
+          <!-- Sous-navigation des Cotisations : Suivi des Mois vs Registre Reçus -->
           <div class="cotis-subtabs-nav">
             <button type="button" class="cotis-subtab-btn active" id="btnCotisSubTabMonths" onclick="switchCotisSubTab('months')">
               <span>📅</span> Suivi des Mois (Cotisations Ordinaires)
-            </button>
-            <button type="button" class="cotis-subtab-btn" id="btnCotisSubTabEvents" onclick="switchCotisSubTab('events')">
-              <span>🎯</span> Cotisations par Événement (Sacrifice)
             </button>
             <button type="button" class="cotis-subtab-btn" id="btnCotisSubTabRegistre" onclick="switchCotisSubTab('registre')">
               <span>📜</span> Registre des Encaissements & Reçus
@@ -707,9 +704,88 @@
           </div>
 
           <!-- ============================================================ -->
-          <!-- SOUS-VUE 3 : SUIVI DES COTISATIONS PAR ÉVÉNEMENT / SACRIFICE -->
+          <!-- SOUS-VUE 2 : REGISTRE GÉNÉRAL DES ENCAISSEMENTS & REÇUS -->
           <!-- ============================================================ -->
-          <div id="cotisationsEventsTrackingView" style="display: none;">
+          <div id="cotisationsRegistreView" style="display: none;">
+            
+            <!-- Guide sur les montants -->
+            <div class="card-panel" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(17,24,39,0.8) 100%);">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div>
+                  <h3 style="font-size: 16px; color: var(--emerald-400);">Barème officiel des versements TAGBA</h3>
+                  <p style="font-size: 13px; color: var(--text-muted);">Deux modes de cotisation au choix pour chaque membre de la mutuelle :</p>
+                </div>
+                <div style="display: flex; gap: 16px;">
+                  <div style="background: rgba(255,255,255,0.04); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Option Mensuelle</div>
+                    <strong style="font-size: 16px; color: var(--text-main);" id="cfgDisplayMensuel">5 000 FCFA / mois</strong>
+                  </div>
+                  <div style="background: rgba(255,255,255,0.04); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                    <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Option Trimestrielle</div>
+                    <strong style="font-size: 16px; color: var(--gold-400);" id="cfgDisplayTrimestriel">15 000 FCFA / trimestre</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Historique des versements -->
+            <div class="card-panel">
+              <div class="card-header-flex">
+                <h3><span>📜</span> Registre Général des Encaissements</h3>
+              </div>
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Réf. Reçu</th>
+                      <th>Membre & Encaissé par</th>
+                      <th>Type</th>
+                      <th>Période</th>
+                      <th>Montant</th>
+                      <th>Mode</th>
+                      <th>Date</th>
+                      <th style="text-align: right;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cotisationsTableBody">
+                    <!-- Rendu par JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB 5 : ÉVÉNEMENTS & SACRIFICES (À PART) -->
+        <!-- ============================================================ -->
+        <div class="tab-pane" id="tab-ceremonies">
+          
+          <div class="toolbar-bar">
+            <div>
+              <h2 style="font-size: 20px;">🎯 Événements, Sacrifices & Cérémonies</h2>
+              <p style="font-size: 13px; color: var(--text-muted);">Gestion dédiée des événements spéciaux, cotisations de sacrifice et programmation des cérémonies familiales.</p>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn btn-gold" id="btnEvenementsCreateMain" onclick="openModal('modalCreateEvenement')">➕ Créer un Événement</button>
+              <button class="btn btn-secondary" id="btnAddCeremonieMain" onclick="openModal('modalAddCeremonie')">🎉 + Programmer une Cérémonie</button>
+            </div>
+          </div>
+
+          <!-- Sous-navigation des Événements : Cotisations Spécifiques vs Cérémonies -->
+          <div class="cotis-subtabs-nav" style="margin-bottom: 20px;">
+            <button type="button" class="cotis-subtab-btn active" id="btnEvtSubTabCotis" onclick="switchEvtSubTab('cotis')">
+              <span>🎯</span> Cotisations par Événement & Sacrifices
+            </button>
+            <button type="button" class="cotis-subtab-btn" id="btnEvtSubTabCeremonies" onclick="switchEvtSubTab('ceremonies')">
+              <span>🎉</span> Cérémonies Familiales & Réunions
+            </button>
+          </div>
+
+          <!-- SOUS-VUE A : SUIVI DES COTISATIONS PAR ÉVÉNEMENT / SACRIFICE -->
+          <div id="cotisationsEventsTrackingView">
             
             <!-- Barre d'action & Choix de l'Événement -->
             <div class="card-panel" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(217,119,6,0.14) 0%, rgba(15,23,42,0.95) 100%); border-left: 4px solid var(--gold-400);">
@@ -817,95 +893,54 @@
 
           </div>
 
-          <!-- ============================================================ -->
-          <!-- SOUS-VUE 2 : REGISTRE GÉNÉRAL DES ENCAISSEMENTS & REÇUS -->
-          <!-- ============================================================ -->
-          <div id="cotisationsRegistreView" style="display: none;">
-            
-            <!-- Guide sur les montants -->
-            <div class="card-panel" style="margin-bottom: 24px; background: linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(17,24,39,0.8) 100%);">
-              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-                <div>
-                  <h3 style="font-size: 16px; color: var(--emerald-400);">Barème officiel des versements TAGBA</h3>
-                  <p style="font-size: 13px; color: var(--text-muted);">Deux modes de cotisation au choix pour chaque membre de la mutuelle :</p>
-                </div>
-                <div style="display: flex; gap: 16px;">
-                  <div style="background: rgba(255,255,255,0.04); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Option Mensuelle</div>
-                    <strong style="font-size: 16px; color: var(--text-main);" id="cfgDisplayMensuel">5 000 FCFA / mois</strong>
-                  </div>
-                  <div style="background: rgba(255,255,255,0.04); padding: 10px 18px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-size: 11px; color: var(--text-dim); text-transform: uppercase;">Option Trimestrielle</div>
-                    <strong style="font-size: 16px; color: var(--gold-400);" id="cfgDisplayTrimestriel">15 000 FCFA / trimestre</strong>
-                  </div>
-                </div>
-              </div>
+          <!-- SOUS-VUE B : CÉRÉMONIES & RASSEMBLEMENTS FAMILIAUX -->
+          <div id="evenementsCeremoniesContainer" style="display: none;">
+            <div class="section-grid" id="ceremoniesGrid">
+              <!-- Rendu des cérémonies par JS -->
             </div>
-
-            <!-- Historique des versements -->
-            <div class="card-panel">
-              <div class="card-header-flex">
-                <h3><span>📜</span> Registre Général des Encaissements</h3>
-              </div>
-              <div class="table-responsive">
-                <table class="modern-table">
-                  <thead>
-                    <tr>
-                      <th>Réf. Reçu</th>
-                      <th>Membre & Encaissé par</th>
-                      <th>Type</th>
-                      <th>Période</th>
-                      <th>Montant</th>
-                      <th>Mode</th>
-                      <th>Date</th>
-                      <th style="text-align: right;">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="cotisationsTableBody">
-                    <!-- Rendu par JS -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
           </div>
 
         </div>
 
         <!-- ============================================================ -->
-        <!-- TAB 5 : ENTRAIDE & CAS SOCIAUX (PROBLÈMES DES MEMBRES) -->
+        <!-- TAB 6 : AIDES & ENTRAIDE SOLIDAIRE (À PART) -->
         <!-- ============================================================ -->
         <div class="tab-pane" id="tab-entraide">
           
           <div class="toolbar-bar">
             <div>
-              <h2 style="font-size: 20px;">Fonds de Solidarité & Entraide Communautaire</h2>
-              <p style="font-size: 13px; color: var(--text-muted);">Prise en charge active des problèmes de santé, accidents, deuils et urgences des membres.</p>
+              <h2 style="font-size: 20px;">🤝 Fonds de Solidarité & Aides aux Membres</h2>
+              <p style="font-size: 13px; color: var(--text-muted);">Prise en charge active des problèmes de santé, accidents, deuils et urgences des membres de la mutuelle.</p>
             </div>
-            <button class="btn btn-primary" id="btnAddEntraideMain" onclick="openModal('modalAddEntraide')">❤️ + Signaler un Cas Social</button>
+            <div class="toolbar-group">
+              <button class="btn btn-secondary" id="btnDonEntraideMain" onclick="openModal('modalAddContributionVolontaire')">🤲 + Faire un Don de Solidarité</button>
+              <button class="btn btn-primary" id="btnAddEntraideMain" onclick="openModal('modalAddEntraide')">❤️ + Signaler une Demande d'Aide</button>
+            </div>
+          </div>
+
+          <!-- Cartes KPI de Synthèse de l'Entraide & Aides -->
+          <div class="kpi-grid" style="margin-bottom: 24px;">
+            <div class="kpi-card" style="border-left: 3px solid var(--emerald-500);">
+              <span class="kpi-title">Aides Accordées & Décaissées</span>
+              <div class="kpi-value" style="color: var(--emerald-400);" id="kpiEntraideTotalDecaisse">0 FCFA</div>
+              <div class="kpi-sub" id="kpiEntraideDecaisseCount">0 dossier(s) secouru(s)</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid #a78bfa;">
+              <span class="kpi-title">Dons Volontaires Solidaires</span>
+              <div class="kpi-value" style="color: #a78bfa;" id="kpiEntraideTotalDons">0 FCFA</div>
+              <div class="kpi-sub" id="kpiEntraideDonsCount">Générosité des membres</div>
+            </div>
+
+            <div class="kpi-card" style="border-left: 3px solid var(--gold-500);">
+              <span class="kpi-title">Dossiers d'Aide Enregistrés</span>
+              <div class="kpi-value" style="color: var(--gold-400);" id="kpiEntraideTotalCas">0</div>
+              <div class="kpi-sub" id="kpiEntraideEnAttenteSub">Urgences et secours enregistrés</div>
+            </div>
           </div>
 
           <div class="section-grid" id="entraideGrid">
             <!-- Rendu des cas d'entraide par JS -->
-          </div>
-
-        </div>
-
-        <!-- ============================================================ -->
-        <!-- TAB 6 : CÉRÉMONIES & ÉVÉNEMENTS -->
-        <!-- ============================================================ -->
-        <div class="tab-pane" id="tab-ceremonies">
-          
-          <div class="toolbar-bar">
-            <div>
-              <h2 style="font-size: 20px;">Participation aux Cérémonies Familiales</h2>
-              <p style="font-size: 13px; color: var(--text-muted);">Gestion des présences, délégations mandatées et enveloppes de soutien financier aux événements.</p>
-            </div>
-            <button class="btn btn-gold" id="btnAddCeremonieMain" onclick="openModal('modalAddCeremonie')">🎉 + Programmer une Cérémonie</button>
-          </div>
-
-          <div class="section-grid" id="ceremoniesGrid">
-            <!-- Rendu des cérémonies par JS -->
           </div>
 
         </div>
@@ -2669,9 +2704,9 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261031-v14"></script>
-  <script src="js/supabase.js?v=20261031-v14"></script>
-  <script src="js/app.js?v=20261031-v14"></script>
+  <script src="js/data.js?v=20261101-v15"></script>
+  <script src="js/supabase.js?v=20261101-v15"></script>
+  <script src="js/app.js?v=20261101-v15"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>

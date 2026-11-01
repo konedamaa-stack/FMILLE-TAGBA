@@ -668,7 +668,10 @@ function refreshCurrentTab(tabId) {
   if (tabId === 'tab-familles') renderFamiliesAndMembers();
   if (tabId === 'tab-cotisations') renderCotisations();
   if (tabId === 'tab-entraide') renderEntraide();
-  if (tabId === 'tab-ceremonies') renderCeremonies();
+  if (tabId === 'tab-ceremonies' || tabId === 'tab-evenements') {
+    renderCotisationsEventsTracking();
+    renderCeremonies();
+  }
   if (tabId === 'tab-finances') renderFinances();
   if (tabId === 'tab-data') loadConfigForm();
   applyActiveUserUI();
@@ -1309,26 +1312,46 @@ let currentCotisSubTab = 'months';
 let currentMonthsTrackingFilter = 'ALL';
 
 function switchCotisSubTab(subTab) {
+  if (subTab === 'events') {
+    const btnEvt = document.querySelector('[data-tab="tab-ceremonies"]') || document.querySelector('[data-tab="tab-evenements"]');
+    if (btnEvt) btnEvt.click();
+    return;
+  }
   currentCotisSubTab = subTab;
   const btnMonths = document.getElementById('btnCotisSubTabMonths');
-  const btnEvents = document.getElementById('btnCotisSubTabEvents');
   const btnRegistre = document.getElementById('btnCotisSubTabRegistre');
   const viewMonths = document.getElementById('cotisationsMonthsTrackingView');
-  const viewEvents = document.getElementById('cotisationsEventsTrackingView');
   const viewRegistre = document.getElementById('cotisationsRegistreView');
 
   if (btnMonths) btnMonths.classList.toggle('active', subTab === 'months');
-  if (btnEvents) btnEvents.classList.toggle('active', subTab === 'events');
   if (btnRegistre) btnRegistre.classList.toggle('active', subTab === 'registre');
 
   if (viewMonths) viewMonths.style.display = subTab === 'months' ? 'block' : 'none';
-  if (viewEvents) viewEvents.style.display = subTab === 'events' ? 'block' : 'none';
   if (viewRegistre) viewRegistre.style.display = subTab === 'registre' ? 'block' : 'none';
+}
 
-  if (subTab === 'events') {
+// 4.B. Rendu de l'onglet Événements & Sacrifices (Séparé)
+let currentEvtSubTab = 'cotis';
+function switchEvtSubTab(subTab) {
+  currentEvtSubTab = subTab;
+  const btnCotis = document.getElementById('btnEvtSubTabCotis');
+  const btnCerem = document.getElementById('btnEvtSubTabCeremonies');
+  const viewCotis = document.getElementById('cotisationsEventsTrackingView');
+  const viewCerem = document.getElementById('evenementsCeremoniesContainer');
+
+  if (btnCotis) btnCotis.classList.toggle('active', subTab === 'cotis');
+  if (btnCerem) btnCerem.classList.toggle('active', subTab === 'ceremonies');
+
+  if (viewCotis) viewCotis.style.display = subTab === 'cotis' ? 'block' : 'none';
+  if (viewCerem) viewCerem.style.display = subTab === 'ceremonies' ? 'block' : 'none';
+
+  if (subTab === 'cotis') {
     renderCotisationsEventsTracking();
+  } else {
+    renderCeremonies();
   }
 }
+window.switchEvtSubTab = switchEvtSubTab;
 
 // 4.1. Moteur d'Audit Chronologique des Cotisations par Membre (Depuis le 04/10/2026)
 function getMemberCotisationAudit(memberId, refDateStr = null) {
@@ -1723,6 +1746,30 @@ function renderCotisations() {
 // 5. Rendu Entraide & Cas Sociaux
 function renderEntraide() {
   const data = TAGBA_DB.get();
+
+  // Mise à jour des cartes KPI d'Aides & Entraide
+  const decaisses = (data.entraide || []).filter(c => c.statut === 'Accordé & Décaissé');
+  const totalDecaisse = decaisses.reduce((sum, c) => sum + Number(c.montantAlloue || 0), 0);
+  const donsEntraide = (data.contributionsVolontaires || []).filter(d => 
+    d.cibleType === 'Entraide' || (d.cibleTitre && d.cibleTitre.toLowerCase().includes('entraide'))
+  );
+  const totalDonsEntraide = donsEntraide.reduce((sum, d) => sum + Number(d.montant || 0), 0);
+
+  const kpiDecaisseEl = document.getElementById('kpiEntraideTotalDecaisse');
+  const kpiDecaisseSubEl = document.getElementById('kpiEntraideDecaisseCount');
+  const kpiDonsEl = document.getElementById('kpiEntraideTotalDons');
+  const kpiDonsCountEl = document.getElementById('kpiEntraideDonsCount');
+  const kpiTotalCasEl = document.getElementById('kpiEntraideTotalCas');
+  const kpiEnAttenteEl = document.getElementById('kpiEntraideEnAttenteSub');
+
+  if (kpiDecaisseEl) kpiDecaisseEl.textContent = formatMoney(totalDecaisse, data.config.currency);
+  if (kpiDecaisseSubEl) kpiDecaisseSubEl.textContent = `${decaisses.length} dossier(s) secouru(s)`;
+  if (kpiDonsEl) kpiDonsEl.textContent = formatMoney(totalDonsEntraide, data.config.currency);
+  if (kpiDonsCountEl) kpiDonsCountEl.textContent = `${donsEntraide.length} don(s) solidaire(s)`;
+  if (kpiTotalCasEl) kpiTotalCasEl.textContent = (data.entraide || []).length;
+  const enCoursCount = (data.entraide || []).length - decaisses.length;
+  if (kpiEnAttenteEl) kpiEnAttenteEl.textContent = enCoursCount > 0 ? `${enCoursCount} en cours d'examen` : 'Tous les dossiers sont décaissés';
+
   const container = document.getElementById('entraideGrid');
   if (!container) return;
 
@@ -3942,6 +3989,10 @@ function syncCotisationMontantField() {
 function updateCotisationModalDefaults() {
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
+  const modalHeader = document.querySelector('#modalAddCotisation .modal-header h3');
+  if (modalHeader) {
+    modalHeader.textContent = '💳 Enregistrer un Versement de Cotisation Ordinaire';
+  }
   const cotTypeSelect = document.getElementById('cotType');
   const cotMontantInput = document.getElementById('cotMontant');
   const cotDateInput = document.getElementById('cotDate');
@@ -5520,6 +5571,11 @@ function openEventAddCotisationModal(memberId = null, eventId = null) {
 
   openModal('modalAddCotisation');
   setVersementFormMode('individual', false);
+
+  const modalHeader = document.querySelector('#modalAddCotisation .modal-header h3');
+  if (modalHeader) {
+    modalHeader.textContent = '🎯 Encaisser la Cotisation d\'un Événement';
+  }
 
   if (memberId) {
     const memberSelect = document.getElementById('cotMemberSelect');
