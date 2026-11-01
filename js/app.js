@@ -92,7 +92,7 @@ function formatMoney(amount, currency = 'FCFA') {
   try {
     const num = Number(amount) || 0;
     return new Intl.NumberFormat('fr-FR').format(num) + ' ' + currency;
-  } catch(e) {
+  } catch (e) {
     return String(Math.round(Number(amount) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ' + currency;
   }
 }
@@ -130,7 +130,7 @@ function showToast(message, type = 'success') {
   toast.className = 'toast';
   if (type === 'error') toast.style.borderLeftColor = 'var(--rose-500)';
   if (type === 'warning') toast.style.borderLeftColor = 'var(--gold-500)';
-  
+
   toast.innerHTML = `
     <span style="font-size: 18px;">${type === 'error' ? '⚠️' : '✅'}</span>
     <div style="font-size: 13px; font-weight: 500;">${message}</div>
@@ -420,7 +420,7 @@ function handleManualLogin(e) {
   const select = document.getElementById('loginUserSelect');
   const pwd = document.getElementById('loginPasswordInput');
   const userId = select ? select.value : 'usr-commissaire';
-  
+
   if (pwd && pwd.value.trim() !== '1234') {
     showToast('Code d\'accès PIN incorrect (Code démo par défaut : 1234)', 'error');
     return false;
@@ -712,7 +712,7 @@ function renderAllViews() {
   updateCotisationModalDefaults();
 }
 
-// 1. Rendu Dashboard
+// 1. Rendu Dashboard Harmonisé
 function renderDashboard() {
   const data = TAGBA_DB.get();
   const fin = TAGBA_DB.getCaisseFinances();
@@ -722,18 +722,40 @@ function renderDashboard() {
   const kpiFamilles = document.getElementById('kpiTotalFamilles');
   const kpiCaisse = document.getElementById('kpiFondsCaisse');
   const kpiCaisseSub = document.getElementById('kpiFondsCaisseSub');
-  const kpiCotisationsMois = document.getElementById('kpiCotisationsTotal');
+  const kpiCotisMensuelles = document.getElementById('kpiCotisMensuellesTotal');
+  const kpiCotisMensuellesSub = document.getElementById('kpiCotisMensuellesSub');
+  const kpiCotisEvents = document.getElementById('kpiCotisEventsTotal');
+  const kpiCotisEventsSub = document.getElementById('kpiCotisEventsSub');
+  const kpiAides = document.getElementById('kpiAidesTotal');
+  const kpiAidesSub = document.getElementById('kpiAidesTotalSub');
   const kpiDonsTotal = document.getElementById('kpiDonsTotal');
+  const kpiDonsSub = document.getElementById('kpiDonsSub');
   const kpiDepensesTotal = document.getElementById('kpiDepensesTotal');
+  const kpiDepensesSub = document.getElementById('kpiDepensesSub');
 
-  if (kpiMembres) kpiMembres.textContent = data.members.length;
-  if (kpiFamilles) kpiFamilles.textContent = data.families.length + ' foyers';
+  if (kpiMembres) kpiMembres.textContent = (data.members || []).length;
+  if (kpiFamilles) kpiFamilles.textContent = (data.families || []).length + ' foyers';
   if (kpiCaisse) kpiCaisse.textContent = formatMoney(fin.soldeNetCaisse, fin.currency);
   if (kpiCaisseSub) kpiCaisseSub.textContent = `Solde net disponible`;
 
-  if (kpiCotisationsMois) kpiCotisationsMois.textContent = formatMoney(fin.totalCotisations, fin.currency);
-  if (kpiDonsTotal) kpiDonsTotal.textContent = formatMoney(fin.totalDonsVolontaires, fin.currency);
+  const cotisMensuellesCount = (data.cotisations || []).filter(c => !(c.type || '').toLowerCase().includes('venement')).length;
+  const cotisEventsCount = (data.cotisations || []).filter(c => (c.type || '').toLowerCase().includes('venement')).length;
+  const decaissesAidesCount = (data.entraide || []).filter(c => c.statut === 'Accordé & Décaissé').length;
+
+  if (kpiCotisMensuelles) kpiCotisMensuelles.textContent = formatMoney(fin.totalCotisationsMensuelles, fin.currency);
+  if (kpiCotisMensuellesSub) kpiCotisMensuellesSub.textContent = `${cotisMensuellesCount} versement(s) ordinaire(s)`;
+
+  if (kpiCotisEvents) kpiCotisEvents.textContent = formatMoney(fin.totalCotisationsEvenements, fin.currency);
+  if (kpiCotisEventsSub) kpiCotisEventsSub.textContent = `${cotisEventsCount} versement(s) événement(s)`;
+
+  if (kpiAides) kpiAides.textContent = formatMoney(fin.totalAidesDecaissees, fin.currency);
+  if (kpiAidesSub) kpiAidesSub.textContent = `${decaissesAidesCount} dossier(s) secouru(s)`;
+
   if (kpiDepensesTotal) kpiDepensesTotal.textContent = formatMoney(fin.totalDecaisseCaisse, fin.currency);
+  if (kpiDepensesSub) kpiDepensesSub.textContent = `${(data.depenses || []).length} dépense(s) payée(s)`;
+
+  if (kpiDonsTotal) kpiDonsTotal.textContent = formatMoney(fin.totalDonsVolontaires, fin.currency);
+  if (kpiDonsSub) kpiDonsSub.textContent = `${(data.contributionsVolontaires || []).length} don(s) solidaire(s)`;
 
   // Table des récents versements
   const tbodyRecent = document.getElementById('tableRecentCotisations');
@@ -1049,9 +1071,9 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
                 </thead>
                 <tbody>
                   ${familyMembers.map(mem => {
-                    const audit = getMemberCotisationAudit(mem.id);
-                    const memStatut = audit ? audit.statutKey : mem.statutCotisation;
-                    return `
+      const audit = getMemberCotisationAudit(mem.id);
+      const memStatut = audit ? audit.statutKey : mem.statutCotisation;
+      return `
                     <tr>
                       <td><strong style="color: var(--emerald-400);">${mem.matricule}</strong></td>
                       <td>
@@ -1079,7 +1101,7 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
                       </td>
                     </tr>
                   `;
-                  }).join('')}
+    }).join('')}
                 </tbody>
               </table>
             </div>
@@ -1121,8 +1143,8 @@ function renderMembersTable(filterSearch = '', filterFamily = '') {
   let filtered = data.members;
   if (filterSearch) {
     const s = filterSearch.toLowerCase();
-    filtered = filtered.filter(m => 
-      m.fullName.toLowerCase().includes(s) || 
+    filtered = filtered.filter(m =>
+      m.fullName.toLowerCase().includes(s) ||
       m.profession.toLowerCase().includes(s) ||
       m.matricule.toLowerCase().includes(s) ||
       m.phone.includes(s)
@@ -1383,10 +1405,10 @@ function getMemberCotisationAudit(memberId, refDateStr = null) {
 
   const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
   const dateDebutStr = cfg.dateDebutCotisations || '2026-10-04';
-  
+
   // Date de référence (par défaut aujourd'hui ou date imposée)
   const today = refDateStr ? new Date(refDateStr) : new Date();
-  
+
   // Date officielle de départ (04/10/2026)
   const parts = dateDebutStr.split('-');
   const startYear = parseInt(parts[0], 10) || 2026;
@@ -1415,7 +1437,7 @@ function getMemberCotisationAudit(memberId, refDateStr = null) {
   // Somme totale des versements validés de ce membre
   const memberCotisations = (data.cotisations || []).filter(c => c.memberId === memberId && c.statut !== 'Annulé');
   const totalVerse = memberCotisations.reduce((sum, c) => sum + Number(c.montant || 0), 0);
-  
+
   const monthsPaidCount = Math.floor(totalVerse / unitMonthly);
   const reliquatVerse = totalVerse % unitMonthly;
 
@@ -1720,9 +1742,9 @@ function renderCotisations() {
   const tbody = document.getElementById('cotisationsTableBody');
   if (!tbody) return;
 
-  const total = data.cotisations.reduce((acc, c) => acc + Number(c.montant || 0), 0);
+  const fin = TAGBA_DB.getCaisseFinances();
   const totalDisplay = document.getElementById('cotisationsSumDisplay');
-  if (totalDisplay) totalDisplay.textContent = formatMoney(total, data.config.currency);
+  if (totalDisplay) totalDisplay.textContent = formatMoney(fin.totalCotisationsMensuelles, data.config.currency);
 
   if (!data.cotisations || data.cotisations.length === 0) {
     tbody.innerHTML = `
@@ -1771,7 +1793,7 @@ function renderEntraide() {
   // Mise à jour des cartes KPI d'Aides & Entraide
   const decaisses = (data.entraide || []).filter(c => c.statut === 'Accordé & Décaissé');
   const totalDecaisse = decaisses.reduce((sum, c) => sum + Number(c.montantAlloue || 0), 0);
-  const donsEntraide = (data.contributionsVolontaires || []).filter(d => 
+  const donsEntraide = (data.contributionsVolontaires || []).filter(d =>
     d.cibleType === 'Entraide' || (d.cibleTitre && d.cibleTitre.toLowerCase().includes('entraide'))
   );
   const totalDonsEntraide = donsEntraide.reduce((sum, d) => sum + Number(d.montant || 0), 0);
@@ -1791,6 +1813,9 @@ function renderEntraide() {
   const enCoursCount = (data.entraide || []).length - decaisses.length;
   if (kpiEnAttenteEl) kpiEnAttenteEl.textContent = enCoursCount > 0 ? `${enCoursCount} en cours d'examen` : 'Tous les dossiers sont décaissés';
 
+  const aidesSumEl = document.getElementById('aidesSumDisplay');
+  if (aidesSumEl) aidesSumEl.textContent = formatMoney(totalDecaisse, data.config.currency);
+
   const container = document.getElementById('entraideGrid');
   if (!container) return;
 
@@ -1801,7 +1826,7 @@ function renderEntraide() {
 
   container.innerHTML = data.entraide.map(cas => {
     // Récupérer les dons volontaires des membres pour ce cas social
-    const dons = (data.contributionsVolontaires || []).filter(d => 
+    const dons = (data.contributionsVolontaires || []).filter(d =>
       d.cibleId === cas.id || (d.cibleType === 'Entraide' && d.cibleTitre.includes(cas.memberName))
     );
     const totalDons = dons.reduce((sum, d) => sum + Number(d.montant || 0), 0);
@@ -1870,7 +1895,7 @@ function renderCeremonies() {
 
   container.innerHTML = data.ceremonies.map(cer => {
     // Récupérer les dons volontaires des membres pour cette cérémonie
-    const dons = (data.contributionsVolontaires || []).filter(d => 
+    const dons = (data.contributionsVolontaires || []).filter(d =>
       d.cibleId === cer.id || (d.cibleType === 'Cérémonie' && d.cibleTitre === cer.titre)
     );
     const totalDons = dons.reduce((sum, d) => sum + Number(d.montant || 0), 0);
@@ -2055,7 +2080,7 @@ function deleteFamilyConfirm(famId) {
   const fam = (data.families || []).find(f => f.id === famId);
   const memCount = (data.members || []).filter(m => m.familyId === famId).length;
   const msg = `Êtes-vous sûr de vouloir supprimer la famille "${fam ? fam.name : famId}" ?` +
-              (memCount > 0 ? `\nAttention : ${memCount} membre(s) rattaché(s) seront détachés.` : '');
+    (memCount > 0 ? `\nAttention : ${memCount} membre(s) rattaché(s) seront détachés.` : '');
   if (!confirm(msg)) return;
   TAGBA_DB.deleteFamily(famId);
   if (typeof deleteFamilyFromSupabase === 'function') {
@@ -3026,7 +3051,7 @@ function updateBaremeDisplays() {
   const dispT = document.getElementById('cfgDisplayTrimestriel');
   const badgeM = document.getElementById('cfgDisplayMensuelBadge');
   const noticeM = document.getElementById('cotNoticeUnitTarif');
-  
+
   const autoTri = document.getElementById('cfgAutoTrimestre');
   const autoSem = document.getElementById('cfgAutoSemestre');
   const autoAnn = document.getElementById('cfgAutoAnnee');
@@ -3091,10 +3116,10 @@ function populateCotisationMembers(filterQuery = '') {
     const famName = fam ? fam.name.toLowerCase() : '';
     const famChef = fam ? fam.chefDeFamille.toLowerCase() : '';
     return m.fullName.toLowerCase().includes(q) ||
-           (m.matricule && m.matricule.toLowerCase().includes(q)) ||
-           (m.relationToChef && m.relationToChef.toLowerCase().includes(q)) ||
-           famName.includes(q) ||
-           famChef.includes(q);
+      (m.matricule && m.matricule.toLowerCase().includes(q)) ||
+      (m.relationToChef && m.relationToChef.toLowerCase().includes(q)) ||
+      famName.includes(q) ||
+      famChef.includes(q);
   });
 
   if (filteredMembers.length === 0) {
@@ -3467,25 +3492,25 @@ function openMemberMonthsAuditModal(memberId) {
 
     <div class="audit-months-grid">
       ${audit.timeline.map(item => {
-        let cardClass = item.statusType;
-        let badgeStyleClass = '';
-        let icon = '⚪';
+    let cardClass = item.statusType;
+    let badgeStyleClass = '';
+    let icon = '⚪';
 
-        if (item.statusType === 'paid') {
-          badgeStyleClass = 'badge-success';
-          icon = '✅';
-        } else if (item.statusType === 'advance') {
-          badgeStyleClass = 'badge-advance';
-          icon = '🚀';
-        } else if (item.statusType === 'late') {
-          badgeStyleClass = 'badge-late';
-          icon = '⚠️';
-        } else {
-          badgeStyleClass = 'badge-info';
-          icon = '⚪';
-        }
+    if (item.statusType === 'paid') {
+      badgeStyleClass = 'badge-success';
+      icon = '✅';
+    } else if (item.statusType === 'advance') {
+      badgeStyleClass = 'badge-advance';
+      icon = '🚀';
+    } else if (item.statusType === 'late') {
+      badgeStyleClass = 'badge-late';
+      icon = '⚠️';
+    } else {
+      badgeStyleClass = 'badge-info';
+      icon = '⚪';
+    }
 
-        return `
+    return `
           <div class="month-audit-card ${cardClass}">
             <div class="month-audit-header">
               <span class="month-audit-title">${item.fullLabel}</span>
@@ -3504,7 +3529,7 @@ function openMemberMonthsAuditModal(memberId) {
             </div>
           </div>
         `;
-      }).join('')}
+  }).join('')}
     </div>
   `;
 
@@ -3609,15 +3634,15 @@ function renderGroupPaymentCard(family, chef, familyMembers = []) {
             </thead>
             <tbody>
               ${allGroupMembers.map(m => {
-                const isThisChef = isMemberChefDeFamille(m, family);
-                const isExtra = currentGroupExtraMembers.some(em => em.id === m.id);
-                const extraFam = isExtra ? data.families.find(f => f.id === m.familyId) : null;
-                const statusColor = m.statutCotisation === 'A_JOUR' ? '#10b981' : (m.statutCotisation === 'PARTIEL' ? '#f59e0b' : '#ef4444');
-                const statusLabel = m.statutCotisation === 'A_JOUR' ? 'À jour' : (m.statutCotisation === 'PARTIEL' ? 'Partiel' : 'En retard');
-                const initialMonths = currentPlageGlobalDuration || 1;
-                const lineMontant = initialMonths * unitMonthly;
+    const isThisChef = isMemberChefDeFamille(m, family);
+    const isExtra = currentGroupExtraMembers.some(em => em.id === m.id);
+    const extraFam = isExtra ? data.families.find(f => f.id === m.familyId) : null;
+    const statusColor = m.statutCotisation === 'A_JOUR' ? '#10b981' : (m.statutCotisation === 'PARTIEL' ? '#f59e0b' : '#ef4444');
+    const statusLabel = m.statutCotisation === 'A_JOUR' ? 'À jour' : (m.statutCotisation === 'PARTIEL' ? 'Partiel' : 'En retard');
+    const initialMonths = currentPlageGlobalDuration || 1;
+    const lineMontant = initialMonths * unitMonthly;
 
-                return `
+    return `
                   <tr class="family-plage-row row-checked" id="plageRow_${m.id}" data-member-id="${m.id}" data-statut="${m.statutCotisation}">
                     <td style="text-align: center;">
                       <input type="checkbox" class="family-member-cb" value="${m.id}" data-name="${m.fullName}" checked onchange="onFamilyRowCheckChange('${m.id}')" style="cursor: pointer; width: 17px; height: 17px; accent-color: var(--emerald-500);">
@@ -3664,7 +3689,7 @@ function renderGroupPaymentCard(family, chef, familyMembers = []) {
                     </td>
                   </tr>
                 `;
-              }).join('')}
+  }).join('')}
             </tbody>
           </table>
         </div>
@@ -3681,9 +3706,9 @@ function renderGroupPaymentCard(family, chef, familyMembers = []) {
             <select id="selectOtherMemberToAdd" class="form-control" style="flex: 1; min-width: 220px; font-size: 13px; height: 38px;">
               <option value="">-- Choisir un membre à ajouter au versement groupé --</option>
               ${availableOthers.map(om => {
-                const oFam = data.families.find(f => f.id === om.familyId);
-                return `<option value="${om.id}">${om.fullName} (${om.matricule}) — ${oFam ? oFam.name : 'Famille'}</option>`;
-              }).join('')}
+    const oFam = data.families.find(f => f.id === om.familyId);
+    return `<option value="${om.id}">${om.fullName} (${om.matricule}) — ${oFam ? oFam.name : 'Famille'}</option>`;
+  }).join('')}
             </select>
             <button type="button" class="btn btn-sm btn-primary" onclick="addOtherMemberToGroup()" style="padding: 0 16px; height: 38px; white-space: nowrap;">
               ➕ Ajouter au groupe
@@ -4211,7 +4236,7 @@ function importerFichierJSON(event) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = function (e) {
     try {
       const importedData = JSON.parse(e.target.result);
       if (!importedData.members || !importedData.families || !importedData.config) {
@@ -4350,12 +4375,12 @@ function renderDepenses() {
     else if (dep.categorie === 'Cérémonie') catBadgeClass = 'badge-gold';
     else if (dep.categorie === 'Fonctionnement') catBadgeClass = 'badge-success';
 
-    const partCaisseDisplay = dep.partCaisse > 0 
-      ? `<strong style="color: var(--rose-400);">${formatMoney(dep.partCaisse, currency)}</strong>` 
+    const partCaisseDisplay = dep.partCaisse > 0
+      ? `<strong style="color: var(--rose-400);">${formatMoney(dep.partCaisse, currency)}</strong>`
       : `<span style="color: var(--text-dim);">0 ${currency}</span>`;
 
-    const partVolontaireDisplay = dep.partVolontaire > 0 
-      ? `<strong style="color: #a78bfa;">${formatMoney(dep.partVolontaire, currency)}</strong>` 
+    const partVolontaireDisplay = dep.partVolontaire > 0
+      ? `<strong style="color: #a78bfa;">${formatMoney(dep.partVolontaire, currency)}</strong>`
       : `<span style="color: var(--text-dim);">0 ${currency}</span>`;
 
     const cibleBadge = dep.cibleTitre ? `
@@ -4431,10 +4456,10 @@ function renderContributionsVolontaires() {
         </td>
         <td>
           ${(() => {
-            const isExt = !don.familyId || (don.familyChef && (don.familyChef.includes('Association') || don.familyChef.includes('Partenaire') || don.familyChef.includes('Contact')));
-            const icon = isExt ? '🏢' : '❤️';
-            const sub = isExt ? `<span style="color: var(--gold-400); font-weight: 600;">${don.familyChef || 'Autre Association'}</span>` : `Foyer de : <strong>${don.familyChef || 'Famille'}</strong>`;
-            return `
+        const isExt = !don.familyId || (don.familyChef && (don.familyChef.includes('Association') || don.familyChef.includes('Partenaire') || don.familyChef.includes('Contact')));
+        const icon = isExt ? '🏢' : '❤️';
+        const sub = isExt ? `<span style="color: var(--gold-400); font-weight: 600;">${don.familyChef || 'Autre Association'}</span>` : `Foyer de : <strong>${don.familyChef || 'Famille'}</strong>`;
+        return `
               <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">
                 ${icon} ${don.memberName}
               </div>
@@ -4442,7 +4467,7 @@ function renderContributionsVolontaires() {
                 ${sub}
               </div>
             `;
-          })()}
+      })()}
         </td>
         <td>
           <span class="badge ${targetBadgeClass}" style="font-size: 10px;">${don.cibleType}</span>
@@ -4570,12 +4595,12 @@ function renderLivreCaisse() {
   }
 
   tbody.innerHTML = fluxAffiche.map(op => {
-    const entreeDisplay = op.entree > 0 
-      ? `<strong style="color: var(--emerald-400);">+ ${formatMoney(op.entree, currency)}</strong>` 
+    const entreeDisplay = op.entree > 0
+      ? `<strong style="color: var(--emerald-400);">+ ${formatMoney(op.entree, currency)}</strong>`
       : `<span style="color: var(--text-dim);">-</span>`;
 
-    const sortieDisplay = op.sortie > 0 
-      ? `<strong style="color: var(--rose-400);">- ${formatMoney(op.sortie, currency)}</strong>` 
+    const sortieDisplay = op.sortie > 0
+      ? `<strong style="color: var(--rose-400);">- ${formatMoney(op.sortie, currency)}</strong>`
       : `<span style="color: var(--text-dim);">-</span>`;
 
     return `
@@ -4746,10 +4771,10 @@ function initModalAddContribution(targetType, targetId, targetTitre) {
   populateDonMemberSelect(members);
 
   if (searchInput) {
-    searchInput.oninput = function() {
+    searchInput.oninput = function () {
       const q = searchInput.value.toLowerCase().trim();
-      const filtered = members.filter(m => 
-        (m.fullName || '').toLowerCase().includes(q) || 
+      const filtered = members.filter(m =>
+        (m.fullName || '').toLowerCase().includes(q) ||
         (m.matricule || '').toLowerCase().includes(q) ||
         (m.phone || '').includes(q)
       );
@@ -4891,8 +4916,8 @@ function openReceiptDonationModal(donId) {
 
       <!-- Corps du Reçu -->
       ${(() => {
-        const isExt = !don.familyId || (don.familyChef && (don.familyChef.includes('Association') || don.familyChef.includes('Partenaire') || don.familyChef.includes('Contact')));
-        return `
+      const isExt = !don.familyId || (don.familyChef && (don.familyChef.includes('Association') || don.familyChef.includes('Partenaire') || don.familyChef.includes('Contact')));
+      return `
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 16px; margin-bottom: 18px;">
           <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">
             ${isExt ? 'ORGANISATION / ASSOCIATION DONATRICE :' : 'BIENFAITEUR / MEMBRE DONATEUR :'}
@@ -4905,7 +4930,7 @@ function openReceiptDonationModal(donId) {
           </div>
         </div>
         `;
-      })()}
+    })()}
 
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 13px;">
         <tbody>
@@ -4961,7 +4986,7 @@ function openReceiptDonationModal(donId) {
 function setupFinanceEventListeners() {
   const formDepense = document.getElementById('formAddDepense');
   if (formDepense) {
-    formDepense.addEventListener('submit', function(e) {
+    formDepense.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!assertPermission('write', 'l’enregistrement d’une dépense')) return;
 
@@ -5026,7 +5051,7 @@ function setupFinanceEventListeners() {
 
   const formDon = document.getElementById('formAddContributionVolontaire');
   if (formDon) {
-    formDon.addEventListener('submit', function(e) {
+    formDon.addEventListener('submit', function (e) {
       e.preventDefault();
       if (!assertPermission('write', 'l’enregistrement d’un don')) return;
 
@@ -5202,10 +5227,10 @@ function deleteCotisationPrompt(cotId, recuNum, memberName, montant) {
   const formatted = formatMoney(montant, cfg.currency);
 
   const msg = `⚠️ ATTENTION : Confirmez-vous la suppression définitive du versement suivant ?\n\n` +
-              `• N° Reçu : ${recuNum}\n` +
-              `• Membre : ${memberName}\n` +
-              `• Montant : ${formatted}\n\n` +
-              `Cette action réajustera la caisse et recalculera automatiquement l'état des cotisations et arriérés du membre.`;
+    `• N° Reçu : ${recuNum}\n` +
+    `• Membre : ${memberName}\n` +
+    `• Montant : ${formatted}\n\n` +
+    `Cette action réajustera la caisse et recalculera automatiquement l'état des cotisations et arriérés du membre.`;
 
   if (!confirm(msg)) return;
 
@@ -5363,7 +5388,7 @@ function openModalEditEvenement(eventId = null) {
   if (dateEl) dateEl.value = evt.dateLimite || '';
   if (statEl) statEl.value = evt.statut || 'Actif';
   if (descEl) descEl.value = evt.description || '';
-  
+
   const modal = document.getElementById('modalEditEvenement');
   if (modal) {
     modal.classList.add('active');
@@ -5462,13 +5487,17 @@ function renderCotisationsEventsTracking() {
     if (kpiPendingSub) kpiPendingSub.textContent = `${pendingCount} membre(s) en attente`;
     if (kpiAttendu) kpiAttendu.textContent = formatMoney(totalAttendu, currency);
 
+    const fin = TAGBA_DB.getCaisseFinances();
+    const evenementsSumEl = document.getElementById('evenementsSumDisplay');
+    if (evenementsSumEl) evenementsSumEl.textContent = formatMoney(fin.totalCotisationsEvenements, currency);
+
     // Filtre recherche
     const searchInput = document.getElementById('filterEventMemberSearch');
     const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
     let membersToDisplay = (data.members || []);
     if (query) {
-      membersToDisplay = membersToDisplay.filter(m => 
+      membersToDisplay = membersToDisplay.filter(m =>
         (m.fullName || '').toLowerCase().includes(query) ||
         (m.matricule || '').toLowerCase().includes(query) ||
         (m.phone || '').includes(query)

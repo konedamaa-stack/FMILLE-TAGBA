@@ -337,10 +337,10 @@
                 <p>Favoriser la cohésion fraternelle, assurer la solidarité face aux épreuves et célébrer ensemble les heureux événements de chaque famille.</p>
               </div>
               <div class="hero-badges">
-                <span class="hero-badge highlight">✨ Objectif n°1 : Se Connaître</span>
-                <span class="hero-badge highlight">💳 Versements Mensuels & Trimestriels</span>
+                <span class="hero-badge highlight" style="font-weight: 700; background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #fff;">👥 <span id="kpiTotalMembres">0</span> Membres Inscrits (<span id="kpiTotalFamilles">0 foyers</span>)</span>
+                <span class="hero-badge highlight">💳 Cotisations Mensuelles</span>
+                <span class="hero-badge highlight">🎯 Événements & Sacrifices</span>
                 <span class="hero-badge highlight">🤝 Soutien & Entraide Active</span>
-                <span class="hero-badge highlight">🎉 Honneur aux Cérémonies</span>
               </div>
             </div>
             <div style="display: flex; gap: 10px;">
@@ -348,62 +348,81 @@
             </div>
           </div>
 
-          <!-- KPI Grid -->
+          <!-- KPI Grid Harmonisé & Équilibré (6 Cartes Complètes) -->
           <div class="kpi-grid">
-            <div class="kpi-card">
-              <div class="kpi-header">
-                <span class="kpi-title">Membres Inscrits</span>
-                <div class="kpi-icon-box icon-emerald">👥</div>
-              </div>
-              <div class="kpi-value" id="kpiTotalMembres">0</div>
-              <div class="kpi-trend">
-                <span class="trend-up" id="kpiTotalFamilles">0 foyers</span> rattachés
-              </div>
-            </div>
-
-            <div class="kpi-card" style="cursor: pointer;" onclick="document.querySelector('[data-tab=tab-finances]').click()" title="Voir les détails de la caisse">
+            
+            <!-- 1. Caisse Centrale Nette -->
+            <div class="kpi-card" style="cursor: pointer; border-left: 3px solid var(--emerald-500);" onclick="document.querySelector('[data-tab=tab-finances]').click()" title="Voir les détails de la caisse">
               <div class="kpi-header">
                 <span class="kpi-title">Caisse Centrale Nette</span>
                 <div class="kpi-icon-box icon-gold">💰</div>
               </div>
-              <div class="kpi-value" id="kpiFondsCaisse">0 FCFA</div>
+              <div class="kpi-value" id="kpiFondsCaisse" style="color: var(--emerald-400);">0 FCFA</div>
               <div class="kpi-trend">
                 <span class="trend-up" id="kpiFondsCaisseSub">Solde net disponible</span>
               </div>
             </div>
 
-            <div class="kpi-card">
+            <!-- 2. Cotisations Mensuelles -->
+            <div class="kpi-card" style="cursor: pointer; border-left: 3px solid #3b82f6;" onclick="document.querySelector('[data-tab=tab-cotisations]').click()" title="Voir le suivi des cotisations mensuelles">
               <div class="kpi-header">
-                <span class="kpi-title">Cotisations Encaissées</span>
+                <span class="kpi-title">Cotisations Mensuelles</span>
                 <div class="kpi-icon-box icon-blue">💳</div>
               </div>
-              <div class="kpi-value" id="kpiCotisationsTotal">0 FCFA</div>
+              <div class="kpi-value" id="kpiCotisMensuellesTotal" style="color: #60a5fa;">0 FCFA</div>
               <div class="kpi-trend">
-                <span>Versements obligatoires</span>
+                <span id="kpiCotisMensuellesSub">Versements ordinaires</span>
               </div>
             </div>
 
-            <div class="kpi-card" style="cursor: pointer;" onclick="document.querySelector('[data-tab=tab-finances]').click(); switchFinanceSubTab('dons');" title="Voir les donateurs volontaires">
+            <!-- 3. Cotisations Événements -->
+            <div class="kpi-card" style="cursor: pointer; border-left: 3px solid #f59e0b;" onclick="document.querySelector('[data-tab=tab-ceremonies]').click()" title="Voir les cotisations par événement">
               <div class="kpi-header">
-                <span class="kpi-title">Dons Volontaires Membres</span>
-                <div class="kpi-icon-box" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">❤️</div>
+                <span class="kpi-title">Cotisations Événements</span>
+                <div class="kpi-icon-box" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">🎯</div>
               </div>
-              <div class="kpi-value" id="kpiDonsTotal" style="color: #a78bfa;">0 FCFA</div>
+              <div class="kpi-value" id="kpiCotisEventsTotal" style="color: #fbbf24;">0 FCFA</div>
               <div class="kpi-trend">
-                <span style="color: #a78bfa;">Soutiens aux cérémonies & aides</span>
+                <span id="kpiCotisEventsSub">Sacrifices & projets spéciaux</span>
               </div>
             </div>
 
-            <div class="kpi-card" style="cursor: pointer;" onclick="document.querySelector('[data-tab=tab-finances]').click(); switchFinanceSubTab('depenses');" title="Voir les dépenses">
+            <!-- 4. Aides & Solidarité -->
+            <div class="kpi-card" style="cursor: pointer; border-left: 3px solid #14b8a6;" onclick="document.querySelector('[data-tab=tab-entraide]').click()" title="Voir les dossiers d'aide et secours">
+              <div class="kpi-header">
+                <span class="kpi-title">Aides & Solidarité</span>
+                <div class="kpi-icon-box" style="background: rgba(20, 184, 166, 0.15); color: #2dd4bf;">🤝</div>
+              </div>
+              <div class="kpi-value" id="kpiAidesTotal" style="color: #2dd4bf;">0 FCFA</div>
+              <div class="kpi-trend">
+                <span id="kpiAidesTotalSub">Secours & urgences décaissés</span>
+              </div>
+            </div>
+
+            <!-- 5. Dépenses Caisse -->
+            <div class="kpi-card" style="cursor: pointer; border-left: 3px solid #f43f5e;" onclick="document.querySelector('[data-tab=tab-finances]').click(); switchFinanceSubTab('depenses');" title="Voir les dépenses">
               <div class="kpi-header">
                 <span class="kpi-title">Dépenses Caisse</span>
                 <div class="kpi-icon-box icon-rose">📉</div>
               </div>
               <div class="kpi-value" id="kpiDepensesTotal" style="color: var(--rose-400);">0 FCFA</div>
               <div class="kpi-trend">
-                <span class="trend-warning">Fonds sortis de caisse</span>
+                <span class="trend-warning" id="kpiDepensesSub">Fonds sortis de caisse</span>
               </div>
             </div>
+
+            <!-- 6. Dons Volontaires Membres -->
+            <div class="kpi-card" style="cursor: pointer; border-left: 3px solid #8b5cf6;" onclick="document.querySelector('[data-tab=tab-finances]').click(); switchFinanceSubTab('dons');" title="Voir les donateurs volontaires">
+              <div class="kpi-header">
+                <span class="kpi-title">Dons Volontaires</span>
+                <div class="kpi-icon-box" style="background: rgba(139, 92, 246, 0.15); color: #a78bfa;">❤️</div>
+              </div>
+              <div class="kpi-value" id="kpiDonsTotal" style="color: #a78bfa;">0 FCFA</div>
+              <div class="kpi-trend">
+                <span style="color: #a78bfa;" id="kpiDonsSub">Contributions solidaires</span>
+              </div>
+            </div>
+
           </div>
 
           <!-- Section Grid: Recent Cotisations & Active Events -->
@@ -766,7 +785,9 @@
           <div class="toolbar-bar">
             <div>
               <h2 style="font-size: 20px;">🎯 Événements, Sacrifices & Cérémonies</h2>
-              <p style="font-size: 13px; color: var(--text-muted);">Gestion dédiée des événements spéciaux, cotisations de sacrifice et programmation des cérémonies familiales.</p>
+              <p style="font-size: 13px; color: var(--text-muted);">
+                Total cotisations événements : <strong style="color: var(--gold-400); font-size: 17px;" id="evenementsSumDisplay">0 FCFA</strong> • Gestion dédiée des événements spéciaux et sacrifices.
+              </p>
             </div>
             <div class="toolbar-group">
               <button class="btn btn-gold" id="btnEvenementsCreateMain" onclick="openModal('modalCreateEvenement')">➕ Créer un Événement</button>
@@ -910,7 +931,9 @@
           <div class="toolbar-bar">
             <div>
               <h2 style="font-size: 20px;">🤝 Fonds de Solidarité & Aides aux Membres</h2>
-              <p style="font-size: 13px; color: var(--text-muted);">Prise en charge active des problèmes de santé, accidents, deuils et urgences des membres de la mutuelle.</p>
+              <p style="font-size: 13px; color: var(--text-muted);">
+                Aides allouées & décaissées : <strong style="color: var(--emerald-400); font-size: 17px;" id="aidesSumDisplay">0 FCFA</strong> • Prise en charge des urgences et de la santé.
+              </p>
             </div>
             <div class="toolbar-group">
               <button class="btn btn-secondary" id="btnDonEntraideMain" onclick="openModal('modalAddContributionVolontaire')">🤲 + Faire un Don de Solidarité</button>
@@ -2704,9 +2727,9 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261101-v16"></script>
-  <script src="js/supabase.js?v=20261101-v16"></script>
-  <script src="js/app.js?v=20261101-v16"></script>
+  <script src="js/data.js?v=20261101-v17"></script>
+  <script src="js/supabase.js?v=20261101-v17"></script>
+  <script src="js/app.js?v=20261101-v17"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>

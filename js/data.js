@@ -106,25 +106,50 @@ const TAGBA_DB = {
   getCaisseFinances: function () {
     const data = this.get();
     const fondsDepart = Number(data.config.fondsCaisse || 0);
-    const totalCotisations = (data.cotisations || []).reduce((acc, c) => acc + Number(c.montant || 0), 0);
+
+    // 1. Cotisations Mensuelles & Périodiques Ordinaires
+    const cotisationsMensuelles = (data.cotisations || []).filter(c => {
+      const t = (c.type || '').toLowerCase();
+      return !t.includes('venement') && !t.includes('vènement');
+    });
+    const totalCotisationsMensuelles = cotisationsMensuelles.reduce((acc, c) => acc + Number(c.montant || 0), 0);
+
+    // 2. Cotisations Événements Spécifiques (Sacrifice, etc.)
+    const cotisationsEvenements = (data.cotisations || []).filter(c => {
+      const t = (c.type || '').toLowerCase();
+      return t.includes('venement') || t.includes('vènement');
+    });
+    const totalCotisationsEvenements = cotisationsEvenements.reduce((acc, c) => acc + Number(c.montant || 0), 0);
+
+    // Total de toutes les cotisations
+    const totalCotisationsGlobal = totalCotisationsMensuelles + totalCotisationsEvenements;
+
+    // 3. Dons Volontaires des Membres
     const totalDonsVolontaires = (data.contributionsVolontaires || []).reduce((acc, d) => acc + Number(d.montant || 0), 0);
 
-    // Total des dépenses décaissées de la Caisse
-    const totalDecaisseCaisse = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.partCaisse || 0), 0);
-    // Total des dépenses couvertes par dons volontaires
-    const totalCouvertVolontaire = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.partVolontaire || 0), 0);
-    const totalDepensesGlobal = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.montantTotal || 0), 0);
+    // 4. Aides & Solidarité Décaissées
+    const aidesDecaissees = (data.entraide || []).filter(cas => cas.statut === 'Accordé & Décaissé');
+    const totalAidesDecaissees = aidesDecaissees.reduce((acc, cas) => acc + Number(cas.montantAlloue || 0), 0);
 
-    const soldeNetCaisse = (fondsDepart + totalCotisations + totalDonsVolontaires) - totalDecaisseCaisse;
+    // 5. Total des Dépenses de Caisse
+    const totalDecaisseCaisse = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.partCaisse || dp.montantTotal || 0), 0);
+    const totalCouvertVolontaire = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.partVolontaire || 0), 0);
+    const totalDepensesGlobal = (data.depenses || []).reduce((acc, dp) => acc + Number(dp.montantTotal || dp.partCaisse || 0), 0);
+
+    // Solde net de caisse
+    const soldeNetCaisse = (fondsDepart + totalCotisationsGlobal + totalDonsVolontaires) - totalDecaisseCaisse;
 
     return {
       fondsDepart,
-      totalCotisations,
+      totalCotisations: totalCotisationsGlobal,
+      totalCotisationsMensuelles,
+      totalCotisationsEvenements,
       totalDonsVolontaires,
-      totalEntrees: totalCotisations + totalDonsVolontaires,
+      totalAidesDecaissees,
       totalDecaisseCaisse,
       totalCouvertVolontaire,
       totalDepensesGlobal,
+      totalEntrees: totalCotisationsGlobal + totalDonsVolontaires,
       soldeNetCaisse,
       currency: data.config.currency || 'FCFA'
     };
