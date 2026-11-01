@@ -19,8 +19,8 @@ const defaultData = {
     assocName: 'Association Mutuelle TAGBA',
     tagline: 'Union • Solidarité • Entraide Familiale',
     currency: 'FCFA',
-    cotisationMensuelle: 5000,
-    cotisationTrimestrielle: 15000,
+    cotisationMensuelle: 500,
+    cotisationTrimestrielle: 1500,
     cotisationEvenement: 4000,
     evenementActuel: 'Cotisation Sacrifice a Khoroko',
     activeEventId: 'evt-1793537365392',
@@ -71,17 +71,6 @@ const TAGBA_DB = {
             ? parsed.evenements
             : JSON.parse(JSON.stringify(defaultData.evenements));
           parsed.lastModified = Number(parsed.lastModified || 0);
-
-          // Réinitialisation / Purge intégrale de tous les versements (mensuels et événements) & solde caisse
-          if (!localStorage.getItem('tagba_cotisations_purged_v2')) {
-            parsed.cotisations = [];
-            if (parsed.config) parsed.config.fondsCaisse = 0;
-            parsed.lastModified = Date.now();
-            try {
-              localStorage.setItem('tagba_cotisations_purged_v2', 'true');
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-            } catch (e) { }
-          }
 
           // Nettoyage de la liste des événements : ne conserver que "Cotisation Sacrifice a Khoroko"
           if (!localStorage.getItem('tagba_events_cleaned_khoroko_v1')) {

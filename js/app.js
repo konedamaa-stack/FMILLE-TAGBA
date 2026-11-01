@@ -1,4 +1,4 @@
-// Contrôle en direct et instantané de l'unicité des numéros de téléphone
+﻿// Contrôle en direct et instantané de l'unicité des numéros de téléphone
 function checkPhoneLiveFeedback(inputEl, errorDivId, excludeId = null) {
   if (!inputEl) return true;
   const errorEl = document.getElementById(errorDivId);
@@ -1414,7 +1414,7 @@ function getMemberCotisationAudit(memberId, refDateStr = null) {
   const member = data.members.find(m => m.id === memberId);
   if (!member) return null;
 
-  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+  const unitMonthly = Number(cfg.cotisationMensuelle || 500);
   const dateDebutStr = cfg.dateDebutCotisations || '2026-10-04';
 
   // Date de référence (par défaut aujourd'hui ou date imposée)
@@ -1582,7 +1582,7 @@ function renderCotisationsMonthsTracking() {
 
   const mensuelBadge = document.getElementById('cfgDisplayMensuelBadge');
   if (mensuelBadge) {
-    mensuelBadge.textContent = `${formatMoney(cfg.cotisationMensuelle || 5000, cfg.currency)} / mois`;
+    mensuelBadge.textContent = `${formatMoney(cfg.cotisationMensuelle || 500, cfg.currency)} / mois`;
   }
 
   // Auditer l'ensemble des membres
@@ -2574,7 +2574,7 @@ function bindFormSubmissions() {
 
         const cfg = data.config || {};
         const isEventMode = cotType === 'Événement';
-        const unitMonthly = isEventMode ? Number(cfg.cotisationEvenement || 5000) : Number(cfg.cotisationMensuelle || 5000);
+        const unitMonthly = isEventMode ? Number(cfg.cotisationEvenement || 5000) : Number(cfg.cotisationMensuelle || 500);
         let grandTotal = 0;
         let totalMonths = 0;
         const groupBatchRef = 'GRP-' + Date.now().toString().slice(-6);
@@ -2703,7 +2703,7 @@ function bindFormSubmissions() {
       const type = e.target.value;
       const data = TAGBA_DB.get();
       const cfg = data.config || {};
-      const unitM = Number(cfg.cotisationMensuelle || 5000);
+      const unitM = Number(cfg.cotisationMensuelle || 500);
       const montantInput = document.getElementById('editCotMontant');
       if (!montantInput) return;
 
@@ -2979,8 +2979,8 @@ function loadConfigForm() {
   const inputAssocName = document.getElementById('cfgAssocName');
   const inputTagline = document.getElementById('cfgTagline');
 
-  if (inputMensuel) inputMensuel.value = cfg.cotisationMensuelle || 5000;
-  if (inputTrimestriel) inputTrimestriel.value = cfg.cotisationTrimestrielle || 15000;
+  if (inputMensuel) inputMensuel.value = cfg.cotisationMensuelle || 500;
+  if (inputTrimestriel) inputTrimestriel.value = cfg.cotisationTrimestrielle || 1500;
   const inputCotisEvenement = document.getElementById('cfgCotisationEvenement');
   const inputEvenementActuel = document.getElementById('cfgEvenementActuel');
   if (inputCotisEvenement) inputCotisEvenement.value = cfg.cotisationEvenement || 5000;
@@ -2995,7 +2995,7 @@ function loadConfigForm() {
   updateCurrencySuffixes(cfg.currency || 'FCFA');
 
   // Prévisualisation immédiate des barèmes dérivés
-  const curVal = Number(inputMensuel ? inputMensuel.value : (cfg.cotisationMensuelle || 5000));
+  const curVal = Number(inputMensuel ? inputMensuel.value : (cfg.cotisationMensuelle || 500));
   const curCurr = selectCurrency ? selectCurrency.value : (cfg.currency || 'FCFA');
   const autoTriInit = document.getElementById('cfgAutoTrimestre');
   const autoSemInit = document.getElementById('cfgAutoSemestre');
@@ -3055,7 +3055,7 @@ function updateCurrencySuffixes(curr) {
 function updateBaremeDisplays() {
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
-  const unitM = Number(cfg.cotisationMensuelle || 5000);
+  const unitM = Number(cfg.cotisationMensuelle || 500);
   const curr = cfg.currency || 'FCFA';
 
   const dispM = document.getElementById('cfgDisplayMensuel');
@@ -3082,7 +3082,7 @@ function updateBaremeDisplays() {
 function updateAnticipationButtonLabels() {
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
-  const unitM = Number(cfg.cotisationMensuelle || 5000);
+  const unitM = Number(cfg.cotisationMensuelle || 500);
   const curr = cfg.currency || 'FCFA';
 
   const btn1 = document.querySelector('.btn-anticipate[data-months="1"]');
@@ -3358,7 +3358,7 @@ function setAnticipationMonths(nbMonths) {
   currentAnticipationSelectedMonths = nbMonths;
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
-  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+  const unitMonthly = Number(cfg.cotisationMensuelle || 500);
 
   // Mettre à jour l'état actif des boutons
   document.querySelectorAll('.btn-anticipate').forEach(btn => {
@@ -3562,7 +3562,7 @@ function renderGroupPaymentCard(family, chef, familyMembers = []) {
 
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
-  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+  const unitMonthly = Number(cfg.cotisationMensuelle || 500);
 
   // Fusionner les membres du foyer avec les membres supplémentaires ajoutés manuellement
   const baseMembers = [...familyMembers];
@@ -3768,7 +3768,7 @@ function onFamilyRowCheckChange(memberId) {
   const sel = document.getElementById(`monthsSelect_${memberId}`);
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
-  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+  const unitMonthly = Number(cfg.cotisationMensuelle || 500);
   const months = Number(sel?.value || 1);
 
   if (row && cb) {
@@ -3852,7 +3852,7 @@ function applyPlageDurationAll(months) {
   currentPlageGlobalDuration = months;
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
-  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+  const unitMonthly = Number(cfg.cotisationMensuelle || 500);
 
   // Mettre à jour les boutons de pilules
   document.querySelectorAll('.plage-pill-btn').forEach(btn => btn.classList.remove('active'));
@@ -3899,7 +3899,7 @@ function applyPlageDurationAll(months) {
 function onPlageMemberMonthsChange(memberId) {
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
-  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+  const unitMonthly = Number(cfg.cotisationMensuelle || 500);
 
   const row = document.getElementById(`plageRow_${memberId}`);
   const cb = row ? row.querySelector('.family-member-cb') : null;
@@ -3948,7 +3948,7 @@ function syncCotisationMontantField() {
   const cotMontantInput = document.getElementById('cotMontant');
   if (!cotMontantInput) return;
 
-  const unitMonthly = Number(cfg.cotisationMensuelle || 5000);
+  const unitMonthly = Number(cfg.cotisationMensuelle || 500);
   const groupContainer = document.getElementById('cotGroupPaymentContainer');
   const isGroupActive = groupContainer && groupContainer.style.display !== 'none' && currentGroupPaymentMode === 'group';
 
@@ -4061,8 +4061,8 @@ function updateCotisationModalDefaults() {
     cotTypeSelect.value = 'Mensuel';
     const optMensuel = cotTypeSelect.querySelector('option[value="Mensuel"]');
     const optTrimestriel = cotTypeSelect.querySelector('option[value="Trimestriel"]');
-    if (optMensuel) optMensuel.textContent = `Mensuel (${formatMoney(cfg.cotisationMensuelle || 5000, cfg.currency)})`;
-    if (optTrimestriel) optTrimestriel.textContent = `Trimestriel (${formatMoney(cfg.cotisationTrimestrielle || 15000, cfg.currency)})`;
+    if (optMensuel) optMensuel.textContent = `Mensuel (${formatMoney(cfg.cotisationMensuelle || 500, cfg.currency)})`;
+    if (optTrimestriel) optTrimestriel.textContent = `Trimestriel (${formatMoney(cfg.cotisationTrimestrielle || 1500, cfg.currency)})`;
   }
 
   // 2. Date de paiement par défaut : Aujourd'hui (format YYYY-MM-DD local)
