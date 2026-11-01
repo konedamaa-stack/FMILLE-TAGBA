@@ -107,7 +107,7 @@ function broadcastDataChanged() {
 }
 
 // Déclenchement automatique de la synchronisation (Debounced)
-window.autoSyncWithSupabase = function() {
+window.autoSyncWithSupabase = function () {
   if (!navigator.onLine) {
     updateSyncStatusBadge('offline');
     return;
@@ -403,7 +403,7 @@ async function pushAllDataToSupabase(silent = false) {
           valide_par: d.validePar
         }));
         promises.push(client.from('depenses').upsert(depRows));
-      } catch (_) {}
+      } catch (_) { }
     }
 
     if (localData.contributionsVolontaires && localData.contributionsVolontaires.length > 0) {
@@ -425,7 +425,7 @@ async function pushAllDataToSupabase(silent = false) {
           agent: don.agent
         }));
         promises.push(client.from('contributions_volontaires').upsert(donRows));
-      } catch (_) {}
+      } catch (_) { }
     }
 
     await Promise.allSettled(promises);
@@ -459,8 +459,8 @@ async function pullAllDataFromSupabase(silent = false, force = false) {
   try {
     const localData = TAGBA_DB.get();
     const localHasData = (localData.members && localData.members.length > 0) ||
-                         (localData.families && localData.families.length > 0) ||
-                         (localData.cotisations && localData.cotisations.length > 0);
+      (localData.families && localData.families.length > 0) ||
+      (localData.cotisations && localData.cotisations.length > 0);
     const localLastModified = Number(localData.lastModified || 0);
 
     // 1. Lire le snapshot atomique tagba_full_data dans app_config
@@ -470,9 +470,9 @@ async function pullAllDataFromSupabase(silent = false, force = false) {
       const cloudSnap = fullCfg.value;
       const cloudUpdatedAt = fullCfg.updated_at ? new Date(fullCfg.updated_at).getTime() : 0;
       const cloudHasData = (cloudSnap.members && cloudSnap.members.length > 0) ||
-                           (cloudSnap.families && cloudSnap.families.length > 0) ||
-                           (cloudSnap.cotisations && cloudSnap.cotisations.length > 0) ||
-                           (cloudSnap.bureau && cloudSnap.bureau.length > 0);
+        (cloudSnap.families && cloudSnap.families.length > 0) ||
+        (cloudSnap.cotisations && cloudSnap.cotisations.length > 0) ||
+        (cloudSnap.bureau && cloudSnap.bureau.length > 0);
 
       // CAS A : Le Cloud est vierge, mais cet appareil local a des données réelles -> Auto-Push vers le Cloud !
       if (!force && localHasData && !cloudHasData) {
@@ -483,8 +483,8 @@ async function pullAllDataFromSupabase(silent = false, force = false) {
       }
 
       const cloudHasUserData = (cloudSnap.members && cloudSnap.members.length > 0) ||
-                               (cloudSnap.families && cloudSnap.families.length > 0) ||
-                               (cloudSnap.cotisations && cloudSnap.cotisations.length > 0);
+        (cloudSnap.families && cloudSnap.families.length > 0) ||
+        (cloudSnap.cotisations && cloudSnap.cotisations.length > 0);
 
       // Si le local a des données utilisateur et que le Cloud n'en a pas, auto-push prioritaire
       if (!force && localHasData && !cloudHasUserData) {
@@ -844,7 +844,7 @@ CREATE POLICY "Allow public read-write contributions_volontaires" ON public.cont
       } else {
         showToast('Veuillez copier manuellement le script', 'warning');
       }
-    } catch(err) {
+    } catch (err) {
       showToast('Veuillez copier manuellement le script', 'warning');
     }
   }
