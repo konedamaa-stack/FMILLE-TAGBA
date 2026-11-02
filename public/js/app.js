@@ -2214,6 +2214,7 @@ function closeModal(target) {
   }
 }
 
+window.closeModal = closeModal;
 function bindModalEvents() {
   // 1. Délégation globale infaillible sur tout le document
   document.addEventListener('click', (e) => {
