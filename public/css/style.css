@@ -3013,16 +3013,46 @@ body.light-theme .auth-fullscreen {
   transform: translateY(-1px);
 }
 
-/* Print Style */
-@media print {
+/* ============================================================ */
+/* IMPRESSION UNIVERSELLE & ÉTATS OFFICIELS MUTUALISTES TAGBA */
+/* ============================================================ */
 
+#tagbaPrintArea {
+  display: none;
+}
+
+@media print {
+  /* 1. Cas d'impression d'un état généré par le moteur officiel */
+  body.tagba-printing-active > *:not(#tagbaPrintArea) {
+    display: none !important;
+  }
+
+  body.tagba-printing-active #tagbaPrintArea {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    overflow: visible !important;
+  }
+
+  /* 2. Règle générale pour l'impression normale / directe */
   .sidebar,
   .topbar,
   .btn,
   .toolbar-bar,
   .modal-close-btn,
+  .modal-footer,
   .theme-toggle-btn,
-  .auth-fullscreen {
+  .auth-fullscreen,
+  .toast-container,
+  .segmented-control,
+  .search-box,
+  .filter-select,
+  .filter-pill-btn,
+  .cotis-subtabs-nav {
     display: none !important;
   }
 
@@ -3036,8 +3066,75 @@ body.light-theme .auth-fullscreen {
   }
 
   body {
-    background: white !important;
-    color: black !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* 3. Impression propre des Modals (Reçu, Fiche Famille, etc.) */
+  .modal-overlay.active {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .modal-overlay.active .modal-content {
+    position: static !important;
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+  }
+
+  .modal-overlay.active .modal-header {
+    border-bottom: 2px solid #0f172a !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .receipt-paper {
+    border: 1px solid #334155 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+    padding: 16px !important;
+  }
+
+  /* 4. Tableaux propres et répétition d'en-tête sur plusieurs pages */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+  }
+
+  th, td {
+    border: 1px solid #94a3b8 !important;
+    color: #000000 !important;
+  }
+
+  /* Bloc signatures évite coupure en plein milieu */
+  .tagba-print-signatures {
+    page-break-inside: avoid !important;
   }
 }
 

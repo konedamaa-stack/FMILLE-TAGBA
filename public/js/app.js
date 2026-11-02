@@ -3378,6 +3378,7 @@ function setAnticipationMonths(nbMonths) {
 
 // Ouvrir la modal d'audit chronologique détaillé du membre
 function openMemberMonthsAuditModal(memberId) {
+  window.currentAuditMemberId = memberId;
   const container = document.getElementById('memberMonthsAuditContent');
   if (!container) return;
 

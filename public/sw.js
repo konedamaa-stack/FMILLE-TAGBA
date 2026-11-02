@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tagba-pwa-v27';
+const CACHE_NAME = 'tagba-pwa-v28';
 
 const LOCAL_ASSETS = [
   '/',
@@ -7,6 +7,7 @@ const LOCAL_ASSETS = [
   '/js/data.js',
   '/js/supabase.js',
   '/js/app.js',
+  '/js/print.js',
   '/manifest.json',
   '/icon.svg'
 ];

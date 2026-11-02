@@ -1,0 +1,1334 @@
+/**
+ * TAGBA - Moteur d'Impression Officiel & Export PDF
+ * Association Mutuelle de Solidarité et d'Entraide (Famille TAGBA)
+ * Permet d'imprimer partout dans l'application avec en-têtes officielles et blocs de signatures
+ */
+
+(function () {
+  'use strict';
+
+  // Formatage monétaire sécurisé
+  function formatMoney(amount, currency) {
+    const val = Number(amount || 0);
+    const curr = currency || 'FCFA';
+    return val.toLocaleString('fr-FR') + ' ' + curr;
+  }
+
+  // Formatage de date sécurisé
+  function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    try {
+      const parts = String(dateStr).split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return dateStr;
+    } catch (_) {
+      return dateStr;
+    }
+  }
+
+  // Récupération des données du store
+  function getDbData() {
+    if (typeof TAGBA_DB !== 'undefined' && typeof TAGBA_DB.get === 'function') {
+      return TAGBA_DB.get();
+    }
+    return {
+      config: {
+        assocName: 'Association Mutuelle TAGBA',
+        tagline: 'Union • Solidarité • Entraide Familiale',
+        currency: 'FCFA',
+        cotisationMensuelle: 5000,
+        fondsCaisse: 0
+      },
+      bureau: [],
+      families: [],
+      members: [],
+      cotisations: [],
+      evenements: [],
+      ceremonies: [],
+      depenses: [],
+      contributionsVolontaires: [],
+      entraide: []
+    };
+  }
+
+  // Exécuteur d'impression universel
+  function executeTagbaPrint(contentHtml, documentTitle) {
+    let printArea = document.getElementById('tagbaPrintArea');
+    if (!printArea) {
+      printArea = document.createElement('div');
+      printArea.id = 'tagbaPrintArea';
+      printArea.className = 'tagba-print-container';
+      document.body.appendChild(printArea);
+    }
+
+    printArea.innerHTML = contentHtml;
+
+    const originalTitle = document.title;
+    if (documentTitle) {
+      document.title = documentTitle;
+    }
+
+    document.body.classList.add('tagba-printing-active');
+
+    // Déclenchement de l'impression
+    setTimeout(() => {
+      window.print();
+    }, 50);
+
+    const cleanup = () => {
+      document.body.classList.remove('tagba-printing-active');
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(cleanup, 3000);
+  }
+
+  // En-tête officielle mutualiste
+  function getOfficialPrintHeader(title, subtitle, metaItems) {
+    const data = getDbData();
+    const cfg = data.config || {};
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const timeStr = now.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const metaHtml = (metaItems && metaItems.length > 0)
+      ? `<div style="display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+          ${metaItems.map(m => `
+            <div style="background: #f1f5f9; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 4px; font-size: 11px;">
+              <span style="color: #64748b;">${m.label} :</span> <strong style="color: #0f172a;">${m.value}</strong>
+            </div>
+          `).join('')}
+        </div>`
+      : '';
+
+    return `
+      <div class="print-doc-header" style="margin-bottom: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px;">
+          <div style="max-width: 58%;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 24px;">🏛️</span>
+              <div>
+                <h1 style="font-size: 18px; font-weight: 800; color: #047857; margin: 0; text-transform: uppercase; letter-spacing: 0.04em;">
+                  ${cfg.assocName || 'ASSOCIATION MUTUELLE TAGBA'}
+                </h1>
+                <p style="font-size: 10px; font-weight: 700; color: #b45309; text-transform: uppercase; margin: 2px 0 0 0; letter-spacing: 0.06em;">
+                  « ${cfg.tagline || 'Fraternité • Solidarité • Entraide Familiale'} »
+                </p>
+              </div>
+            </div>
+            <div style="font-size: 9.5px; color: #475569; margin-top: 4px; line-height: 1.3;">
+              Mutuelle d'Entraide et de Fraternité des Ressortissants de Tagba • Siège : Khoroko / Abidjan<br>
+              Plateforme Numérique de Gestion & Traçabilité Cloud
+            </div>
+          </div>
+          
+          <div style="text-align: right; max-width: 40%;">
+            <div style="font-size: 10.5px; font-weight: 700; color: #0f172a; text-transform: uppercase;">
+              RÉPUBLIQUE DE CÔTE D'IVOIRE
+            </div>
+            <div style="font-size: 8.5px; color: #64748b; font-style: italic; margin-bottom: 4px;">
+              Union - Discipline - Travail
+            </div>
+            <div style="font-size: 9.5px; color: #334155; background: #f8fafc; border: 1px solid #cbd5e1; padding: 3px 6px; border-radius: 4px; display: inline-block;">
+              Édité le : <strong>${dateStr} à ${timeStr}</strong>
+            </div>
+          </div>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 14px;">
+          <h2 style="font-size: 16px; font-weight: 800; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.03em;">
+            ${title}
+          </h2>
+          ${subtitle ? `<p style="font-size: 11.5px; color: #475569; margin: 3px 0 0 0; font-weight: 600;">${subtitle}</p>` : ''}
+          ${metaHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  // Bloc des 3 signatures statutaires
+  function getOfficialPrintSignatures() {
+    const data = getDbData();
+    const bureau = data.bureau || [];
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    const pdt = bureau.find(b => /président|president/i.test(b.role) && !/vice/i.test(b.role))?.holder || 'BAMBA Mamadou';
+    const tresorier = bureau.find(b => /trésorier|tresorier/i.test(b.role) && !/adjoint/i.test(b.role))?.holder || 'Seydou Coulibaly';
+    const cComptes = bureau.find(b => /commissaire/i.test(b.role))?.holder || 'Commissariat aux Comptes';
+
+    return `
+      <div class="tagba-print-signatures" style="margin-top: 28px; page-break-inside: avoid; border-top: 1px solid #94a3b8; padding-top: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <div style="font-size: 9.5px; color: #475569; font-style: italic; text-align: center; margin-bottom: 12px;">
+          « Le présent document a été arrêté et certifié conforme aux registres numériques de l'Association Mutuelle TAGBA en date du ${dateStr}. »
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; text-align: center;">
+          
+          <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; background: #fafafa; min-height: 95px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="font-size: 10.5px; font-weight: 700; color: #0f172a; text-transform: uppercase;">Le Commissaire aux Comptes</div>
+              <div style="font-size: 8.5px; color: #64748b;">(Contrôle & Conformité)</div>
+              <div style="font-size: 10.5px; font-weight: 600; color: #334155; margin-top: 3px;">${cComptes}</div>
+            </div>
+            <div style="font-size: 8.5px; color: #94a3b8; font-style: italic; margin-top: 25px;">
+              Visa & Mention "Lu et Approuvé"
+            </div>
+          </div>
+
+          <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; background: #fafafa; min-height: 95px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="font-size: 10.5px; font-weight: 700; color: #0f172a; text-transform: uppercase;">Le Trésorier Général</div>
+              <div style="font-size: 8.5px; color: #64748b;">(Gestion Financière & Recouvrement)</div>
+              <div style="font-size: 10.5px; font-weight: 600; color: #047857; margin-top: 3px;">${tresorier}</div>
+            </div>
+            <div style="font-size: 8.5px; color: #94a3b8; font-style: italic; margin-top: 25px;">
+              Visa & Signature
+            </div>
+          </div>
+
+          <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; background: #fafafa; min-height: 95px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="font-size: 10.5px; font-weight: 700; color: #0f172a; text-transform: uppercase;">Le Président du Bureau</div>
+              <div style="font-size: 8.5px; color: #64748b;">(Ordonnateur & Représentant Légal)</div>
+              <div style="font-size: 10.5px; font-weight: 600; color: #b45309; margin-top: 3px;">${pdt}</div>
+            </div>
+            <div style="font-size: 8.5px; color: #94a3b8; font-style: italic; margin-top: 25px;">
+              Cachet & Signature Officielle
+            </div>
+          </div>
+
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 8.5px; color: #94a3b8; border-top: 1px dotted #e2e8f0; padding-top: 4px;">
+          <span>Association Mutuelle TAGBA • Document Officiel d'Archive</span>
+          <span>Système TAGBA Cloud Sécurisé</span>
+          <span>Page 1 sur 1</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // Style CSS embarqué spécifique pour le conteneur d'impression
+  const printDocStyle = `
+    <style>
+      .tagba-print-container {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: #0f172a;
+        background: #ffffff;
+        padding: 0;
+        margin: 0;
+      }
+      .tagba-print-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+        margin-bottom: 14px;
+        font-size: 11px;
+      }
+      .tagba-print-table th {
+        background: #f1f5f9;
+        color: #0f172a;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 10px;
+        border: 1px solid #64748b;
+        padding: 6px 8px;
+        text-align: left;
+      }
+      .tagba-print-table td {
+        border: 1px solid #cbd5e1;
+        padding: 5px 8px;
+        vertical-align: middle;
+      }
+      .tagba-print-table tbody tr:nth-child(even) {
+        background: #f8fafc;
+      }
+      .tagba-print-table tfoot td {
+        font-weight: 700;
+        background: #f1f5f9;
+        border-top: 2px solid #0f172a;
+      }
+      .print-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 9.5px;
+        font-weight: 700;
+        border: 1px solid #cbd5e1;
+      }
+      .print-badge-success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+      .print-badge-warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+      .print-badge-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+      .print-badge-info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+    </style>
+  `;
+
+  // ============================================================
+  // 1. RAPPORT TABLEAU DE BORD (DASHBOARD)
+  // ============================================================
+  function printDashboardReport() {
+    const data = getDbData();
+    const cfg = data.config || {};
+    const curr = cfg.currency || 'FCFA';
+
+    const totalMembres = (data.members || []).length;
+    const totalFamilles = (data.families || []).length;
+    const fondsDepart = Number(cfg.fondsCaisse || 0);
+
+    const cotisMensuelles = (data.cotisations || [])
+      .filter(c => c.type !== 'Événement' && !c.evenementId)
+      .reduce((s, c) => s + Number(c.montant || 0), 0);
+
+    const cotisEvenements = (data.cotisations || [])
+      .filter(c => c.type === 'Événement' || c.evenementId)
+      .reduce((s, c) => s + Number(c.montant || 0), 0);
+
+    const totalDons = (data.contributionsVolontaires || [])
+      .reduce((s, d) => s + Number(d.montant || 0), 0);
+
+    const totalDepenses = (data.depenses || [])
+      .reduce((s, d) => s + Number(d.montant || 0), 0);
+
+    const totalEntraide = (data.entraide || [])
+      .filter(e => e.statut === 'Accordée' || e.statut === 'Payée' || e.statut === 'Terminé')
+      .reduce((s, e) => s + Number(e.montant || 0), 0);
+
+    const caisseNet = fondsDepart + cotisMensuelles + cotisEvenements + totalDons - totalDepenses;
+
+    const meta = [
+      { label: 'Effectif Total', value: `${totalMembres} membres (${totalFamilles} foyers)` },
+      { label: 'Solde Net Caisse', value: formatMoney(caisseNet, curr) },
+      { label: 'Cotisations Encaissées', value: formatMoney(cotisMensuelles + cotisEvenements, curr) }
+    ];
+
+    const header = getOfficialPrintHeader('Bilan Général & Tableau de Bord Exécutif', 'Situation financière et associative globale de la Mutuelle', meta);
+
+    // Derniers versements
+    const recentCotis = [...(data.cotisations || [])]
+      .sort((a, b) => new Date(b.datePaiement || 0) - new Date(a.datePaiement || 0))
+      .slice(0, 10);
+
+    const recentHtml = recentCotis.map((c, idx) => `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td><strong>${c.recuNum || 'N/A'}</strong></td>
+        <td>${formatDate(c.datePaiement)}</td>
+        <td>${c.memberName || 'Membre'}</td>
+        <td>${c.type || 'Ordinaire'}</td>
+        <td>${c.periode || 'N/A'}</td>
+        <td style="font-weight: 700; text-align: right; color: #047857;">${formatMoney(c.montant, curr)}</td>
+        <td>${c.modePaiement || 'Espèces'}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
+          <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; background: #ecfdf5;">
+            <div style="font-size: 10px; color: #065f46; text-transform: uppercase; font-weight: 700;">Solde Net Caisse</div>
+            <div style="font-size: 16px; font-weight: 800; color: #047857; margin-top: 2px;">${formatMoney(caisseNet, curr)}</div>
+            <div style="font-size: 9px; color: #047857;">Disponible immédiatement</div>
+          </div>
+          <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; background: #f8fafc;">
+            <div style="font-size: 10px; color: #475569; text-transform: uppercase; font-weight: 700;">Cotisations Mensuelles</div>
+            <div style="font-size: 16px; font-weight: 800; color: #0f172a; margin-top: 2px;">${formatMoney(cotisMensuelles, curr)}</div>
+            <div style="font-size: 9px; color: #64748b;">Recouvrement ordinaire</div>
+          </div>
+          <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; background: #fffbeb;">
+            <div style="font-size: 10px; color: #92400e; text-transform: uppercase; font-weight: 700;">Événements / Sacrifices</div>
+            <div style="font-size: 16px; font-weight: 800; color: #b45309; margin-top: 2px;">${formatMoney(cotisEvenements, curr)}</div>
+            <div style="font-size: 9px; color: #92400e;">Fonds spécifiques</div>
+          </div>
+          <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px 12px; background: #fef2f2;">
+            <div style="font-size: 10px; color: #991b1b; text-transform: uppercase; font-weight: 700;">Dépenses & Secours</div>
+            <div style="font-size: 16px; font-weight: 800; color: #b91c1c; margin-top: 2px;">${formatMoney(totalDepenses, curr)}</div>
+            <div style="font-size: 9px; color: #991b1b;">Décaissements totaux</div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 12px; text-transform: uppercase; margin: 14px 0 6px 0; color: #0f172a; border-bottom: 1px solid #94a3b8; padding-bottom: 4px;">
+          Journal des 10 Derniers Encaissements Enregistrés
+        </h3>
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Réf. Reçu</th>
+              <th>Date</th>
+              <th>Membre</th>
+              <th>Type</th>
+              <th>Période</th>
+              <th style="text-align: right;">Montant</th>
+              <th>Mode</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${recentHtml || '<tr><td colspan="8" style="text-align: center; color: #64748b;">Aucun versement enregistré pour le moment.</td></tr>'}
+          </tbody>
+        </table>
+
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, 'TAGBA_Bilan_General_Synthese');
+  }
+
+  // ============================================================
+  // 2. LISTE OFFICIELLE DU BUREAU EXÉCUTIF
+  // ============================================================
+  function printBureauList() {
+    const data = getDbData();
+    const bureau = data.bureau || [];
+    const meta = [
+      { label: 'Effectif du Bureau', value: `${bureau.length} membres` },
+      { label: 'Mandat Statutaire', value: '2026 - 2029' },
+      { label: 'Siège Administratif', value: 'Khoroko / Abidjan' }
+    ];
+
+    const header = getOfficialPrintHeader('Liste Officielle du Bureau Exécutif & Commissariat', 'Composition nominative des instances dirigeantes prévues par les Statuts', meta);
+
+    const rowsHtml = bureau.map((b, idx) => `
+      <tr>
+        <td style="text-align: center; font-weight: 700;">${idx + 1}</td>
+        <td style="font-weight: 700; color: #047857;">${b.role}</td>
+        <td style="font-weight: 600;">${b.holder || 'Poste à pourvoir'}</td>
+        <td>${b.phone || 'Non renseigné'}</td>
+        <td>${b.profession || 'N/A'}</td>
+        <td style="font-size: 10px; color: #475569;">${b.description || 'Administration statutaire'}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th style="width: 28%;">Poste Statutaire</th>
+              <th style="width: 25%;">Nom et Prénoms</th>
+              <th style="width: 15%;">Contact Téléphonique</th>
+              <th style="width: 14%;">Profession</th>
+              <th>Missions / Rôle</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="6" style="text-align: center;">Aucun poste enregistré.</td></tr>'}
+          </tbody>
+        </table>
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, 'TAGBA_Bureau_Executif_Officiel');
+  }
+
+  // ============================================================
+  // 3. REGISTRE DES FAMILLES & MEMBRES
+  // ============================================================
+  function printFamiliesAndMembersReport() {
+    const data = getDbData();
+    const members = data.members || [];
+    const families = data.families || [];
+    const curr = data.config?.currency || 'FCFA';
+
+    const meta = [
+      { label: 'Nombre de Foyers', value: `${families.length} familles` },
+      { label: 'Total Membres Adhérents', value: `${members.length} membres` },
+      { label: 'Lieu de Référence', value: 'Khoroko' }
+    ];
+
+    const header = getOfficialPrintHeader('Registre Officiel des Familles & Membres Adhérents', 'Recensement exhaustif de la communauté mutualiste TAGBA', meta);
+
+    const rowsHtml = members.map((m, idx) => {
+      const fam = families.find(f => f.id === m.familyId);
+      const chefNom = fam ? fam.chefDeFamille : 'N/A';
+      const famNom = fam ? fam.name : 'N/A';
+      const statutBadge = m.statutCotisation === 'EN_AVANCE'
+        ? '<span class="print-badge print-badge-info">🚀 En avance</span>'
+        : m.statutCotisation === 'A_JOUR'
+          ? '<span class="print-badge print-badge-success">✅ À jour</span>'
+          : '<span class="print-badge print-badge-danger">⚠️ En retard</span>';
+
+      return `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td style="font-weight: 700; color: #047857;">${m.matricule || 'N/A'}</td>
+          <td style="font-weight: 600;">${m.fullName} ${m.bureauRole ? `<small>(${m.bureauRole})</small>` : ''}</td>
+          <td><strong>${famNom}</strong> <br><small style="color: #64748b;">Chef : ${chefNom}</small></td>
+          <td>${m.relationToChef || 'Membre'}</td>
+          <td>${m.phone || 'N/A'}</td>
+          <td>${m.profession || 'N/A'}</td>
+          <td style="text-align: center;">${statutBadge}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Matricule</th>
+              <th>Nom & Prénoms</th>
+              <th>Foyer & Chef de Famille</th>
+              <th>Lien</th>
+              <th>Téléphone</th>
+              <th>Profession</th>
+              <th style="text-align: center;">Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="8" style="text-align: center;">Aucun membre enregistré.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="7" style="text-align: right; font-weight: 700;">TOTAL MEMBRES REPERTORIES :</td>
+              <td style="text-align: center; font-weight: 800; color: #047857;">${members.length}</td>
+            </tr>
+          </tfoot>
+        </table>
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, 'TAGBA_Registre_Familles_Membres');
+  }
+
+  // ============================================================
+  // 4. ÉTAT DES COTISATIONS MENSUELLES (SUIVI DES MOIS)
+  // ============================================================
+  function printMonthlyCotisationsReport() {
+    const data = getDbData();
+    const members = data.members || [];
+    const cfg = data.config || {};
+    const curr = cfg.currency || 'FCFA';
+    const unitPrice = Number(cfg.cotisationMensuelle || 5000);
+
+    let totalRecouvre = 0;
+    let totalArrieres = 0;
+    let countAJour = 0;
+    let countRetard = 0;
+
+    const rowsHtml = members.map((m, idx) => {
+      const audit = (typeof getMemberCotisationAudit === 'function')
+        ? getMemberCotisationAudit(m.id)
+        : null;
+
+      const fam = (data.families || []).find(f => f.id === m.familyId);
+      const totalVerse = audit ? audit.totalVerse : 0;
+      const monthsPaid = audit ? audit.monthsPaidCount : 0;
+      const isLate = audit ? (audit.monthsLateCount > 0) : false;
+      const arriere = audit ? audit.arrieresMontant : 0;
+
+      totalRecouvre += totalVerse;
+      if (isLate) {
+        countRetard++;
+        totalArrieres += arriere;
+      } else {
+        countAJour++;
+      }
+
+      const statutBadge = (audit && audit.statut === 'EN_AVANCE')
+        ? `<span class="print-badge print-badge-info">🚀 En Avance (+${audit.monthsAdvanceCount}m)</span>`
+        : isLate
+          ? `<span class="print-badge print-badge-danger">⚠️ Retard (${audit.monthsLateCount}m)</span>`
+          : `<span class="print-badge print-badge-success">✅ À Jour</span>`;
+
+      return `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td style="font-weight: 700; color: #047857;">${m.matricule || 'N/A'}</td>
+          <td style="font-weight: 600;">${m.fullName}</td>
+          <td>${fam ? fam.name : 'N/A'}</td>
+          <td style="text-align: right;">${formatMoney(unitPrice, curr)}</td>
+          <td style="text-align: right; font-weight: 700; color: #047857;">${formatMoney(totalVerse, curr)}</td>
+          <td style="text-align: center;">${monthsPaid} mois</td>
+          <td style="text-align: center;">${statutBadge}</td>
+          <td style="text-align: right; color: ${isLate ? '#b91c1c' : '#047857'}; font-weight: 700;">
+            ${isLate ? `-${formatMoney(arriere, curr)}` : '0 FCFA'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    const meta = [
+      { label: 'Membres À Jour', value: `${countAJour} / ${members.length}` },
+      { label: 'Total Encaissé', value: formatMoney(totalRecouvre, curr) },
+      { label: 'Arriérés en Souffrance', value: formatMoney(totalArrieres, curr) },
+      { label: 'Cotisation de Base', value: `${formatMoney(unitPrice, curr)} / mois` }
+    ];
+
+    const header = getOfficialPrintHeader('État Récapitulatif des Cotisations Mensuelles', `Suivi chronologique des versements ordinaires depuis le ${cfg.dateDebutCotisations || '04/10/2026'}`, meta);
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Matricule</th>
+              <th>Nom & Prénoms</th>
+              <th>Foyer</th>
+              <th style="text-align: right;">Tarif / Mois</th>
+              <th style="text-align: right;">Total Versé</th>
+              <th style="text-align: center;">Mois Réglés</th>
+              <th style="text-align: center;">Statut Échéance</th>
+              <th style="text-align: right;">Arriéré / Solde</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="9" style="text-align: center;">Aucun enregistrement disponible.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" style="text-align: right; font-weight: 700;">TOTAUX GÉNÉRAUX :</td>
+              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalRecouvre, curr)}</td>
+              <td></td>
+              <td></td>
+              <td style="text-align: right; font-weight: 800; color: #b91c1c;">-${formatMoney(totalArrieres, curr)}</td>
+            </tr>
+          </tfoot>
+        </table>
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, 'TAGBA_Etat_Cotisations_Mensuelles');
+  }
+
+  // ============================================================
+  // 5. REGISTRE DES REÇUS ET ENCAISSEMENTS
+  // ============================================================
+  function printReceiptsJournal() {
+    const data = getDbData();
+    const cotisations = data.cotisations || [];
+    const curr = data.config?.currency || 'FCFA';
+
+    const sortedCotis = [...cotisations].sort((a, b) => new Date(b.datePaiement || 0) - new Date(a.datePaiement || 0));
+    const totalSomme = sortedCotis.reduce((s, c) => s + Number(c.montant || 0), 0);
+
+    const meta = [
+      { label: 'Nombre Total de Reçus', value: `${sortedCotis.length} reçus émis` },
+      { label: 'Total Général Encaissé', value: formatMoney(totalSomme, curr) }
+    ];
+
+    const header = getOfficialPrintHeader('Journal Général des Reçus & Encaissements', 'Grand livre chronologique de tous les paiements enregistrés', meta);
+
+    const rowsHtml = sortedCotis.map((c, idx) => `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td style="font-weight: 700; color: #047857;">${c.recuNum || 'N/A'}</td>
+        <td>${formatDate(c.datePaiement)}</td>
+        <td style="font-weight: 600;">${c.memberName || 'Membre'}</td>
+        <td>${c.type || 'Ordinaire'}</td>
+        <td>${c.periode || 'N/A'}</td>
+        <td style="font-weight: 700; text-align: right;">${formatMoney(c.montant, curr)}</td>
+        <td>${c.modePaiement || 'Espèces'}</td>
+        <td style="font-size: 10px; color: #475569;">${c.agent || 'Trésorerie'}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Réf. Reçu</th>
+              <th>Date</th>
+              <th>Membre Cotisant</th>
+              <th>Type</th>
+              <th>Période Couverte</th>
+              <th style="text-align: right;">Montant</th>
+              <th>Mode</th>
+              <th>Encaissé par</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="9" style="text-align: center;">Aucun reçu délivré pour le moment.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="6" style="text-align: right; font-weight: 700;">TOTAL GÉNÉRAL DES ENCAISSEMENTS :</td>
+              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalSomme, curr)}</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, 'TAGBA_Journal_General_Recus');
+  }
+
+  // ============================================================
+  // 6. ÉTAT DE COTISATION PAR ÉVÉNEMENT / SACRIFICE
+  // ============================================================
+  function printEventCotisationsReport(eventId) {
+    const data = getDbData();
+    const curr = data.config?.currency || 'FCFA';
+    const members = data.members || [];
+
+    // Récupérer l'événement ciblé ou l'actif
+    let activeEvt = null;
+    if (eventId && Array.isArray(data.evenements)) {
+      activeEvt = data.evenements.find(e => e.id === eventId);
+    }
+    if (!activeEvt && typeof TAGBA_DB !== 'undefined' && typeof TAGBA_DB.getActiveEvenement === 'function') {
+      activeEvt = TAGBA_DB.getActiveEvenement();
+    }
+    if (!activeEvt) {
+      activeEvt = {
+        id: 'evt-default',
+        titre: data.config?.evenementActuel || 'Cotisation Sacrifice de la Mutuelle',
+        montant: Number(data.config?.cotisationEvenement || 5000),
+        dateLimite: '2026-11-16',
+        statut: 'Actif',
+        description: 'Participation collective pour le sacrifice et les bénédictions'
+      };
+    }
+
+    const unitPrice = Number(activeEvt.montant || 5000);
+    const targetEvtId = activeEvt.id;
+
+    let countPayes = 0;
+    let countAttente = 0;
+    let totalEncaise = 0;
+
+    const rowsHtml = members.map((m, idx) => {
+      const fam = (data.families || []).find(f => f.id === m.familyId);
+
+      // Trouver le versement lié à cet événement
+      const eventCotis = (data.cotisations || []).filter(c => {
+        if (c.memberId !== m.id) return false;
+        if (c.evenementId && c.evenementId === targetEvtId) return true;
+        if (c.type === 'Événement' && (!c.evenementId || c.evenementId === targetEvtId)) return true;
+        return false;
+      });
+
+      const montantPaye = eventCotis.reduce((s, c) => s + Number(c.montant || 0), 0);
+      const isPaye = montantPaye >= unitPrice;
+      const recuRef = eventCotis.map(c => c.recuNum).filter(Boolean).join(', ');
+
+      if (isPaye) {
+        countPayes++;
+        totalEncaise += montantPaye;
+      } else {
+        countAttente++;
+        totalEncaise += montantPaye;
+      }
+
+      const statutBadge = isPaye
+        ? '<span class="print-badge print-badge-success">✅ Payé</span>'
+        : (montantPaye > 0)
+          ? `<span class="print-badge print-badge-warning">⏳ Partiel (${formatMoney(montantPaye, curr)})</span>`
+          : '<span class="print-badge print-badge-danger">⏳ Non Payé</span>';
+
+      return `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td style="font-weight: 700; color: #047857;">${m.matricule || 'N/A'}</td>
+          <td style="font-weight: 600;">${m.fullName}</td>
+          <td>${fam ? fam.name : 'N/A'}</td>
+          <td style="text-align: right;">${formatMoney(unitPrice, curr)}</td>
+          <td style="text-align: right; font-weight: 700; color: ${isPaye ? '#047857' : '#b45309'};">${formatMoney(montantPaye, curr)}</td>
+          <td style="text-align: center;">${statutBadge}</td>
+          <td style="font-size: 10px;">${recuRef || '-'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const objectifTotal = members.length * unitPrice;
+    const meta = [
+      { label: 'Événement', value: activeEvt.titre },
+      { label: 'Montant Fixé', value: `${formatMoney(unitPrice, curr)} / membre` },
+      { label: 'Date Limite', value: formatDate(activeEvt.dateLimite) },
+      { label: 'Progression', value: `${countPayes} payés sur ${members.length} (${formatMoney(totalEncaise, curr)} / ${formatMoney(objectifTotal, curr)})` }
+    ];
+
+    const header = getOfficialPrintHeader(`État des Cotisations : ${activeEvt.titre}`, activeEvt.description || 'Suivi nominatif du recouvrement de la contribution spéciale', meta);
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Matricule</th>
+              <th>Nom & Prénoms</th>
+              <th>Foyer</th>
+              <th style="text-align: right;">Montant Dû</th>
+              <th style="text-align: right;">Montant Versé</th>
+              <th style="text-align: center;">Statut</th>
+              <th>Réf. Reçu</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="8" style="text-align: center;">Aucun membre à afficher.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="4" style="text-align: right; font-weight: 700;">TOTAL COLLECTÉ :</td>
+              <td style="text-align: right; font-weight: 800; color: #0f172a;">${formatMoney(objectifTotal, curr)}</td>
+              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalEncaise, curr)}</td>
+              <td colspan="2" style="text-align: center; font-weight: 700; color: #b45309;">
+                Reste à recouvrer : ${formatMoney(Math.max(0, objectifTotal - totalEncaise), curr)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, `TAGBA_Cotisations_${activeEvt.titre.replace(/[^a-zA-Z0-9]/g, '_')}`);
+  }
+
+  // ============================================================
+  // 7. REGISTRE DES CÉRÉMONIES
+  // ============================================================
+  function printCeremoniesReport() {
+    const data = getDbData();
+    const ceremonies = data.ceremonies || [];
+    const meta = [
+      { label: 'Total Cérémonies', value: `${ceremonies.length} événements` },
+      { label: 'Cadre', value: 'Mariages, Baptêmes, Obsèques, Réunions' }
+    ];
+
+    const header = getOfficialPrintHeader('Registre Officiel des Cérémonies Familiales & Réunions', 'Calendrier et organisation des manifestations de la communauté TAGBA', meta);
+
+    const rowsHtml = ceremonies.map((c, idx) => `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td><strong>${formatDate(c.date)}</strong></td>
+        <td style="font-weight: 700; color: #047857;">${c.type || 'Cérémonie'}</td>
+        <td style="font-weight: 600;">${c.title}</td>
+        <td>${c.hostFamily || 'Famille'}</td>
+        <td>${c.location || 'Khoroko'}</td>
+        <td>${c.delegation || 'Délégation du Bureau'}</td>
+        <td style="text-align: center;">
+          <span class="print-badge ${c.status === 'Terminé' ? 'print-badge-info' : 'print-badge-success'}">
+            ${c.status || 'Programmé'}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Intitulé de la Cérémonie</th>
+              <th>Foyer Organisateur</th>
+              <th>Lieu</th>
+              <th>Délégation / Représentation</th>
+              <th style="text-align: center;">Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="8" style="text-align: center;">Aucune cérémonie enregistrée.</td></tr>'}
+          </tbody>
+        </table>
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, 'TAGBA_Registre_Ceremonies');
+  }
+
+  // ============================================================
+  // 8. LIVRE DE CAISSE ET RAPPORT FINANCIER
+  // ============================================================
+  function printFinancesReport() {
+    const data = getDbData();
+    const cfg = data.config || {};
+    const curr = cfg.currency || 'FCFA';
+
+    const fondsDepart = Number(cfg.fondsCaisse || 0);
+
+    const cotisTotal = (data.cotisations || [])
+      .reduce((s, c) => s + Number(c.montant || 0), 0);
+
+    const donsTotal = (data.contributionsVolontaires || [])
+      .reduce((s, d) => s + Number(d.montant || 0), 0);
+
+    const depensesTotal = (data.depenses || [])
+      .reduce((s, d) => s + Number(d.montant || 0), 0);
+
+    const totalEntrees = fondsDepart + cotisTotal + donsTotal;
+    const soldeNet = totalEntrees - depensesTotal;
+
+    const meta = [
+      { label: 'Fonds Initial', value: formatMoney(fondsDepart, curr) },
+      { label: 'Total Entrées', value: formatMoney(totalEntrees, curr) },
+      { label: 'Total Dépenses', value: formatMoney(depensesTotal, curr) },
+      { label: 'Solde Net Caisse', value: formatMoney(soldeNet, curr) }
+    ];
+
+    const header = getOfficialPrintHeader('Livre de Caisse & Bilan Financier Officiel', 'Compte des flux de trésorerie, encaissements et dépenses décaissées', meta);
+
+    const depensesRows = (data.depenses || []).map((d, idx) => `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td>${formatDate(d.date)}</td>
+        <td style="font-weight: 700; color: #b91c1c;">${d.titre}</td>
+        <td>${d.categorie || 'Fonctionnement'}</td>
+        <td>${d.beneficiaire || 'N/A'}</td>
+        <td style="text-align: right; font-weight: 700; color: #b91c1c;">-${formatMoney(d.montant, curr)}</td>
+        <td>${d.sourceFinancement || 'Caisse Centrale'}</td>
+      </tr>
+    `).join('');
+
+    const donsRows = (data.contributionsVolontaires || []).map((d, idx) => `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td>${formatDate(d.date)}</td>
+        <td style="font-weight: 700; color: #047857;">${d.donateur}</td>
+        <td>${d.destination || 'Solidarité'}</td>
+        <td style="text-align: right; font-weight: 700; color: #047857;">+${formatMoney(d.montant, curr)}</td>
+        <td>${d.modePaiement || 'Espèces'}</td>
+        <td>${d.recuNum || 'N/A'}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+          <h3 style="font-size: 13px; margin: 0 0 8px 0; color: #0f172a; text-transform: uppercase;">
+            Synthèse de la Trésorerie
+          </h3>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+            <div>
+              <span style="font-size: 10px; color: #64748b;">Dotation Initiale :</span><br>
+              <strong style="font-size: 13px;">${formatMoney(fondsDepart, curr)}</strong>
+            </div>
+            <div>
+              <span style="font-size: 10px; color: #047857;">Total Cotisations + Dons :</span><br>
+              <strong style="font-size: 13px; color: #047857;">${formatMoney(cotisTotal + donsTotal, curr)}</strong>
+            </div>
+            <div>
+              <span style="font-size: 10px; color: #b91c1c;">Total Décaissements :</span><br>
+              <strong style="font-size: 13px; color: #b91c1c;">-${formatMoney(depensesTotal, curr)}</strong>
+            </div>
+            <div>
+              <span style="font-size: 10px; color: #065f46;">Solde Net Actuel :</span><br>
+              <strong style="font-size: 16px; color: #047857;">${formatMoney(soldeNet, curr)}</strong>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 12px; text-transform: uppercase; margin: 16px 0 6px 0; color: #b91c1c; border-bottom: 1px solid #fca5a5; padding-bottom: 4px;">
+          Journal des Dépenses Décaissées
+        </h3>
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Date</th>
+              <th>Motif / Intitulé</th>
+              <th>Catégorie</th>
+              <th>Bénéficiaire</th>
+              <th style="text-align: right;">Montant</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${depensesRows || '<tr><td colspan="7" style="text-align: center;">Aucune dépense enregistrée.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" style="text-align: right; font-weight: 700;">TOTAL DÉPENSES :</td>
+              <td style="text-align: right; font-weight: 800; color: #b91c1c;">-${formatMoney(depensesTotal, curr)}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        ${donsRows ? `
+          <h3 style="font-size: 12px; text-transform: uppercase; margin: 18px 0 6px 0; color: #047857; border-bottom: 1px solid #a7f3d0; padding-bottom: 4px;">
+            Registre des Dons et Contributions Volontaires Reçus
+          </h3>
+          <table class="tagba-print-table">
+            <thead>
+              <tr>
+                <th style="width: 30px; text-align: center;">N°</th>
+                <th>Date</th>
+                <th>Donateur</th>
+                <th>Affectation</th>
+                <th style="text-align: right;">Montant Don</th>
+                <th>Mode</th>
+                <th>Réf. Reçu</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${donsRows}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" style="text-align: right; font-weight: 700;">TOTAL DONS REÇUS :</td>
+                <td style="text-align: right; font-weight: 800; color: #047857;">+${formatMoney(donsTotal, curr)}</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        ` : ''}
+
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, 'TAGBA_Livre_Caisse_Bilan_Financier');
+  }
+
+  // ============================================================
+  // 9. REGISTRE DE L'ENTRAIDE SOCIALE
+  // ============================================================
+  function printEntraideReport() {
+    const data = getDbData();
+    const entraide = data.entraide || [];
+    const curr = data.config?.currency || 'FCFA';
+
+    const totalDecaisse = entraide
+      .filter(e => e.statut === 'Accordée' || e.statut === 'Payée' || e.statut === 'Terminé')
+      .reduce((s, e) => s + Number(e.montant || 0), 0);
+
+    const meta = [
+      { label: 'Dossiers Traités', value: `${entraide.length} demandes` },
+      { label: 'Total Secours Décaissés', value: formatMoney(totalDecaisse, curr) }
+    ];
+
+    const header = getOfficialPrintHeader('Registre de l\'Entraide Sociale & Secours Mutuel', 'Prise en charge de la santé, des urgences familiales et de la solidarité', meta);
+
+    const rowsHtml = entraide.map((e, idx) => `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td>${formatDate(e.date)}</td>
+        <td style="font-weight: 700; color: #047857;">${e.titre}</td>
+        <td style="font-weight: 600;">${e.beneficiaire || 'Membre'}</td>
+        <td>${e.urgence || 'Normal'}</td>
+        <td style="text-align: right; font-weight: 700; color: #047857;">${formatMoney(e.montant, curr)}</td>
+        <td style="text-align: center;">
+          <span class="print-badge ${e.statut === 'Accordée' || e.statut === 'Terminé' ? 'print-badge-success' : 'print-badge-warning'}">
+            ${e.statut || 'En attente'}
+          </span>
+        </td>
+      </tr>
+    `).join('');
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Date</th>
+              <th>Motif / Nature de l'Aide</th>
+              <th>Bénéficiaire</th>
+              <th>Degré d'Urgence</th>
+              <th style="text-align: right;">Montant Alloué</th>
+              <th style="text-align: center;">Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="7" style="text-align: center;">Aucun dossier d\'entraide enregistré.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" style="text-align: right; font-weight: 700;">TOTAL DES AIDES DÉCAISSÉES :</td>
+              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalDecaisse, curr)}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, 'TAGBA_Registre_Entraide_Sociale');
+  }
+
+  // ============================================================
+  // 10. RELEVÉ INDIVIDUEL DE MEMBRE (AUDIT PERSONNEL)
+  // ============================================================
+  function printMemberAudit(memberId) {
+    const data = getDbData();
+    const curr = data.config?.currency || 'FCFA';
+
+    // Trouver le membre
+    let mem = null;
+    if (memberId) {
+      mem = (data.members || []).find(m => m.id === memberId);
+    }
+    if (!mem && typeof currentAuditMemberId !== 'undefined' && currentAuditMemberId) {
+      mem = (data.members || []).find(m => m.id === currentAuditMemberId);
+    }
+    if (!mem && (data.members || []).length > 0) {
+      mem = data.members[0];
+    }
+    if (!mem) {
+      if (typeof showToast === 'function') showToast('Aucun membre sélectionné pour le relevé.', 'warning');
+      return;
+    }
+
+    const fam = (data.families || []).find(f => f.id === mem.familyId);
+    const audit = (typeof getMemberCotisationAudit === 'function')
+      ? getMemberCotisationAudit(mem.id)
+      : null;
+
+    const totalVerse = audit ? audit.totalVerse : 0;
+    const monthsPaid = audit ? audit.monthsPaidCount : 0;
+    const monthsLate = audit ? audit.monthsLateCount : 0;
+    const arrieres = audit ? audit.arrieresMontant : 0;
+
+    const meta = [
+      { label: 'Matricule', value: mem.matricule || 'N/A' },
+      { label: 'Foyer Familial', value: fam ? `${fam.name} (Chef : ${fam.chefDeFamille})` : 'N/A' },
+      { label: 'Contact', value: mem.phone || 'N/A' },
+      { label: 'Statut Global', value: audit ? audit.statutLabel : 'N/A' }
+    ];
+
+    const header = getOfficialPrintHeader(`Relevé Individuel de Situation Financière`, `Extrait de compte nominatif certifié pour : ${mem.fullName}`, meta);
+
+    // Historique des reçus du membre
+    const memberCotis = (data.cotisations || [])
+      .filter(c => c.memberId === mem.id)
+      .sort((a, b) => new Date(b.datePaiement || 0) - new Date(a.datePaiement || 0));
+
+    const cotisRows = memberCotis.map((c, idx) => `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td style="font-weight: 700; color: #047857;">${c.recuNum || 'N/A'}</td>
+        <td>${formatDate(c.datePaiement)}</td>
+        <td>${c.type || 'Ordinaire'}</td>
+        <td>${c.periode || 'N/A'}</td>
+        <td style="text-align: right; font-weight: 700; color: #047857;">${formatMoney(c.montant, curr)}</td>
+        <td>${c.modePaiement || 'Espèces'}</td>
+        <td style="font-size: 10px; color: #475569;">${c.agent || 'Trésorerie'}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+          <h3 style="font-size: 12px; margin: 0 0 8px 0; color: #0f172a; text-transform: uppercase;">
+            Diagnostic des Cotisations
+          </h3>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+            <div>
+              <span style="font-size: 10px; color: #047857;">Total Versé :</span><br>
+              <strong style="font-size: 15px; color: #047857;">${formatMoney(totalVerse, curr)}</strong>
+            </div>
+            <div>
+              <span style="font-size: 10px; color: #0f172a;">Mois Réglés :</span><br>
+              <strong style="font-size: 15px;">${monthsPaid} mois</strong>
+            </div>
+            <div>
+              <span style="font-size: 10px; color: #b91c1c;">Mois en Retard :</span><br>
+              <strong style="font-size: 15px; color: #b91c1c;">${monthsLate} mois</strong>
+            </div>
+            <div>
+              <span style="font-size: 10px; color: #b91c1c;">Arriérés à Payer :</span><br>
+              <strong style="font-size: 15px; color: ${arrieres > 0 ? '#b91c1c' : '#047857'};">
+                ${arrieres > 0 ? `-${formatMoney(arrieres, curr)}` : 'À Jour (0 FCFA)'}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 12px; text-transform: uppercase; margin: 14px 0 6px 0; color: #0f172a; border-bottom: 1px solid #94a3b8; padding-bottom: 4px;">
+          Historique des Paiements Effectués par le Membre
+        </h3>
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Réf. Reçu</th>
+              <th>Date</th>
+              <th>Type de Versement</th>
+              <th>Période / Motif</th>
+              <th style="text-align: right;">Montant</th>
+              <th>Mode</th>
+              <th>Encaissé par</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cotisRows || '<tr><td colspan="8" style="text-align: center;">Aucun versement enregistré pour ce membre.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" style="text-align: right; font-weight: 700;">TOTAL DES VERSEMENTS DU MEMBRE :</td>
+              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalVerse, curr)}</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, `TAGBA_Releve_${mem.fullName.replace(/[^a-zA-Z0-9]/g, '_')}`);
+  }
+
+  // ============================================================
+  // ROUTEUR INTELLIGENT DE LA VUE ACTIVE
+  // ============================================================
+  function printCurrentTab() {
+    // Si un modal est ouvert, vérifier s'il s'agit d'un modal imprimable
+    const activeModal = document.querySelector('.modal-overlay.active');
+    if (activeModal) {
+      if (activeModal.id === 'modalReceipt') {
+        window.print();
+        return;
+      }
+      if (activeModal.id === 'modalFamilySheet') {
+        window.print();
+        return;
+      }
+      if (activeModal.id === 'modalReceiptDonation') {
+        window.print();
+        return;
+      }
+      if (activeModal.id === 'modalMemberMonthsAudit') {
+        printMemberAudit();
+        return;
+      }
+    }
+
+    // Détecter l'onglet actif
+    const activeTab = document.querySelector('.tab-pane.active');
+    if (!activeTab) {
+      window.print();
+      return;
+    }
+
+    const tabId = activeTab.id;
+
+    if (tabId === 'tab-dashboard') {
+      printDashboardReport();
+    } else if (tabId === 'tab-bureau') {
+      printBureauList();
+    } else if (tabId === 'tab-familles') {
+      printFamiliesAndMembersReport();
+    } else if (tabId === 'tab-cotisations') {
+      // Détecter le sous-onglet actif
+      const subRegistres = document.getElementById('cotisationsGeneralRegistryView');
+      const isRegistry = subRegistres && subRegistres.style.display !== 'none';
+      if (isRegistry) {
+        printReceiptsJournal();
+      } else {
+        printMonthlyCotisationsReport();
+      }
+    } else if (tabId === 'tab-ceremonies') {
+      // Détecter le sous-onglet actif
+      const subCeremonies = document.getElementById('ceremoniesListView');
+      const isCeremonies = subCeremonies && subCeremonies.style.display !== 'none';
+      if (isCeremonies) {
+        printCeremoniesReport();
+      } else {
+        printEventCotisationsReport();
+      }
+    } else if (tabId === 'tab-finances') {
+      printFinancesReport();
+    } else if (tabId === 'tab-entraide') {
+      printEntraideReport();
+    } else if (tabId === 'tab-statuts') {
+      if (typeof imprimerStatuts === 'function') {
+        imprimerStatuts();
+      } else {
+        window.print();
+      }
+    } else {
+      window.print();
+    }
+  }
+
+  // Sous-vues spécifiques
+  function printCotisationsCurrentSubView() {
+    const subRegistres = document.getElementById('cotisationsGeneralRegistryView');
+    const isRegistry = subRegistres && subRegistres.style.display !== 'none';
+    if (isRegistry) {
+      printReceiptsJournal();
+    } else {
+      printMonthlyCotisationsReport();
+    }
+  }
+
+  function printCeremoniesCurrentSubView() {
+    const subCeremonies = document.getElementById('ceremoniesListView');
+    const isCeremonies = subCeremonies && subCeremonies.style.display !== 'none';
+    if (isCeremonies) {
+      printCeremoniesReport();
+    } else {
+      printEventCotisationsReport();
+    }
+  }
+
+  // Écouteur global pour Ctrl + P / Cmd + P
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P')) {
+      e.preventDefault();
+      printCurrentTab();
+    }
+  });
+
+  // Exportation globale sur window
+  window.executeTagbaPrint = executeTagbaPrint;
+  window.printCurrentTab = printCurrentTab;
+  window.printDashboardReport = printDashboardReport;
+  window.printBureauList = printBureauList;
+  window.printFamiliesAndMembersReport = printFamiliesAndMembersReport;
+  window.printMonthlyCotisationsReport = printMonthlyCotisationsReport;
+  window.printReceiptsJournal = printReceiptsJournal;
+  window.printEventCotisationsReport = printEventCotisationsReport;
+  window.printCeremoniesReport = printCeremoniesReport;
+  window.printFinancesReport = printFinancesReport;
+  window.printEntraideReport = printEntraideReport;
+  window.printMemberAudit = printMemberAudit;
+  window.printCotisationsCurrentSubView = printCotisationsCurrentSubView;
+  window.printCeremoniesCurrentSubView = printCeremoniesCurrentSubView;
+
+})();
