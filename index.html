@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261101-v24">
+  <link rel="stylesheet" href="css/style.css?v=20261102-v25">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -27,6 +27,35 @@
       opacity: 1 !important;
       visibility: visible !important;
       pointer-events: auto !important;
+    }
+    .modal-overlay:not(.active) {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      z-index: -1 !important;
+    }
+    .auth-fullscreen.hidden {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      z-index: -1 !important;
+    }
+    .sidebar-overlay:not(.active) {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      z-index: -1 !important;
+    }
+    .action-locked-btn {
+      opacity: 1 !important;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+    }
+    .action-locked-btn::after {
+      content: '' !important;
     }
   </style>
 
@@ -192,8 +221,10 @@
         if (screen) {
           if (isAuth === 'false') {
             screen.classList.remove('hidden');
+            screen.style.display = 'flex';
           } else {
             screen.classList.add('hidden');
+            screen.style.display = 'none';
           }
         }
       } catch(e) {}
@@ -2727,9 +2758,9 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261101-v24"></script>
-  <script src="js/supabase.js?v=20261101-v24"></script>
-  <script src="js/app.js?v=20261101-v24"></script>
+  <script src="js/data.js?v=20261102-v25"></script>
+  <script src="js/supabase.js?v=20261102-v25"></script>
+  <script src="js/app.js?v=20261102-v25"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -2737,7 +2768,7 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v12) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v25) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

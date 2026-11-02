@@ -1672,14 +1672,13 @@ body.light-theme .auth-topbar-widget:hover {
 }
 
 .action-locked-btn {
-  opacity: 0.55 !important;
-  cursor: not-allowed !important;
-  position: relative;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  pointer-events: auto !important;
 }
 
 .action-locked-btn::after {
-  content: ' 🔒';
-  font-size: 11px;
+  content: '' !important;
 }
 
 /* Modal large pour la Plage de Versement */
@@ -2151,9 +2150,11 @@ body.light-theme .auth-fullscreen {
 }
 
 .auth-fullscreen.hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
 }
 
 /* Split Card Layout */
@@ -2534,16 +2535,17 @@ body.light-theme .auth-fullscreen {
   background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   z-index: 45;
   opacity: 0;
+  display: none;
   pointer-events: none;
   transition: opacity 0.3s ease;
 }
 
 .sidebar-overlay.active {
-  opacity: 1;
-  pointer-events: auto;
+  display: block !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 
 .sidebar-mobile-close {

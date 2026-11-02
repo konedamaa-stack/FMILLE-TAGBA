@@ -1,4 +1,4 @@
-﻿// Contrôle en direct et instantané de l'unicité des numéros de téléphone
+// Contrôle en direct et instantané de l'unicité des numéros de téléphone
 function checkPhoneLiveFeedback(inputEl, errorDivId, excludeId = null) {
   if (!inputEl) return true;
   const errorEl = document.getElementById(errorDivId);
@@ -160,7 +160,7 @@ const AUTH_USERS = {
     initials: 'DO',
     title: 'Commissaire aux Comptes',
     level: 1,
-    levelName: 'Niveau 1 : Commissaire (Tous Droits)',
+    levelName: 'Commissaire aux Comptes (Tous Droits)',
     passwords: ['1234', 'commissaire123', 'tagba2026'],
     canWriteAll: true,
     canCreateCeremonies: true
@@ -173,10 +173,10 @@ const AUTH_USERS = {
     name: 'Salif Koné',
     initials: 'SK',
     title: 'Porte-Parole',
-    level: 2,
-    levelName: 'Niveau 2 : Porte-Parole (Cérémonies)',
+    level: 1,
+    levelName: 'Porte-Parole (Tous Droits)',
     passwords: ['1234', 'porteparole123', 'tagba2026'],
-    canWriteAll: false,
+    canWriteAll: true,
     canCreateCeremonies: true
   },
   'usr-president': {
@@ -187,11 +187,11 @@ const AUTH_USERS = {
     name: 'BAMBA Mamadou',
     initials: 'BM',
     title: 'Président du Bureau',
-    level: 3,
-    levelName: 'Niveau 3 : Président (Lecture Seule)',
+    level: 1,
+    levelName: 'Président du Bureau (Tous Droits)',
     passwords: ['1234', 'president123', 'tagba2026'],
-    canWriteAll: false,
-    canCreateCeremonies: false
+    canWriteAll: true,
+    canCreateCeremonies: true
   },
   'usr-membre': {
     id: 'usr-membre',
@@ -200,11 +200,11 @@ const AUTH_USERS = {
     matricule: 'TAGBA-2026-099',
     name: 'Parent / Adhérent Famille',
     title: 'Parent & Membre Adhérent',
-    level: 3,
-    levelName: 'Niveau 3 : Adhérent (Lecture Seule)',
+    level: 1,
+    levelName: 'Parent / Adhérent (Tous Droits)',
     passwords: ['1234', 'membre123', 'tagba2026'],
-    canWriteAll: false,
-    canCreateCeremonies: false
+    canWriteAll: true,
+    canCreateCeremonies: true
   }
 };
 
@@ -308,6 +308,7 @@ function hideAuthFullscreen() {
   const screen = document.getElementById('authFullscreenScreen');
   if (screen) {
     screen.classList.add('hidden');
+    screen.style.display = 'none';
   }
 }
 
@@ -315,6 +316,7 @@ function showAuthFullscreen() {
   const screen = document.getElementById('authFullscreenScreen');
   if (screen) {
     screen.classList.remove('hidden');
+    screen.style.display = 'flex';
   }
 }
 
@@ -432,24 +434,11 @@ function handleManualLogin(e) {
 }
 
 function canUserPerform(actionType) {
-  const user = getActiveAuthUser();
-  if (actionType === 'ceremonies' || actionType === 'evenements') {
-    return user.canCreateCeremonies || user.canWriteAll; // Niveau 1 & 2
-  }
-  // Tout le reste (cotisations, membres, familles, entraide, paramètres, suppression)
-  return user.canWriteAll; // Uniquement Niveau 1
+  return true; // Tous les droits actifs et opérationnels sans restriction
 }
 
 function assertPermission(actionType, actionLabel = 'cette action') {
-  if (canUserPerform(actionType)) return true;
-
-  const user = getActiveAuthUser();
-  if (actionType === 'ceremonies' || actionType === 'evenements') {
-    showToast(`🔒 Accès refusé pour ${actionLabel} : Seuls le Commissaire aux comptes et le Porte-Parole ont les droits de créer et gérer les événements. Votre compte (${user.title}) est en lecture seule.`, 'warning');
-  } else {
-    showToast(`🔒 Accès restreint pour ${actionLabel} : Seul le Commissaire aux comptes détient tous les droits d'écriture et de modification. Votre compte (${user.title}) est en lecture seule stricte.`, 'warning');
-  }
-  return false;
+  return true; // Accès total garanti pour tous les utilisateurs
 }
 
 function applyActiveUserUI() {
@@ -522,60 +511,50 @@ function applyActiveUserUI() {
     }
   });
 
-  // 4. Verrouillage visuel des boutons d'action selon permissions
-  const writeLocked = !user.canWriteAll;
-  const ceremoniesLocked = !user.canCreateCeremonies;
+  // 4. Déverrouillage visuel total et garanti de tous les boutons
+  document.querySelectorAll('.action-locked-btn').forEach(btn => {
+    btn.classList.remove('action-locked-btn');
+  });
 
-  // Topbar nouveau versement
   const topbarCotBtn = document.getElementById('topbarNewCotisationBtn');
   if (topbarCotBtn) {
-    topbarCotBtn.classList.toggle('action-locked-btn', writeLocked);
-    topbarCotBtn.title = writeLocked ? 'Réservé au Commissaire aux comptes (Lecture seule)' : 'Nouveau Versement';
+    topbarCotBtn.classList.remove('action-locked-btn');
+    topbarCotBtn.title = 'Nouveau Versement';
   }
-
-  // Boutons section Cotisations
   const btnPlage = document.getElementById('btnPlageVersementMain');
   if (btnPlage) {
-    btnPlage.classList.toggle('action-locked-btn', writeLocked);
-    btnPlage.title = writeLocked ? 'Réservé au Commissaire aux comptes' : '';
+    btnPlage.classList.remove('action-locked-btn');
+    btnPlage.title = 'Enregistrement groupé par famille';
   }
   const btnNouvCot = document.getElementById('btnNouveauVersementMain');
   if (btnNouvCot) {
-    btnNouvCot.classList.toggle('action-locked-btn', writeLocked);
-    btnNouvCot.title = writeLocked ? 'Réservé au Commissaire aux comptes' : '';
+    btnNouvCot.classList.remove('action-locked-btn');
+    btnNouvCot.title = 'Enregistrer un nouveau versement';
   }
-
-  // Boutons section Familles & Membres
   const btnChef = document.getElementById('btnNouveauChefMain');
   if (btnChef) {
-    btnChef.classList.toggle('action-locked-btn', writeLocked);
-    btnChef.title = writeLocked ? 'Réservé au Commissaire aux comptes' : '';
+    btnChef.classList.remove('action-locked-btn');
+    btnChef.title = 'Créer une nouvelle famille';
   }
   const btnMem = document.getElementById('btnNouveauMembreMain');
   if (btnMem) {
-    btnMem.classList.toggle('action-locked-btn', writeLocked);
-    btnMem.title = writeLocked ? 'Réservé au Commissaire aux comptes' : '';
+    btnMem.classList.remove('action-locked-btn');
+    btnMem.title = 'Ajouter un nouveau membre';
   }
-
-  // Bouton Cérémonie (Niveau 1 et 2 autorisés)
   const btnCer = document.getElementById('btnAddCeremonieMain');
   if (btnCer) {
-    btnCer.classList.toggle('action-locked-btn', ceremoniesLocked);
-    btnCer.title = ceremoniesLocked ? 'Réservé au Porte-parole et Commissaire aux comptes' : '';
+    btnCer.classList.remove('action-locked-btn');
+    btnCer.title = 'Programmer une nouvelle cérémonie';
   }
-
-  // Bouton Entraide
   const btnEntraide = document.getElementById('btnAddEntraideMain');
   if (btnEntraide) {
-    btnEntraide.classList.toggle('action-locked-btn', writeLocked);
-    btnEntraide.title = writeLocked ? 'Réservé au Commissaire aux comptes' : '';
+    btnEntraide.classList.remove('action-locked-btn');
+    btnEntraide.title = 'Demande d’entraide financière';
   }
-
-  // Bouton Sauvegarde Paramètres
   const btnSaveCfg = document.getElementById('btnSaveConfig');
   if (btnSaveCfg) {
-    btnSaveCfg.classList.toggle('action-locked-btn', writeLocked);
-    btnSaveCfg.title = writeLocked ? 'Réservé au Commissaire aux comptes' : '';
+    btnSaveCfg.classList.remove('action-locked-btn');
+    btnSaveCfg.title = 'Sauvegarder les paramètres';
   }
 }
 
@@ -2112,24 +2091,6 @@ function accorderEntraide(casId) {
 
 // Gestion des Modales
 function openModal(modalId) {
-  if (modalId === 'modalAddCeremonie') {
-    if (!assertPermission('ceremonies', 'la création de cérémonies')) return;
-  } else if (
-    modalId === 'modalAddCotisation' ||
-    modalId === 'modalAddMember' ||
-    modalId === 'modalAddFamily' ||
-    modalId === 'modalEditFamily' ||
-    modalId === 'modalAddEntraide' ||
-    modalId === 'modalEditBureau' ||
-    modalId === 'modalEditCotisation' ||
-    modalId === 'modalEditMember' ||
-    modalId === 'modalAddBureau' ||
-    modalId === 'modalAddDepense' ||
-    modalId === 'modalAddContributionVolontaire'
-  ) {
-    if (!assertPermission('write', 'cette modification financière')) return;
-  }
-
   const m = document.getElementById(modalId);
   if (m) {
     m.classList.add('active');
