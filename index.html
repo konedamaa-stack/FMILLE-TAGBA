@@ -2379,7 +2379,7 @@
         </div>
         <button class="modal-close-btn" aria-label="Fermer">&times;</button>
       </div>
-      <form id="formAddContributionVolontaire">
+      <form id="formAddContributionVolontaire" novalidate>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
           Enregistrez les dons et contributions des membres, ou les fonds et subventions reçus d'une autre association ou partenaire extérieur.
         </p>
@@ -2445,7 +2445,7 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Montant du Don Volontaire (FCFA) *</label>
-            <input type="number" class="form-control" id="donMontant" min="1000" step="500" value="15000" required>
+            <input type="number" class="form-control" id="donMontant" min="100" step="any" value="15000" placeholder="Ex: 5000, 15000..." required>
           </div>
           <div class="form-group">
             <label class="form-label">Date du Versement *</label>
@@ -2470,7 +2470,7 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary modal-cancel-btn">Annuler</button>
-          <button type="submit" class="btn btn-gold">❤️ Valider le Don & Émettre Reçu</button>
+          <button type="submit" id="btnSubmitDon" class="btn btn-gold" onclick="if (typeof submitContributionVolontaireForm === 'function') { submitContributionVolontaireForm(); return false; }">❤️ Valider le Don & Émettre Reçu</button>
         </div>
       </form>
     </div>
