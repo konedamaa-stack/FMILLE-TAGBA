@@ -1604,7 +1604,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>💳 Enregistrer un Versement de Cotisation</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formAddCotisation">
         <!-- Bascule Mode Versement (Individuel vs Groupé) -->
@@ -1711,7 +1711,7 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
           <button type="submit" class="btn btn-primary">Valider & Générer le Reçu</button>
         </div>
       </form>
@@ -1723,7 +1723,7 @@
     <div class="modal-content" style="max-width: 540px;">
       <div class="modal-header">
         <h3>✏️ Modifier le Versement <span id="editCotRecuNum" style="color: var(--emerald-400);"></span></h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formEditCotisation">
         <input type="hidden" id="editCotId">
@@ -1775,7 +1775,7 @@
         <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <button type="button" class="btn btn-danger btn-sm" onclick="deleteCurrentEditCotisation()">🗑️ Supprimer ce versement</button>
           <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+            <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
             <button type="submit" class="btn btn-primary">Enregistrer les Modifications</button>
           </div>
         </div>
@@ -1788,7 +1788,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>👤 Inscription d'un Nouveau Membre</h3>
-        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="closeModal()" onclick="closeModal('modalAddMember')">&times;</button>
+        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });" onclick="closeModal('modalAddMember')">&times;</button>
       </div>
       <form id="formAddMember">
         <div class="form-group">
@@ -1850,7 +1850,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>✏️ Modifier le Membre <span id="editMemMatricule" style="color: var(--emerald-400);"></span></h3>
-        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="closeModal()" onclick="closeModal('modalEditMember')">&times;</button>
+        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });" onclick="closeModal('modalEditMember')">&times;</button>
       </div>
       <form id="formEditMember">
         <input type="hidden" id="editMemId">
@@ -1910,7 +1910,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>👨‍👩‍👧 Enregistrer une Nouvelle Branche / Famille</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formAddFamily">
         <div class="form-group">
@@ -1941,7 +1941,7 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
           <button type="submit" class="btn btn-primary">Créer la Famille</button>
         </div>
       </form>
@@ -1956,7 +1956,7 @@
           <span style="font-size: 22px;">👑</span>
           <h3>Modifier le Chef de Famille & Foyer</h3>
         </div>
-        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="closeModal()" onclick="closeModal('modalEditFamily')">&times;</button>
+        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });" onclick="closeModal('modalEditFamily')">&times;</button>
       </div>
       <form id="formEditFamily">
         <input type="hidden" id="editFamId">
@@ -2001,7 +2001,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>❤️ Déclarer un Cas Social / Demande d'Entraide</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formAddEntraide">
         <div class="form-group">
@@ -2042,7 +2042,7 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
           <button type="submit" class="btn btn-primary">Enregistrer la Demande</button>
         </div>
       </form>
@@ -2054,7 +2054,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>🎉 Programmer une Cérémonie Familiale</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formAddCeremonie">
         <div class="form-group">
@@ -2108,7 +2108,7 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
           <button type="submit" class="btn btn-gold">Programmer la Cérémonie</button>
         </div>
       </form>
@@ -2120,7 +2120,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>👑 Ajouter un Membre / Poste au Bureau</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formAddBureau">
         <div class="form-group">
@@ -2162,7 +2162,7 @@
           <textarea class="form-control" id="addBureauBio" rows="2" placeholder="Description du rôle et des responsabilités dans le bureau"></textarea>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
           <button type="submit" class="btn btn-primary">Enregistrer au Bureau</button>
         </div>
       </form>
@@ -2174,7 +2174,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3>✏️ Modifier le Poste : <span id="editBureauRole" style="color: var(--gold-400);"></span></h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formEditBureau">
         <input type="hidden" id="editBureauId">
@@ -2203,7 +2203,7 @@
         <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <button type="button" class="btn btn-danger btn-sm" onclick="deleteCurrentBureauMemberModal()">🗑️ Supprimer</button>
           <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+            <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
             <button type="submit" class="btn btn-primary">Enregistrer</button>
           </div>
         </div>
@@ -2216,7 +2216,7 @@
     <div class="modal-content" style="max-width: 680px;">
       <div class="modal-header">
         <h3>🖨️ Reçu Officiel de Versement</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <div id="receiptContent">
         <!-- Rendu dynamique du reçu par JS -->
@@ -2227,7 +2227,7 @@
           <button type="button" class="btn btn-danger btn-sm" onclick="deleteCotisationFromReceiptModal()" title="Supprimer ce versement en cas d'erreur">🗑️ Supprimer</button>
         </div>
         <div style="display: flex; gap: 8px;">
-          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Fermer</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Fermer</button>
           <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Imprimer</button>
         </div>
       </div>
@@ -2239,13 +2239,13 @@
     <div class="modal-content" style="max-width: 760px;">
       <div class="modal-header">
         <h3>👑 Fiche Officielle du Foyer Familial</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <div id="familySheetContent">
         <!-- Rendu dynamique de la fiche par JS -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Fermer</button>
+        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Fermer</button>
         <button type="button" class="btn btn-gold" onclick="window.print()">🖨️ Imprimer la Fiche de Famille</button>
       </div>
     </div>
@@ -2262,7 +2262,7 @@
             <span style="font-size: 12px; color: var(--text-muted);">Audit chronologique des versements depuis le 04/10/2026</span>
           </div>
         </div>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
 
       <div id="memberMonthsAuditContent" style="padding: 10px 0;">
@@ -2270,7 +2270,7 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Fermer</button>
+        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Fermer</button>
         <button type="button" class="btn btn-primary" id="btnAuditModalActionPay">💳 Enregistrer un Paiement / Anticiper</button>
       </div>
     </div>
@@ -2281,7 +2281,7 @@
     <div class="modal-content" style="max-width: 620px;">
       <div class="modal-header">
         <h3>📉 Enregistrer une Dépense / Décaissement</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formAddDepense">
         <div class="form-group">
@@ -2365,7 +2365,7 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
           <button type="submit" class="btn btn-primary">Valider & Décaisser la Dépense</button>
         </div>
       </form>
@@ -2373,14 +2373,14 @@
   </div>
 
   <!-- Modal 8.7 : Enregistrer un Don / Contribution Volontaire Nominative -->
-  <div class="modal-overlay" id="modalAddContributionVolontaire">
+  <div class="modal-overlay" id="modalAddContributionVolontaire" onclick="if (event.target === this) { this.classList.remove('active'); this.style.display='none'; }">
     <div class="modal-content" style="max-width: 600px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 22px;">❤️</span>
           <h3>Enregistrer une Contribution Volontaire</h3>
         </div>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formAddContributionVolontaire" novalidate>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
@@ -2472,7 +2472,7 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
           <button type="submit" id="btnSubmitDon" class="btn btn-gold" onclick="if (typeof submitContributionVolontaireForm === 'function') { submitContributionVolontaireForm(); return false; }">❤️ Valider le Don & Émettre Reçu</button>
         </div>
       </form>
@@ -2484,13 +2484,13 @@
     <div class="modal-content" style="max-width: 650px;">
       <div class="modal-header">
         <h3>🧾 Reçu Officiel de Don Volontaire</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <div id="receiptDonationContent" style="padding: 10px 0;">
         <!-- Généré dynamiquement en JS -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Fermer</button>
+        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Fermer</button>
         <button type="button" class="btn btn-gold" onclick="window.print()">🖨️ Imprimer le Reçu de Don</button>
       </div>
     </div>
@@ -2501,7 +2501,7 @@
     <div class="modal-content" style="max-width: 520px;">
       <div class="modal-header">
         <h3>🔐 Connexion & Changement de Niveau</h3>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <div style="padding: 10px 0;">
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 18px;">
@@ -2544,7 +2544,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Fermer</button>
+        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Fermer</button>
       </div>
     </div>
   </div>
@@ -2557,7 +2557,7 @@
           <span style="font-size: 24px;">☁️</span>
           <h3>Synchronisation Cloud Supabase</h3>
         </div>
-        <button class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <div style="padding: 10px 0;">
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
@@ -2598,7 +2598,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Fermer</button>
+        <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Fermer</button>
       </div>
     </div>
   </div>
@@ -2611,7 +2611,7 @@
           <span style="font-size: 22px;">🎯</span>
           <h3>Créer un Nouvel Événement & Fixer le Montant</h3>
         </div>
-        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formCreateEvenement">
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
@@ -2658,7 +2658,7 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+          <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
           <button type="submit" class="btn btn-gold" style="font-weight: 700;">🎯 Enregistrer & Activer l'Événement</button>
         </div>
       </form>
@@ -2673,7 +2673,7 @@
           <span style="font-size: 22px;">✏️</span>
           <h3>Modifier l'Événement & le Montant</h3>
         </div>
-        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="closeModal()">&times;</button>
+        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
       <form id="formEditEvenement">
         <input type="hidden" id="editEvtId">
@@ -2717,7 +2717,7 @@
         <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <button type="button" class="btn btn-danger btn-sm" onclick="deleteCurrentEvenementConfirm()">🗑️ Supprimer</button>
           <div style="display: flex; gap: 8px;">
-            <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="closeModal()">Annuler</button>
+            <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
             <button type="submit" class="btn btn-gold" style="font-weight: 700;">💾 Mettre à Jour</button>
           </div>
         </div>
