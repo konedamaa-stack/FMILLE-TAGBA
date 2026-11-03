@@ -517,54 +517,176 @@
   }
 
   // ============================================================
-  // 4. ÉTAT DES COTISATIONS MENSUELLES (SUIVI DES MOIS)
+  // 4. ÉTAT DES COTISATIONS MENSUELLES (AVEC FILTRES DYNAMIQUES)
+  // (Tous, À jour, En retard, ou filtré par nombre de mois de retard)
   // ============================================================
-  function printMonthlyCotisationsReport() {
+  function printMonthlyCotisationsReport(statusArg = null, lateArg = null) {
     const data = getDbData();
-    const members = data.members || [];
+    const allMembers = data.members || [];
     const cfg = data.config || {};
     const curr = cfg.currency || 'FCFA';
-    const unitPrice = Number(cfg.cotisationMensuelle || 5000);
+    const unitPrice = Number(cfg.cotisationMensuelle || 500);
 
-    let totalRecouvre = 0;
-    let totalArrieres = 0;
-    let countAJour = 0;
-    let countRetard = 0;
+    // 1. Résolution des critères de filtrage
+    let filterStatus = 'ALL';
+    let filterLate = 'ALL';
+    let searchQuery = '';
 
-    const rowsHtml = members.map((m, idx) => {
+    if (typeof statusArg === 'object' && statusArg !== null) {
+      filterStatus = statusArg.status || statusArg.filterStatus || 'ALL';
+      filterLate = statusArg.late !== undefined ? String(statusArg.late) : (statusArg.lateMonths !== undefined ? String(statusArg.lateMonths) : 'ALL');
+      searchQuery = statusArg.search || statusArg.query || '';
+    } else if (typeof statusArg === 'string') {
+      filterStatus = statusArg;
+      if (lateArg !== null && lateArg !== undefined) filterLate = String(lateArg);
+    } else {
+      // Lecture automatique depuis les contrôles de l'interface active
+      filterStatus = window.currentMonthsTrackingFilter || 'ALL';
+      const lateSel = document.getElementById('filterMonthsLateSelect');
+      filterLate = lateSel ? lateSel.value : (window.currentMonthsLateFilter || 'ALL');
+      const searchInput = document.getElementById('searchMonthsTrackingInput');
+      searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    }
+
+    // 2. Audit complet de chaque membre
+    const auditedMembers = allMembers.map(m => {
       const audit = (typeof getMemberCotisationAudit === 'function')
         ? getMemberCotisationAudit(m.id)
         : null;
-
       const fam = (data.families || []).find(f => f.id === m.familyId);
-      const totalVerse = audit ? audit.totalVerse : 0;
-      const monthsPaid = audit ? audit.monthsPaidCount : 0;
-      const isLate = audit ? (audit.monthsLateCount > 0) : false;
-      const arriere = audit ? audit.arrieresMontant : 0;
+      return { member: m, audit, family: fam };
+    });
 
-      totalRecouvre += totalVerse;
-      if (isLate) {
-        countRetard++;
-        totalArrieres += arriere;
-      } else {
-        countAJour++;
+    // 3. Filtrage précis selon les critères
+    const filtered = auditedMembers.filter(item => {
+      const a = item.audit;
+      if (!a) return true;
+
+      // Filtre statut
+      if (filterStatus === 'A_JOUR' && (a.statutKey !== 'A_JOUR' && a.statutKey !== 'EN_AVANCE')) return false;
+      if (filterStatus === 'EN_AVANCE' && a.monthsAdvanceCount === 0) return false;
+      if (filterStatus === 'EN_RETARD' && a.monthsLateCount === 0) return false;
+
+      // Filtre nombre de mois de retard
+      if (filterLate && filterLate !== 'ALL') {
+        if (filterLate === '4+') {
+          if (a.monthsLateCount < 4) return false;
+        } else {
+          const target = parseInt(filterLate, 10);
+          if (a.monthsLateCount !== target) return false;
+        }
       }
 
-      const statutBadge = (audit && audit.statut === 'EN_AVANCE')
-        ? `<span class="print-badge print-badge-info">🚀 En Avance (+${audit.monthsAdvanceCount}m)</span>`
-        : isLate
-          ? `<span class="print-badge print-badge-danger">⚠️ Retard (${audit.monthsLateCount}m)</span>`
-          : `<span class="print-badge print-badge-success">✅ À Jour</span>`;
+      // Recherche par texte
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const mName = (item.member.fullName || '').toLowerCase();
+        const mMat = (item.member.matricule || '').toLowerCase();
+        const fName = (item.family?.name || '').toLowerCase();
+        if (!mName.includes(q) && !mMat.includes(q) && !fName.includes(q)) return false;
+      }
+
+      return true;
+    });
+
+    // 4. Calcul des totaux sur la sélection filtrée
+    let totalRecouvreSelection = 0;
+    let totalArrieresSelection = 0;
+    let countAJourSelection = 0;
+    let countRetardSelection = 0;
+
+    filtered.forEach(item => {
+      const a = item.audit;
+      if (a) {
+        totalRecouvreSelection += Number(a.totalVerse || 0);
+        totalArrieresSelection += Number(a.arrieresMontant || 0);
+        if (a.monthsLateCount > 0) countRetardSelection++;
+        else countAJourSelection++;
+      }
+    });
+
+    // 5. Titres et métadonnées adaptés au filtre
+    let docTitle = 'État Récapitulatif des Cotisations Mensuelles';
+    let docSubtitle = `Suivi chronologique des versements ordinaires depuis le ${cfg.dateDebutCotisations || '04/10/2026'}`;
+    let filterBadgeLabel = 'Tous les membres';
+    let pdfFileName = 'TAGBA_Cotisations_Mensuelles';
+
+    if (filterStatus === 'A_JOUR') {
+      docTitle = 'Liste Officielle des Membres À Jour de Cotisation';
+      docSubtitle = `Adhérents en règle sans arriérés au calendrier officiel de la Mutuelle`;
+      filterBadgeLabel = '✅ Membres À Jour & En Avance';
+      pdfFileName = 'TAGBA_Membres_A_Jour';
+    } else if (filterStatus === 'EN_RETARD') {
+      if (filterLate && filterLate !== 'ALL') {
+        const lateTxt = filterLate === '4+' ? '4 mois et plus' : `${filterLate} mois`;
+        docTitle = `État des Membres En Retard (${lateTxt} de retard)`;
+        docSubtitle = `Relance et suivi spécifique des adhérents accusant ${lateTxt} d'arriéré de cotisation`;
+        filterBadgeLabel = `⚠️ Retard de ${lateTxt}`;
+        pdfFileName = `TAGBA_Membres_Retard_${filterLate}mois`;
+      } else {
+        docTitle = 'État Nominatif des Membres En Retard de Cotisation';
+        docSubtitle = `Relevé des adhérents en souffrance de cotisations ordinaires et arriérés exigibles`;
+        filterBadgeLabel = '⚠️ Tous les Membres En Retard';
+        pdfFileName = 'TAGBA_Membres_En_Retard';
+      }
+    } else if (filterStatus === 'EN_AVANCE') {
+      docTitle = 'Liste des Membres Ayant Cotisé par Anticipation';
+      docSubtitle = `Adhérents disposant d'une avance sur leurs cotisations futures`;
+      filterBadgeLabel = '🚀 Cotisations Anticipées';
+      pdfFileName = 'TAGBA_Membres_En_Avance';
+    } else if (filterLate && filterLate !== 'ALL') {
+      const lateTxt = filterLate === '4+' ? '4 mois et plus' : `${filterLate} mois`;
+      docTitle = `État des Cotisations - Retard de ${lateTxt}`;
+      docSubtitle = `Filtrage des membres accusant ${lateTxt} d'arriéré de cotisation`;
+      filterBadgeLabel = `Retard (${lateTxt})`;
+      pdfFileName = `TAGBA_Cotisations_Retard_${filterLate}mois`;
+    }
+
+    const meta = [
+      { label: 'Filtre Appliqué', value: filterBadgeLabel },
+      { label: 'Membres Sélectionnés', value: `${filtered.length} / ${allMembers.length} adhérent(s)` },
+      { label: 'Total Versé Sélection', value: formatMoney(totalRecouvreSelection, curr) },
+      { label: 'Total Arriérés Dus', value: formatMoney(totalArrieresSelection, curr) },
+      { label: 'Tarif Mensuel', value: `${formatMoney(unitPrice, curr)} / mois` }
+    ];
+
+    const header = getOfficialPrintHeader(docTitle, docSubtitle, meta);
+
+    const rowsHtml = filtered.map((item, idx) => {
+      const m = item.member;
+      const fam = item.family;
+      const audit = item.audit;
+      const totalVerse = audit ? audit.totalVerse : 0;
+      const monthsPaid = audit ? audit.monthsPaidCount : 0;
+      const monthsLate = audit ? audit.monthsLateCount : 0;
+      const arriere = audit ? audit.arrieresMontant : 0;
+      const isLate = monthsLate > 0;
+
+      let statutBadge = '';
+      if (audit) {
+        if (audit.statutKey === 'EN_AVANCE') {
+          statutBadge = `<span class="print-badge print-badge-info">🚀 En Avance (+${audit.monthsAdvanceCount}m)</span>`;
+        } else if (isLate) {
+          statutBadge = `<span class="print-badge print-badge-danger">⚠️ Retard (${monthsLate} mois)</span>`;
+        } else {
+          statutBadge = `<span class="print-badge print-badge-success">✅ À Jour</span>`;
+        }
+      }
 
       return `
         <tr>
           <td style="text-align: center;">${idx + 1}</td>
           <td style="font-weight: 700; color: #047857;">${m.matricule || 'N/A'}</td>
-          <td style="font-weight: 600;">${m.fullName}</td>
+          <td style="font-weight: 600;">
+            ${m.fullName}
+            ${m.bureauRole ? `<small style="color: #6366f1;">(${m.bureauRole})</small>` : ''}
+          </td>
           <td>${fam ? fam.name : 'N/A'}</td>
-          <td style="text-align: right;">${formatMoney(unitPrice, curr)}</td>
           <td style="text-align: right; font-weight: 700; color: #047857;">${formatMoney(totalVerse, curr)}</td>
           <td style="text-align: center;">${monthsPaid} mois</td>
+          <td style="text-align: center; font-weight: 700; color: ${isLate ? '#b91c1c' : '#64748b'};">
+            ${isLate ? `${monthsLate} mois` : '0'}
+          </td>
           <td style="text-align: center;">${statutBadge}</td>
           <td style="text-align: right; color: ${isLate ? '#b91c1c' : '#047857'}; font-weight: 700;">
             ${isLate ? `-${formatMoney(arriere, curr)}` : '0 FCFA'}
@@ -572,15 +694,6 @@
         </tr>
       `;
     }).join('');
-
-    const meta = [
-      { label: 'Membres À Jour', value: `${countAJour} / ${members.length}` },
-      { label: 'Total Encaissé', value: formatMoney(totalRecouvre, curr) },
-      { label: 'Arriérés en Souffrance', value: formatMoney(totalArrieres, curr) },
-      { label: 'Cotisation de Base', value: `${formatMoney(unitPrice, curr)} / mois` }
-    ];
-
-    const header = getOfficialPrintHeader('État Récapitulatif des Cotisations Mensuelles', `Suivi chronologique des versements ordinaires depuis le ${cfg.dateDebutCotisations || '04/10/2026'}`, meta);
 
     const html = `
       ${printDocStyle}
@@ -593,23 +706,26 @@
               <th>Matricule</th>
               <th>Nom & Prénoms</th>
               <th>Foyer</th>
-              <th style="text-align: right;">Tarif / Mois</th>
               <th style="text-align: right;">Total Versé</th>
               <th style="text-align: center;">Mois Réglés</th>
+              <th style="text-align: center;">Mois en Retard</th>
               <th style="text-align: center;">Statut Échéance</th>
               <th style="text-align: right;">Arriéré / Solde</th>
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml || '<tr><td colspan="9" style="text-align: center;">Aucun enregistrement disponible.</td></tr>'}
+            ${rowsHtml || `<tr><td colspan="9" style="text-align: center; padding: 24px; color: #64748b;">Aucun membre ne correspond aux critères sélectionnés (${filterBadgeLabel}).</td></tr>`}
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="5" style="text-align: right; font-weight: 700;">TOTAUX GÉNÉRAUX :</td>
-              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalRecouvre, curr)}</td>
+              <td colspan="4" style="text-align: right; font-weight: 700;">TOTAL SÉLECTION (${filtered.length} membre${filtered.length > 1 ? 's' : ''}) :</td>
+              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalRecouvreSelection, curr)}</td>
               <td></td>
               <td></td>
-              <td style="text-align: right; font-weight: 800; color: #b91c1c;">-${formatMoney(totalArrieres, curr)}</td>
+              <td></td>
+              <td style="text-align: right; font-weight: 800; color: ${totalArrieresSelection > 0 ? '#b91c1c' : '#047857'};">
+                ${totalArrieresSelection > 0 ? `-${formatMoney(totalArrieresSelection, curr)}` : '0 FCFA'}
+              </td>
             </tr>
           </tfoot>
         </table>
@@ -617,7 +733,7 @@
       </div>
     `;
 
-    executeTagbaPrint(html, 'TAGBA_Etat_Cotisations_Mensuelles');
+    executeTagbaPrint(html, pdfFileName);
   }
 
   // ============================================================

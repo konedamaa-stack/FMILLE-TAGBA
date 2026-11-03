@@ -724,13 +724,24 @@
             <!-- Filtres & Recherche de la vue Suivi des Mois -->
             <div class="card-panel" style="margin-bottom: 18px; padding: 14px 20px;">
               <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="filterMonthsStatusGroup">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;" id="filterMonthsStatusGroup">
                   <button type="button" class="filter-pill-btn active" data-filter="ALL" onclick="filterMonthsTrackingTable('ALL')">Tous les membres</button>
-                  <button type="button" class="filter-pill-btn" data-filter="EN_AVANCE" onclick="filterMonthsTrackingTable('EN_AVANCE')">🚀 En Avance (Anticipé)</button>
                   <button type="button" class="filter-pill-btn" data-filter="A_JOUR" onclick="filterMonthsTrackingTable('A_JOUR')">✅ À Jour</button>
                   <button type="button" class="filter-pill-btn" data-filter="EN_RETARD" onclick="filterMonthsTrackingTable('EN_RETARD')">⚠️ En Retard</button>
+                  <button type="button" class="filter-pill-btn" data-filter="EN_AVANCE" onclick="filterMonthsTrackingTable('EN_AVANCE')">🚀 En Avance (Anticipé)</button>
+
+                  <div style="display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; padding-left: 10px; border-left: 1px solid var(--border-color, rgba(255,255,255,0.1));">
+                    <label for="filterMonthsLateSelect" style="font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap;">Retard :</label>
+                    <select id="filterMonthsLateSelect" class="form-control" style="width: auto; padding: 4px 8px; font-size: 12px; height: 32px;" onchange="onMonthsLateFilterChange()">
+                      <option value="ALL">Tous les retards</option>
+                      <option value="1">1 mois de retard</option>
+                      <option value="2">2 mois de retard</option>
+                      <option value="3">3 mois de retard</option>
+                      <option value="4+">4 mois et plus</option>
+                    </select>
+                  </div>
                 </div>
-                <div style="min-width: 260px; flex-grow: 1; max-width: 360px;">
+                <div style="min-width: 240px; flex-grow: 1; max-width: 320px;">
                   <input type="text" class="form-control" id="searchMonthsTrackingInput" placeholder="🔍 Filtrer par nom ou matricule..." oninput="filterMonthsTrackingTable()">
                 </div>
               </div>
@@ -740,9 +751,15 @@
             <div class="card-panel">
               <div class="card-header-flex">
                 <h3><span>📋</span> Diagnostic Chronologique par Membre (Depuis le 04/10/2026)</h3>
-                <div style="display: flex; gap: 8px; align-items: center;">
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="printMonthlyCotisationsReport()" title="Imprimer l'état des cotisations mensuelles">
-                    🖨️ Imprimer l'État Mensuel
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="printMonthlyCotisationsReport()" title="Imprimer la sélection filtrée actuellement affichée">
+                    🖨️ Imprimer la Sélection
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-success" onclick="printMonthlyCotisationsReport('A_JOUR')" title="Imprimer uniquement les membres à jour">
+                    ✅ Imprimer À Jour
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="printMonthlyCotisationsReport('EN_RETARD')" title="Imprimer tous les membres en retard et leurs arriérés">
+                    ⚠️ Imprimer En Retard
                   </button>
                   <span style="font-size: 12px; color: var(--text-muted);" id="monthsTrackingTableCount">Chargement...</span>
                 </div>

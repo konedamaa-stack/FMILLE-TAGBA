@@ -1343,6 +1343,9 @@ function formatStatut(statut) {
 // 4. Rendu Cotisations & Versements
 let currentCotisSubTab = 'months';
 let currentMonthsTrackingFilter = 'ALL';
+let currentMonthsLateFilter = 'ALL';
+window.currentMonthsTrackingFilter = currentMonthsTrackingFilter;
+window.currentMonthsLateFilter = currentMonthsLateFilter;
 
 function switchCotisSubTab(subTab) {
   if (subTab === 'events') {
@@ -1596,6 +1599,16 @@ function renderCotisationsMonthsTracking() {
     if (currentMonthsTrackingFilter === 'A_JOUR' && (a.statutKey !== 'A_JOUR' && a.statutKey !== 'EN_AVANCE')) return false;
     if (currentMonthsTrackingFilter === 'EN_RETARD' && a.monthsLateCount === 0) return false;
 
+    // Filtre par nombre spÃ©cifique de mois de retard
+    if (currentMonthsLateFilter && currentMonthsLateFilter !== 'ALL') {
+      if (currentMonthsLateFilter === '4+') {
+        if (a.monthsLateCount < 4) return false;
+      } else {
+        const targetMonths = parseInt(currentMonthsLateFilter, 10);
+        if (a.monthsLateCount !== targetMonths) return false;
+      }
+    }
+
     if (query) {
       const matchName = a.member.fullName.toLowerCase().includes(query);
       const matchMatricule = a.member.matricule.toLowerCase().includes(query);
@@ -1711,9 +1724,10 @@ function renderCotisationsMonthsTracking() {
 }
 
 // Filtrage du tableau de suivi
-function filterMonthsTrackingTable(filterStatus) {
-  if (filterStatus) {
+function filterMonthsTrackingTable(filterStatus, lateFilter = null) {
+  if (filterStatus !== undefined && filterStatus !== null) {
     currentMonthsTrackingFilter = filterStatus;
+    window.currentMonthsTrackingFilter = filterStatus;
     const buttons = document.querySelectorAll('#filterMonthsStatusGroup .filter-pill-btn');
     buttons.forEach(btn => {
       if (btn.getAttribute('data-filter') === filterStatus) {
@@ -1722,6 +1736,25 @@ function filterMonthsTrackingTable(filterStatus) {
         btn.classList.remove('active');
       }
     });
+  }
+  if (lateFilter !== null) {
+    currentMonthsLateFilter = lateFilter;
+    window.currentMonthsLateFilter = lateFilter;
+    const sel = document.getElementById('filterMonthsLateSelect');
+    if (sel) sel.value = lateFilter;
+  }
+  renderCotisationsMonthsTracking();
+}
+
+function onMonthsLateFilterChange() {
+  const sel = document.getElementById('filterMonthsLateSelect');
+  const val = sel ? sel.value : 'ALL';
+  currentMonthsLateFilter = val;
+  window.currentMonthsLateFilter = val;
+  // Si l'utilisateur choisit un nombre de retard alors qu'il Ã©tait sur "Ã€ jour", basculer vers "En retard"
+  if (val !== 'ALL' && currentMonthsTrackingFilter === 'A_JOUR') {
+    filterMonthsTrackingTable('EN_RETARD', val);
+    return;
   }
   renderCotisationsMonthsTracking();
 }
