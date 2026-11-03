@@ -1880,23 +1880,31 @@
           </div>
         </div>
 
-        <div class="form-row">
+                <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Numéro de Téléphone (Unique) *</label>
-            <input type="tel" class="form-control" id="memPhone" placeholder="+225 07..." required oninput="checkPhoneLiveFeedback(this, 'memPhoneError')">
+            <label class="form-label">Numéro Téléphone 1 (Unique) *</label>
+            <input type="tel" class="form-control" id="memPhone" placeholder="+225 07..." required oninput="checkPhoneLiveFeedback(this, 'memPhoneError', null, 'memPhone2')">
             <div id="memPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
           </div>
           <div class="form-group">
-            <label class="form-label">Profession</label>
-            <input type="text" class="form-control" id="memProfession" placeholder="Ex: Enseignant, Commerçant...">
+            <label class="form-label">Numéro Téléphone 2 (Optionnel)</label>
+            <input type="tel" class="form-control" id="memPhone2" placeholder="+225 05..." oninput="checkPhoneLiveFeedback(this, 'memPhone2Error', null, 'memPhone')">
+            <div id="memPhone2Error" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
+            <label class="form-label">Profession</label>
+            <input type="text" class="form-control" id="memProfession" placeholder="Ex: Enseignant, Commerçant...">
+          </div>
+          <div class="form-group">
             <label class="form-label">Ville / Lieu de Résidence</label>
             <input type="text" class="form-control" id="memResidence" placeholder="Ex: Abidjan Cocody">
           </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label">Statut Initial Cotisation</label>
             <select class="form-control" id="memStatutCotisation">
@@ -1940,23 +1948,31 @@
           </div>
         </div>
 
-        <div class="form-row">
+                <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Numéro de Téléphone (Unique) *</label>
-            <input type="tel" class="form-control" id="editMemPhone" required oninput="checkPhoneLiveFeedback(this, 'editMemPhoneError', document.getElementById('editMemId').value)">
+            <label class="form-label">Numéro Téléphone 1 (Unique) *</label>
+            <input type="tel" class="form-control" id="editMemPhone" required oninput="checkPhoneLiveFeedback(this, 'editMemPhoneError', document.getElementById('editMemId').value, 'editMemPhone2')">
             <div id="editMemPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
           </div>
           <div class="form-group">
-            <label class="form-label">Profession</label>
-            <input type="text" class="form-control" id="editMemProfession">
+            <label class="form-label">Numéro Téléphone 2 (Optionnel)</label>
+            <input type="tel" class="form-control" id="editMemPhone2" placeholder="+225 05..." oninput="checkPhoneLiveFeedback(this, 'editMemPhone2Error', document.getElementById('editMemId').value, 'editMemPhone')">
+            <div id="editMemPhone2Error" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
+            <label class="form-label">Profession</label>
+            <input type="text" class="form-control" id="editMemProfession">
+          </div>
+          <div class="form-group">
             <label class="form-label">Ville / Lieu de Résidence</label>
             <input type="text" class="form-control" id="editMemResidence">
           </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label">Statut Cotisation</label>
             <select class="form-control" id="editMemStatutCotisation">
@@ -1988,21 +2004,28 @@
           <input type="text" class="form-control" id="famName" placeholder="Ex: Famille Sylla - Touré" required>
         </div>
 
-        <div class="form-row">
+                <div class="form-row">
           <div class="form-group">
             <label class="form-label">Nom du Chef de Famille *</label>
             <input type="text" class="form-control" id="famChef" placeholder="Ex: El Hadj Souleymane Sylla" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Téléphone du Chef de Famille (Unique) *</label>
-            <input type="tel" class="form-control" id="famPhone" placeholder="+225 05..." required oninput="checkPhoneLiveFeedback(this, 'famPhoneError')">
-            <div id="famPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
+            <label class="form-label">Localisation / Ville principale</label>
+            <input type="text" class="form-control" id="famCity" placeholder="Ex: Abidjan / Marcory">
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Localisation / Ville principale</label>
-          <input type="text" class="form-control" id="famCity" placeholder="Ex: Abidjan / Marcory">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Téléphone Chef 1 (Unique) *</label>
+            <input type="tel" class="form-control" id="famPhone" placeholder="+225 05..." required oninput="checkPhoneLiveFeedback(this, 'famPhoneError', null, 'famPhone2')">
+            <div id="famPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Téléphone Chef 2 (Optionnel)</label>
+            <input type="tel" class="form-control" id="famPhone2" placeholder="+225 07..." oninput="checkPhoneLiveFeedback(this, 'famPhone2Error', null, 'famPhone')">
+            <div id="famPhone2Error" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -2036,21 +2059,28 @@
           <small style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">Le représentant légal et patriarche de ce foyer familial.</small>
         </div>
 
-        <div class="form-row">
+                <div class="form-row">
           <div class="form-group">
             <label class="form-label">Dénomination de la Famille *</label>
             <input type="text" class="form-control" id="editFamName" placeholder="Ex: Famille Koné" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Téléphone du Chef de Famille (Unique) *</label>
-            <input type="tel" class="form-control" id="editFamPhone" placeholder="+225 07..." required oninput="checkPhoneLiveFeedback(this, 'editFamPhoneError', document.getElementById('editFamId').value)">
-            <div id="editFamPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
+            <label class="form-label">Localisation / Ville principale</label>
+            <input type="text" class="form-control" id="editFamCity" placeholder="Ex: Divo, Abidjan...">
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Localisation / Ville principale</label>
-          <input type="text" class="form-control" id="editFamCity" placeholder="Ex: Divo, Abidjan...">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Téléphone Chef 1 (Unique) *</label>
+            <input type="tel" class="form-control" id="editFamPhone" placeholder="+225 07..." required oninput="checkPhoneLiveFeedback(this, 'editFamPhoneError', document.getElementById('editFamId').value, 'editFamPhone2')">
+            <div id="editFamPhoneError" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Téléphone Chef 2 (Optionnel)</label>
+            <input type="tel" class="form-control" id="editFamPhone2" placeholder="+225 05..." oninput="checkPhoneLiveFeedback(this, 'editFamPhone2Error', document.getElementById('editFamId').value, 'editFamPhone')">
+            <div id="editFamPhone2Error" style="display:none; font-size: 11px; margin-top: 5px; color: var(--rose-400); font-weight: 600;"></div>
+          </div>
         </div>
 
         <div class="form-group">

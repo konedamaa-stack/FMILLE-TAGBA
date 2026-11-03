@@ -123,9 +123,16 @@ async function deleteMemberFromSupabase(memberId) {
   const client = getSupabaseClient();
   if (!client) return;
   try {
+    // 1. Supprimer tous les versements et montants associés dans la table cotisations
+    await client.from('cotisations').delete().eq('member_id', memberId);
+    // 2. Supprimer le membre de la table members
     await client.from('members').delete().eq('id', memberId);
+    // 3. Pousser immédiatement le snapshot complet mis à jour vers app_config
+    if (typeof pushAllDataToSupabase === 'function') {
+      await pushAllDataToSupabase(true);
+    }
   } catch (err) {
-    console.warn('[Supabase] Erreur suppression membre:', err);
+    console.warn('[Supabase] Erreur suppression membre et cotisations:', err);
   }
 }
 
@@ -237,6 +244,10 @@ function mergeDatasets(local, remote) {
   if (remoteTime >= localTime) {
     const merged = { ...local, ...remote };
     merged.config = { ...(local.config || {}), ...(remote.config || {}) };
+    if (merged.cotisations && merged.members) {
+      const activeIds = new Set(merged.members.map(m => m.id));
+      merged.cotisations = merged.cotisations.filter(c => activeIds.has(c.memberId || c.member_id));
+    }
     return merged;
   }
 
@@ -250,6 +261,10 @@ function mergeDatasets(local, remote) {
     localArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
     remoteArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
     merged[k] = Array.from(map.values());
+  }
+  if (merged.cotisations && merged.members) {
+    const activeIds = new Set(merged.members.map(m => m.id));
+    merged.cotisations = merged.cotisations.filter(c => activeIds.has(c.memberId || c.member_id));
   }
   return merged;
 }
@@ -293,7 +308,7 @@ async function pushAllDataToSupabase(silent = false) {
         code: f.code || 'FAM',
         name: f.name,
         chef_de_famille: f.chefDeFamille,
-        phone: f.phone || '',
+        phone: f.phone ? f.phone + (f.phone2 ? ' / ' + f.phone2 : '') : '',
         city: f.city || '',
         notes: f.notes || ''
       }));
@@ -308,7 +323,7 @@ async function pushAllDataToSupabase(silent = false) {
         family_id: m.familyId || null,
         is_chef: Boolean(m.is_chef),
         relation_to_chef: m.relationToChef || 'Membre',
-        phone: m.phone || '',
+        phone: m.phone ? m.phone + (m.phone2 ? ' / ' + m.phone2 : '') : '',
         profession: m.profession || '',
         residence: m.residence || '',
         statut_cotisation: m.statutCotisation || 'A_JOUR'
@@ -550,27 +565,35 @@ async function pullAllDataFromSupabase(silent = false, force = false) {
           photoInitial: b.photo_initial || 'MB',
           level: b.level || 3
         })) : localData.bureau,
-        families: famData.length > 0 ? famData.map(f => ({
-          id: f.id,
-          code: f.code || 'FAM',
-          name: f.name,
-          chefDeFamille: f.chef_de_famille || 'Chef de famille',
-          phone: f.phone || '',
-          city: f.city || '',
-          notes: f.notes || ''
-        })) : localData.families,
-        members: memData.length > 0 ? memData.map(m => ({
-          id: m.id,
-          matricule: m.matricule,
-          fullName: m.full_name,
-          familyId: m.family_id,
-          isChef: Boolean(m.is_chef),
-          relationToChef: m.relation_to_chef || 'Membre',
-          phone: m.phone || '',
-          profession: m.profession || '',
-          residence: m.residence || '',
-          statutCotisation: m.statut_cotisation || 'A_JOUR'
-        })) : localData.members,
+        families: famData.length > 0 ? famData.map(f => {
+          const fParts = (f.phone || '').split('/').map(s => s.trim());
+          return {
+            id: f.id,
+            code: f.code || 'FAM',
+            name: f.name,
+            chefDeFamille: f.chef_de_famille || 'Chef de famille',
+            phone: fParts[0] || '',
+            phone2: fParts[1] || '',
+            city: f.city || '',
+            notes: f.notes || ''
+          };
+        }) : localData.families,
+        members: memData.length > 0 ? memData.map(m => {
+          const mParts = (m.phone || '').split('/').map(s => s.trim());
+          return {
+            id: m.id,
+            matricule: m.matricule,
+            fullName: m.full_name,
+            familyId: m.family_id,
+            isChef: Boolean(m.is_chef),
+            relationToChef: m.relation_to_chef || 'Membre',
+            phone: mParts[0] || '',
+            phone2: mParts[1] || '',
+            profession: m.profession || '',
+            residence: m.residence || '',
+            statutCotisation: m.statut_cotisation || 'A_JOUR'
+          };
+        }) : localData.members,
         cotisations: cotRes.status === 'fulfilled' ? cotData.map(c => ({
           id: c.id,
           recuNum: c.recu_num,

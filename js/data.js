@@ -125,6 +125,14 @@ const TAGBA_DB = {
             }
           }
 
+          // Tri alphabétique systématique de toutes les listes
+          if (Array.isArray(parsed.members)) {
+            parsed.members.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '', 'fr', { sensitivity: 'base' }));
+          }
+          if (Array.isArray(parsed.families)) {
+            parsed.families.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' }));
+          }
+
           return parsed;
         }
       }
@@ -327,55 +335,90 @@ const TAGBA_DB = {
     if (clean.startsWith('225') && clean.length > 10) {
       clean = clean.substring(3);
     }
+    if (/^0+$/.test(clean)) return '';
     return clean;
   },
 
-  // Règle absolue : Aucun numéro de téléphone ne peut être attribué à deux personnes
+  // Extraction de tous les numéros valides d'une chaîne (ex: "07... / 05...")
+  extractPhones: function (phoneStr) {
+    if (!phoneStr) return [];
+    const parts = String(phoneStr).split(/[\/;,]+/);
+    const result = [];
+    for (const p of parts) {
+      const norm = this.normalizePhone(p);
+      if (norm && norm.length >= 8) {
+        result.push(norm);
+      }
+    }
+    return result;
+  },
+
+  // Règle d'or : 1 personne peut avoir 2 numéros, mais 2 personnes différentes ne peuvent JAMAIS avoir le même numéro
   isPhoneTaken: function (phone, excludeId = null) {
-    const norm = this.normalizePhone(phone);
-    if (!norm || norm.length < 8) return null;
+    const phonesToCheck = this.extractPhones(phone);
+    if (phonesToCheck.length === 0) return null;
 
     const data = this.get();
 
-    // 1. Membres
-    for (const m of (data.members || [])) {
-      if (excludeId && m.id === excludeId) continue;
-      if (this.normalizePhone(m.phone) === norm) {
-        return {
-          id: m.id,
-          name: m.fullName,
-          phone: m.phone,
-          type: 'Membre',
-          details: `Membre inscrit (${m.matricule})`
-        };
+    // Identifier les entités liées (ex: membre chef et son foyer familial = même personne)
+    const linkedIds = new Set();
+    if (excludeId) {
+      linkedIds.add(excludeId);
+      const mem = (data.members || []).find(m => m.id === excludeId);
+      if (mem && mem.familyId) {
+        linkedIds.add(mem.familyId);
+      }
+      const fam = (data.families || []).find(f => f.id === excludeId);
+      if (fam) {
+        const chefMem = (data.members || []).find(m => m.familyId === fam.id && (m.fullName === fam.chefDeFamille || m.isChef || m.is_chef));
+        if (chefMem) linkedIds.add(chefMem.id);
       }
     }
 
-    // 2. Chefs de Famille
-    for (const f of (data.families || [])) {
-      if (excludeId && f.id === excludeId) continue;
-      if (this.normalizePhone(f.phone) === norm) {
-        return {
-          id: f.id,
-          name: f.chefDeFamille,
-          phone: f.phone,
-          type: 'Chef de Famille',
-          details: `Chef de la ${f.name}`
-        };
+    for (const norm of phonesToCheck) {
+      // 1. Membres (contrôle sur phone et phone2)
+      for (const m of (data.members || [])) {
+        if (linkedIds.has(m.id)) continue;
+        const mPhones = [...this.extractPhones(m.phone), ...this.extractPhones(m.phone2)];
+        if (mPhones.includes(norm)) {
+          return {
+            id: m.id,
+            name: m.fullName,
+            phone: m.phone + (m.phone2 ? ` / ${m.phone2}` : ''),
+            type: 'Membre',
+            details: `Membre inscrit (${m.matricule})`
+          };
+        }
       }
-    }
 
-    // 3. Bureau Exécutif
-    for (const b of (data.bureau || [])) {
-      if (excludeId && b.id === excludeId) continue;
-      if (this.normalizePhone(b.phone) === norm) {
-        return {
-          id: b.id,
-          name: b.name,
-          phone: b.phone,
-          type: 'Membre du Bureau',
-          details: `Poste : ${b.role}`
-        };
+      // 2. Chefs de Famille (contrôle sur phone et phone2)
+      for (const f of (data.families || [])) {
+        if (linkedIds.has(f.id)) continue;
+        const fPhones = [...this.extractPhones(f.phone), ...this.extractPhones(f.phone2)];
+        if (fPhones.includes(norm)) {
+          return {
+            id: f.id,
+            name: f.chefDeFamille,
+            phone: f.phone + (f.phone2 ? ` / ${f.phone2}` : ''),
+            type: 'Chef de Famille',
+            details: `Chef de la ${f.name}`
+          };
+        }
+      }
+
+      // 3. Bureau Exécutif
+      for (const b of (data.bureau || [])) {
+        if (linkedIds.has(b.id)) continue;
+        const bPhones = [...this.extractPhones(b.phone), ...this.extractPhones(b.phone2)];
+        if (bPhones.includes(norm)) {
+          return {
+            id: b.id,
+            name: b.name,
+            phone: b.phone,
+            type: 'Membre du Bureau',
+            details: `Poste : ${b.role}`
+          };
+        }
       }
     }
 
@@ -387,7 +430,16 @@ const TAGBA_DB = {
     if (fam.phone) {
       const conflict = this.isPhoneTaken(fam.phone);
       if (conflict) {
-        throw new Error(`Le numéro ${fam.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être attribué à deux personnes.`);
+        throw new Error(`Le numéro ${fam.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être partagé par deux personnes.`);
+      }
+    }
+    if (fam.phone2) {
+      if (this.normalizePhone(fam.phone) === this.normalizePhone(fam.phone2)) {
+        throw new Error("Le numéro principal et le second numéro doivent être différents.");
+      }
+      const conflict2 = this.isPhoneTaken(fam.phone2);
+      if (conflict2) {
+        throw new Error(`Le second numéro ${fam.phone2} est déjà attribué à "${conflict2.name}" (${conflict2.details}).`);
       }
     }
     const data = this.get();
@@ -403,7 +455,19 @@ const TAGBA_DB = {
     if (updatedFields.phone) {
       const conflict = this.isPhoneTaken(updatedFields.phone, id);
       if (conflict) {
-        throw new Error(`Le numéro ${updatedFields.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être attribué à deux personnes.`);
+        throw new Error(`Le numéro ${updatedFields.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro ne peut être partagé par deux personnes.`);
+      }
+    }
+    if (updatedFields.phone2) {
+      const data = this.get();
+      const currentFam = (data.families || []).find(f => f.id === id);
+      const p1 = updatedFields.phone || (currentFam ? currentFam.phone : '');
+      if (this.normalizePhone(p1) === this.normalizePhone(updatedFields.phone2)) {
+        throw new Error("Le numéro principal et le second numéro doivent être différents.");
+      }
+      const conflict2 = this.isPhoneTaken(updatedFields.phone2, id);
+      if (conflict2) {
+        throw new Error(`Le second numéro ${updatedFields.phone2} est déjà attribué à "${conflict2.name}" (${conflict2.details}).`);
       }
     }
     const data = this.get();
@@ -412,12 +476,13 @@ const TAGBA_DB = {
       const oldChef = data.families[idx].chefDeFamille;
       data.families[idx] = { ...data.families[idx], ...updatedFields };
 
-      // Si le nom du chef a été modifié, mettre également à jour le membre chef correspondant
-      if (updatedFields.chefDeFamille && updatedFields.chefDeFamille !== oldChef && data.members) {
+      // Si le nom du chef ou ses contacts ont été modifiés, mettre également à jour le membre chef correspondant
+      if (data.members) {
         const chefMem = data.members.find(m => m.familyId === id && (m.relationToChef === 'Chef de famille' || m.fullName === oldChef || m.isChef === true));
         if (chefMem) {
-          chefMem.fullName = updatedFields.chefDeFamille;
+          if (updatedFields.chefDeFamille && updatedFields.chefDeFamille !== oldChef) chefMem.fullName = updatedFields.chefDeFamille;
           if (updatedFields.phone) chefMem.phone = updatedFields.phone;
+          if (updatedFields.phone2 !== undefined) chefMem.phone2 = updatedFields.phone2;
           if (updatedFields.city) chefMem.residence = updatedFields.city;
         }
       }
@@ -447,7 +512,16 @@ const TAGBA_DB = {
     if (mem.phone) {
       const conflict = this.isPhoneTaken(mem.phone);
       if (conflict) {
-        throw new Error(`Le numéro ${mem.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être attribué à deux personnes.`);
+        throw new Error(`Le numéro ${mem.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être partagé par deux personnes.`);
+      }
+    }
+    if (mem.phone2) {
+      if (this.normalizePhone(mem.phone) === this.normalizePhone(mem.phone2)) {
+        throw new Error("Le numéro principal et le second numéro doivent être différents pour une même personne.");
+      }
+      const conflict2 = this.isPhoneTaken(mem.phone2);
+      if (conflict2) {
+        throw new Error(`Le second numéro ${mem.phone2} est déjà attribué à "${conflict2.name}" (${conflict2.details}). Aucun numéro ne peut être partagé par deux personnes.`);
       }
     }
     const data = this.get();
@@ -464,7 +538,19 @@ const TAGBA_DB = {
     if (updatedFields.phone) {
       const conflict = this.isPhoneTaken(updatedFields.phone, id);
       if (conflict) {
-        throw new Error(`Le numéro ${updatedFields.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro de téléphone ne peut être attribué à deux personnes.`);
+        throw new Error(`Le numéro ${updatedFields.phone} est déjà attribué à "${conflict.name}" (${conflict.details}). Aucun numéro ne peut être partagé par deux personnes.`);
+      }
+    }
+    if (updatedFields.phone2) {
+      const data = this.get();
+      const currentMem = (data.members || []).find(m => m.id === id);
+      const p1 = updatedFields.phone || (currentMem ? currentMem.phone : '');
+      if (this.normalizePhone(p1) === this.normalizePhone(updatedFields.phone2)) {
+        throw new Error("Le numéro principal et le second numéro doivent être différents pour une même personne.");
+      }
+      const conflict2 = this.isPhoneTaken(updatedFields.phone2, id);
+      if (conflict2) {
+        throw new Error(`Le second numéro ${updatedFields.phone2} est déjà attribué à "${conflict2.name}" (${conflict2.details}). Aucun numéro ne peut être partagé par deux personnes.`);
       }
     }
     const data = this.get();

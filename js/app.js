@@ -1,5 +1,5 @@
 // Contrôle en direct et instantané de l'unicité des numéros de téléphone
-function checkPhoneLiveFeedback(inputEl, errorDivId, excludeId = null) {
+function checkPhoneLiveFeedback(inputEl, errorDivId, excludeId = null, siblingInputId = null) {
   if (!inputEl) return true;
   const errorEl = document.getElementById(errorDivId);
   const rawPhone = inputEl.value.trim();
@@ -12,6 +12,24 @@ function checkPhoneLiveFeedback(inputEl, errorDivId, excludeId = null) {
       errorEl.textContent = '';
     }
     return true;
+  }
+
+  // Vérifier si le numéro est identique au numéro frère saisi dans le même formulaire
+  if (siblingInputId) {
+    const siblingEl = document.getElementById(siblingInputId);
+    if (siblingEl && siblingEl.value.trim()) {
+      const n1 = (TAGBA_DB.normalizePhone ? TAGBA_DB.normalizePhone(rawPhone) : rawPhone.replace(/\D/g, ''));
+      const n2 = (TAGBA_DB.normalizePhone ? TAGBA_DB.normalizePhone(siblingEl.value) : siblingEl.value.replace(/\D/g, ''));
+      if (n1 && n2 && n1 === n2) {
+        inputEl.style.borderColor = 'var(--rose-500)';
+        inputEl.style.background = 'rgba(244, 63, 94, 0.08)';
+        if (errorEl) {
+          errorEl.style.display = 'block';
+          errorEl.innerHTML = `⚠️ <strong>Numéro identique !</strong> Les deux numéros d’une même personne doivent être distincts.`;
+        }
+        return false;
+      }
+    }
   }
 
   const conflict = TAGBA_DB.isPhoneTaken(rawPhone, excludeId);
@@ -60,13 +78,20 @@ function openEditMemberModal(memId) {
     editPhoneEl.style.borderColor = '';
     editPhoneEl.style.background = '';
   }
+  const editPhone2El = document.getElementById('editMemPhone2');
+  if (editPhone2El) {
+    editPhone2El.value = mem.phone2 || '';
+    editPhone2El.style.borderColor = '';
+    editPhone2El.style.background = '';
+  }
   if (editProfEl) editProfEl.value = mem.profession || '';
   if (editResEl) editResEl.value = mem.residence || '';
   if (editStatEl) editStatEl.value = mem.statutCotisation || 'A_JOUR';
 
   if (famSelect) {
     let html = `<option value="" disabled>-- Sélectionner une famille --</option>`;
-    (data.families || []).forEach(f => {
+    const sortedFamilies = [...(data.families || [])].sort((a,b) => (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' }));
+    sortedFamilies.forEach(f => {
       const chef = f.chefDeFamille || 'Chef';
       const isSel = f.id === mem.familyId;
       html += `<option value="${f.id}" ${isSel ? 'selected' : ''}>🏠 ${f.name} (Chef: ${chef})</option>`;
@@ -78,6 +103,11 @@ function openEditMemberModal(memId) {
   if (phoneErr) {
     phoneErr.style.display = 'none';
     phoneErr.textContent = '';
+  }
+  const phone2Err = document.getElementById('editMemPhone2Error');
+  if (phone2Err) {
+    phone2Err.style.display = 'none';
+    phone2Err.textContent = '';
   }
 
   openModal('modalEditMember');
@@ -928,7 +958,7 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
   const container = document.getElementById('groupedFamiliesContainer');
   if (!container) return;
 
-  let familiesToDisplay = data.families;
+  let familiesToDisplay = [...data.families].sort((a,b) => (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' }));
   if (filterFamily) {
     familiesToDisplay = familiesToDisplay.filter(f => f.id === filterFamily);
   }
@@ -941,7 +971,7 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
         m.fullName.toLowerCase().includes(s) ||
         m.profession.toLowerCase().includes(s) ||
         m.matricule.toLowerCase().includes(s) ||
-        m.phone.includes(s)
+        ((m.phone || "").includes(s) || (m.phone2 || "").includes(s))
       ));
       return matchFam || matchMember;
     });
@@ -959,7 +989,7 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
 
   container.innerHTML = familiesToDisplay.map(fam => {
     // Membres rattachés à ce chef
-    let familyMembers = data.members.filter(m => m.familyId === fam.id);
+    let familyMembers = data.members.filter(m => m.familyId === fam.id).sort((a,b) => (a.fullName || '').localeCompare(b.fullName || '', 'fr', { sensitivity: 'base' }));
     if (s) {
       // Si recherche active, conserver les membres qui matchent ou tous si le chef matche
       const chefMatches = fam.name.toLowerCase().includes(s) || fam.chefDeFamille.toLowerCase().includes(s);
@@ -968,7 +998,7 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
           m.fullName.toLowerCase().includes(s) ||
           m.profession.toLowerCase().includes(s) ||
           m.matricule.toLowerCase().includes(s) ||
-          m.phone.includes(s)
+          ((m.phone || "").includes(s) || (m.phone2 || "").includes(s))
         );
       }
     }
@@ -999,7 +1029,7 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
               </h3>
               <div class="chef-meta-sub">
                 <span>🏛️ <strong>${fam.name}</strong> (${fam.code})</span>
-                <span>📞 ${fam.phone}</span>
+                <span>📞 ${fam.phone}${fam.phone2 ? ' / ' + fam.phone2 : ''}</span>
                 <span>📍 ${fam.city}</span>
               </div>
             </div>
@@ -1076,7 +1106,7 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
                       <td>
                         ${getRelationBadge(mem.relationToChef)}
                       </td>
-                      <td>📞 ${mem.phone}</td>
+                      <td>📞 ${mem.phone}${mem.phone2 ? ' / ' + mem.phone2 : ''}</td>
                       <td>${mem.profession}</td>
                       <td>
                         <span class="badge ${getStatutBadgeClass(memStatut)}">${formatStatut(memStatut)}</span>
@@ -1137,13 +1167,15 @@ function renderMembersTable(filterSearch = '', filterFamily = '') {
       m.fullName.toLowerCase().includes(s) ||
       m.profession.toLowerCase().includes(s) ||
       m.matricule.toLowerCase().includes(s) ||
-      m.phone.includes(s)
+      ((m.phone || "").includes(s) || (m.phone2 || "").includes(s))
     );
   }
 
   if (filterFamily) {
     filtered = filtered.filter(m => m.familyId === filterFamily);
   }
+
+  filtered = [...filtered].sort((a,b) => (a.fullName || '').localeCompare(b.fullName || '', 'fr', { sensitivity: 'base' }));
 
   if (countBadge) countBadge.textContent = `${filtered.length} membre(s)`;
 
@@ -1176,7 +1208,7 @@ function renderMembersTable(filterSearch = '', filterFamily = '') {
           <div style="font-size: 11px; color: var(--gold-400);">Chef : ${chefName}</div>
           <div style="margin-top: 2px;">${getRelationBadge(mem.relationToChef)}</div>
         </td>
-        <td>📞 ${mem.phone}</td>
+        <td>📞 ${mem.phone}${mem.phone2 ? ' / ' + mem.phone2 : ''}</td>
         <td><span class="badge ${getStatutBadgeClass(memStatut)}">${formatStatut(memStatut)}</span></td>
         <td>
           <div style="display: flex; gap: 6px;">
@@ -1197,8 +1229,9 @@ function renderQuickFamilyCards() {
   const famTreeGrid = document.getElementById('familyTreeGrid');
   if (!famTreeGrid) return;
 
-  famTreeGrid.innerHTML = data.families.map(fam => {
-    const familyMembers = data.members.filter(m => m.familyId === fam.id);
+  const sortedFamilies = [...data.families].sort((a,b) => (a.name || '').localeCompare(b.name || '', 'fr', { sensitivity: 'base' }));
+  famTreeGrid.innerHTML = sortedFamilies.map(fam => {
+    const familyMembers = data.members.filter(m => m.familyId === fam.id).sort((a,b) => (a.fullName || '').localeCompare(b.fullName || '', 'fr', { sensitivity: 'base' }));
     return `
       <div class="family-card">
         <div class="family-head-box">
@@ -1212,7 +1245,7 @@ function renderQuickFamilyCards() {
               <span>Chef de famille : <strong>${fam.chefDeFamille}</strong></span>
               <button class="btn btn-xs btn-secondary" style="padding: 2px 6px;" onclick="openEditFamilyModal('${fam.id}')" title="Modifier le chef">✏️</button>
             </p>
-            <p style="font-size: 11px; color: var(--text-dim);">📍 ${fam.city} • 📞 ${fam.phone}</p>
+            <p style="font-size: 11px; color: var(--text-dim);">📍 ${fam.city} • 📞 ${fam.phone}${fam.phone2 ? ' / ' + fam.phone2 : ''}</p>
             <button class="btn btn-sm btn-gold" style="margin-top: 6px; padding: 3px 10px; font-size: 11px;" onclick="openFamilyBatchPayModal('${fam.id}')">💳 Payer la Famille</button>
           </div>
         </div>
@@ -1613,10 +1646,13 @@ function renderCotisationsMonthsTracking() {
       const matchName = a.member.fullName.toLowerCase().includes(query);
       const matchMatricule = a.member.matricule.toLowerCase().includes(query);
       const matchFam = a.family && a.family.name.toLowerCase().includes(query);
-      return matchName || matchMatricule || matchFam;
+      const matchPhone = (a.member.phone || '').includes(query) || (a.member.phone2 || '').includes(query);
+      return matchName || matchMatricule || matchFam || matchPhone;
     }
     return true;
   });
+
+  filtered = [...filtered].sort((a,b) => (a.member.fullName || '').localeCompare(b.member.fullName || '', 'fr', { sensitivity: 'base' }));
 
   if (countDisplay) {
     countDisplay.textContent = `${filtered.length} sur ${data.members.length} membre(s)`;
@@ -2101,6 +2137,12 @@ function openEditFamilyModal(famId) {
     phoneEl.style.borderColor = '';
     phoneEl.style.background = '';
   }
+  const phone2El = document.getElementById('editFamPhone2');
+  if (phone2El) {
+    phone2El.value = fam.phone2 || '';
+    phone2El.style.borderColor = '';
+    phone2El.style.background = '';
+  }
   if (cityEl) cityEl.value = fam.city || '';
   if (notesEl) notesEl.value = fam.notes || '';
 
@@ -2108,6 +2150,11 @@ function openEditFamilyModal(famId) {
   if (phoneErr) {
     phoneErr.style.display = 'none';
     phoneErr.textContent = '';
+  }
+  const phone2Err = document.getElementById('editFamPhone2Error');
+  if (phone2Err) {
+    phone2Err.style.display = 'none';
+    phone2Err.textContent = '';
   }
 
   openModal('modalEditFamily');
@@ -2393,6 +2440,12 @@ function bindFormSubmissions() {
       if (!assertPermission('write', 'la modification d’une famille')) return;
       const famId = document.getElementById('editFamId').value;
       const phoneVal = document.getElementById('editFamPhone').value.trim();
+      const phone2Val = (document.getElementById('editFamPhone2')?.value || '').trim();
+
+      if (phoneVal && phone2Val && TAGBA_DB.normalizePhone(phoneVal) === TAGBA_DB.normalizePhone(phone2Val)) {
+        showToast('🚫 Les deux numéros du chef de famille doivent être distincts.', 'error', 5000);
+        return;
+      }
 
       const conflict = TAGBA_DB.isPhoneTaken(phoneVal, famId);
       if (conflict) {
@@ -2402,11 +2455,22 @@ function bindFormSubmissions() {
         return;
       }
 
+      if (phone2Val) {
+        const conflict2 = TAGBA_DB.isPhoneTaken(phone2Val, famId);
+        if (conflict2) {
+          showToast(`🚫 Second numéro déjà attribué : Le numéro ${phone2Val} appartient déjà à "${conflict2.name}" (${conflict2.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+          const p2Input = document.getElementById('editFamPhone2');
+          if (p2Input) { p2Input.focus(); p2Input.style.borderColor = 'var(--rose-500)'; }
+          return;
+        }
+      }
+
       try {
         const updated = TAGBA_DB.updateFamily(famId, {
           chefDeFamille: document.getElementById('editFamChef').value.trim(),
           name: document.getElementById('editFamName').value.trim(),
           phone: phoneVal,
+          phone2: phone2Val,
           city: document.getElementById('editFamCity').value.trim(),
           notes: document.getElementById('editFamNotes').value.trim()
         });
@@ -2430,6 +2494,12 @@ function bindFormSubmissions() {
       e.preventDefault();
       if (!assertPermission('write', 'l’ajout d’une famille')) return;
       const phoneVal = document.getElementById('famPhone').value.trim();
+      const phone2Val = (document.getElementById('famPhone2')?.value || '').trim();
+
+      if (phoneVal && phone2Val && TAGBA_DB.normalizePhone(phoneVal) === TAGBA_DB.normalizePhone(phone2Val)) {
+        showToast('🚫 Les deux numéros du chef de famille doivent être distincts.', 'error', 5000);
+        return;
+      }
 
       const conflict = TAGBA_DB.isPhoneTaken(phoneVal);
       if (conflict) {
@@ -2439,10 +2509,21 @@ function bindFormSubmissions() {
         return;
       }
 
+      if (phone2Val) {
+        const conflict2 = TAGBA_DB.isPhoneTaken(phone2Val);
+        if (conflict2) {
+          showToast(`🚫 Second numéro déjà attribué : Le numéro ${phone2Val} appartient déjà à "${conflict2.name}" (${conflict2.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+          const p2Input = document.getElementById('famPhone2');
+          if (p2Input) { p2Input.focus(); p2Input.style.borderColor = 'var(--rose-500)'; }
+          return;
+        }
+      }
+
       const newFam = {
         name: document.getElementById('famName').value.trim(),
         chefDeFamille: document.getElementById('famChef').value.trim(),
         phone: phoneVal,
+        phone2: phone2Val,
         city: document.getElementById('famCity').value.trim(),
         notes: document.getElementById('famNotes').value.trim()
       };
@@ -2465,6 +2546,12 @@ function bindFormSubmissions() {
       e.preventDefault();
       if (!assertPermission('write', 'l’ajout d’un membre')) return;
       const phoneVal = document.getElementById('memPhone').value.trim();
+      const phone2Val = (document.getElementById('memPhone2')?.value || '').trim();
+
+      if (phoneVal && phone2Val && TAGBA_DB.normalizePhone(phoneVal) === TAGBA_DB.normalizePhone(phone2Val)) {
+        showToast('🚫 Les deux numéros d’un même membre doivent être distincts.', 'error', 5000);
+        return;
+      }
 
       const conflict = TAGBA_DB.isPhoneTaken(phoneVal);
       if (conflict) {
@@ -2474,11 +2561,22 @@ function bindFormSubmissions() {
         return;
       }
 
+      if (phone2Val) {
+        const conflict2 = TAGBA_DB.isPhoneTaken(phone2Val);
+        if (conflict2) {
+          showToast(`🚫 Second numéro déjà attribué : Le numéro ${phone2Val} appartient déjà à "${conflict2.name}" (${conflict2.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+          const p2Input = document.getElementById('memPhone2');
+          if (p2Input) { p2Input.focus(); p2Input.style.borderColor = 'var(--rose-500)'; }
+          return;
+        }
+      }
+
       const newMem = {
         fullName: document.getElementById('memName').value.trim(),
         familyId: document.getElementById('memFamilySelect').value,
         relationToChef: document.getElementById('memRelation').value.trim(),
         phone: phoneVal,
+        phone2: phone2Val,
         profession: document.getElementById('memProfession').value.trim(),
         residence: document.getElementById('memResidence').value.trim(),
         statutCotisation: document.getElementById('memStatutCotisation').value
@@ -2503,6 +2601,12 @@ function bindFormSubmissions() {
       if (!assertPermission('write', 'la modification d’un membre')) return;
       const memId = document.getElementById('editMemId').value;
       const phoneVal = document.getElementById('editMemPhone').value.trim();
+      const phone2Val = (document.getElementById('editMemPhone2')?.value || '').trim();
+
+      if (phoneVal && phone2Val && TAGBA_DB.normalizePhone(phoneVal) === TAGBA_DB.normalizePhone(phone2Val)) {
+        showToast('🚫 Les deux numéros d’un même membre doivent être distincts.', 'error', 5000);
+        return;
+      }
 
       const conflict = TAGBA_DB.isPhoneTaken(phoneVal, memId);
       if (conflict) {
@@ -2512,12 +2616,23 @@ function bindFormSubmissions() {
         return;
       }
 
+      if (phone2Val) {
+        const conflict2 = TAGBA_DB.isPhoneTaken(phone2Val, memId);
+        if (conflict2) {
+          showToast(`🚫 Second numéro déjà attribué : Le numéro ${phone2Val} appartient déjà à "${conflict2.name}" (${conflict2.details}). Aucun numéro ne peut être attribué à deux personnes.`, 'error', 6000);
+          const p2Input = document.getElementById('editMemPhone2');
+          if (p2Input) { p2Input.focus(); p2Input.style.borderColor = 'var(--rose-500)'; }
+          return;
+        }
+      }
+
       try {
         TAGBA_DB.updateMember(memId, {
           fullName: document.getElementById('editMemName').value.trim(),
           familyId: document.getElementById('editMemFamilySelect').value,
           relationToChef: document.getElementById('editMemRelation').value.trim(),
           phone: phoneVal,
+          phone2: phone2Val,
           profession: document.getElementById('editMemProfession').value.trim(),
           residence: document.getElementById('editMemResidence').value.trim(),
           statutCotisation: document.getElementById('editMemStatutCotisation').value

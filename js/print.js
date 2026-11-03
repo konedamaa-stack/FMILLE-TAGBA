@@ -446,7 +446,7 @@
   // ============================================================
   function printFamiliesAndMembersReport() {
     const data = getDbData();
-    const members = data.members || [];
+    const members = [...(data.members || [])].sort((a,b) => (a.fullName || "").localeCompare(b.fullName || "", "fr", { sensitivity: "base" }));
     const families = data.families || [];
     const curr = data.config?.currency || 'FCFA';
 
@@ -475,7 +475,7 @@
           <td style="font-weight: 600;">${m.fullName} ${m.bureauRole ? `<small>(${m.bureauRole})</small>` : ''}</td>
           <td><strong>${famNom}</strong> <br><small style="color: #64748b;">Chef : ${chefNom}</small></td>
           <td>${m.relationToChef || 'Membre'}</td>
-          <td>${m.phone || 'N/A'}</td>
+          <td>${m.phone ? m.phone + (m.phone2 ? ' / ' + m.phone2 : '') : 'N/A'}</td>
           <td>${m.profession || 'N/A'}</td>
           <td style="text-align: center;">${statutBadge}</td>
         </tr>
@@ -810,7 +810,7 @@
   function printEventCotisationsReport(eventId) {
     const data = getDbData();
     const curr = data.config?.currency || 'FCFA';
-    const members = data.members || [];
+    const members = [...(data.members || [])].sort((a,b) => (a.fullName || "").localeCompare(b.fullName || "", "fr", { sensitivity: "base" }));
 
     // Récupérer l'événement ciblé ou l'actif
     let activeEvt = null;
@@ -1239,7 +1239,7 @@
     const meta = [
       { label: 'Matricule', value: mem.matricule || 'N/A' },
       { label: 'Foyer Familial', value: fam ? `${fam.name} (Chef : ${fam.chefDeFamille})` : 'N/A' },
-      { label: 'Contact', value: mem.phone || 'N/A' },
+      { label: 'Contact', value: mem.phone ? mem.phone + (mem.phone2 ? ' / ' + mem.phone2 : '') : 'N/A' },
       { label: 'Statut Global', value: audit ? audit.statutLabel : 'N/A' }
     ];
 
