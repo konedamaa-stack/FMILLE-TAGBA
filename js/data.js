@@ -115,6 +115,16 @@ const TAGBA_DB = {
             }
           }
 
+          // Nettoyage automatique des montants des membres supprimés (intégrité relationnelle)
+          if (parsed.cotisations && parsed.members) {
+            const validMemberIds = new Set(parsed.members.map(m => m.id));
+            const validCotisations = parsed.cotisations.filter(c => validMemberIds.has(c.memberId || c.member_id));
+            if (validCotisations.length !== parsed.cotisations.length) {
+              parsed.cotisations = validCotisations;
+              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) { }
+            }
+          }
+
           return parsed;
         }
       }
@@ -469,8 +479,32 @@ const TAGBA_DB = {
 
   deleteMember: function (id) {
     const data = this.get();
-    data.members = data.members.filter(m => m.id !== id);
+    data.members = (data.members || []).filter(m => m.id !== id);
+    // Supprimer systématiquement tous les montants et cotisations du membre supprimé
+    data.cotisations = (data.cotisations || []).filter(c => (c.memberId || c.member_id) !== id);
+    if (data.evenements) {
+      data.evenements.forEach(ev => {
+        if (ev.versements) {
+          ev.versements = ev.versements.filter(v => v.memberId !== id);
+        }
+      });
+    }
+    if (data.entraide) {
+      data.entraide = (data.entraide || []).filter(e => e.memberId !== id);
+    }
     this.save(data);
+  },
+
+  purgeOrphanCotisations: function () {
+    const data = this.get();
+    const activeMemberIds = new Set((data.members || []).map(m => m.id));
+    const initialCount = (data.cotisations || []).length;
+    data.cotisations = (data.cotisations || []).filter(c => activeMemberIds.has(c.memberId || c.member_id));
+    const purged = initialCount - data.cotisations.length;
+    if (purged > 0) {
+      this.save(data);
+    }
+    return purged;
   },
 
   // Cotisations

@@ -2021,13 +2021,29 @@ function quickPayMember(memberId) {
 
 function deleteMemberConfirm(memberId) {
   if (!assertPermission('write', 'la suppression d’un membre')) return;
-  if (confirm('Êtes-vous sûr de vouloir retirer ce membre de la mutuelle ?')) {
+  const data = TAGBA_DB.get();
+  const mem = (data.members || []).find(m => m.id === memberId);
+  const memName = mem ? mem.fullName : 'ce membre';
+  const cots = (data.cotisations || []).filter(c => (c.memberId || c.member_id) === memberId);
+  const totalCot = cots.reduce((sum, c) => sum + Number(c.montant || 0), 0);
+  const curr = data.config?.currency || 'FCFA';
+
+  let confirmMsg = `Êtes-vous sûr de vouloir retirer définitivement "${memName}" de la mutuelle ?\n`;
+  if (cots.length > 0) {
+    confirmMsg += `\n⚠️ ATTENTION : ${cots.length} versement(s) pour un total de ${formatMoney(totalCot, curr)} sont associés à ce membre.\n` +
+      `La suppression du membre supprimera également l'ensemble de ses montants et réajustera la caisse.`;
+  }
+
+  if (confirm(confirmMsg)) {
     TAGBA_DB.deleteMember(memberId);
     if (typeof deleteMemberFromSupabase === 'function') {
       deleteMemberFromSupabase(memberId);
     }
-    showToast('Membre supprimé avec succès');
+    showToast(`Membre "${memName}" et ses montants supprimés avec succès.`);
     renderAllViews();
+    if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
+      pushAllDataToSupabase(true);
+    }
   }
 }
 

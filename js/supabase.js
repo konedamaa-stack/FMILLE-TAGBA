@@ -123,9 +123,16 @@ async function deleteMemberFromSupabase(memberId) {
   const client = getSupabaseClient();
   if (!client) return;
   try {
+    // 1. Supprimer tous les versements et montants associés dans la table cotisations
+    await client.from('cotisations').delete().eq('member_id', memberId);
+    // 2. Supprimer le membre de la table members
     await client.from('members').delete().eq('id', memberId);
+    // 3. Pousser immédiatement le snapshot complet mis à jour vers app_config
+    if (typeof pushAllDataToSupabase === 'function') {
+      await pushAllDataToSupabase(true);
+    }
   } catch (err) {
-    console.warn('[Supabase] Erreur suppression membre:', err);
+    console.warn('[Supabase] Erreur suppression membre et cotisations:', err);
   }
 }
 
@@ -237,6 +244,10 @@ function mergeDatasets(local, remote) {
   if (remoteTime >= localTime) {
     const merged = { ...local, ...remote };
     merged.config = { ...(local.config || {}), ...(remote.config || {}) };
+    if (merged.cotisations && merged.members) {
+      const activeIds = new Set(merged.members.map(m => m.id));
+      merged.cotisations = merged.cotisations.filter(c => activeIds.has(c.memberId || c.member_id));
+    }
     return merged;
   }
 
@@ -250,6 +261,10 @@ function mergeDatasets(local, remote) {
     localArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
     remoteArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
     merged[k] = Array.from(map.values());
+  }
+  if (merged.cotisations && merged.members) {
+    const activeIds = new Set(merged.members.map(m => m.id));
+    merged.cotisations = merged.cotisations.filter(c => activeIds.has(c.memberId || c.member_id));
   }
   return merged;
 }
