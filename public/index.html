@@ -1411,6 +1411,7 @@
                     <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
                       <span style="font-size: 11px; color: var(--text-muted);">Montants suggérés :</span>
                       <button type="button" class="btn btn-xs btn-secondary" onclick="setQuickCotisationEvenement(2000)">2 000 FCFA</button>
+                      <button type="button" class="btn btn-xs btn-secondary" onclick="setQuickCotisationEvenement(4000)">4 000 FCFA</button>
                       <button type="button" class="btn btn-xs btn-secondary" onclick="setQuickCotisationEvenement(5000)">5 000 FCFA</button>
                       <button type="button" class="btn btn-xs btn-secondary" onclick="setQuickCotisationEvenement(10000)">10 000 FCFA</button>
                       <button type="button" class="btn btn-xs btn-secondary" onclick="setQuickCotisationEvenement(20000)">20 000 FCFA</button>
@@ -1742,6 +1743,15 @@
             <small id="cotMontantNotice" style="color: var(--text-dim); font-size: 11px; display: block; margin-top: 4px;">
               🔒 Calculé selon le tarif unique : <strong id="cotNoticeUnitTarif">5 000 FCFA</strong> / mois
             </small>
+            <div id="cotEventQuickPills" style="display: none; gap: 6px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
+              <span style="font-size: 11px; color: var(--gold-400); font-weight: 600;">⚡ Montants rapides événement :</span>
+              <button type="button" class="btn btn-xs btn-gold" id="btnPillFixedEvt" onclick="setEventPaymentMontant(4000)">4 000 FCFA (Fixé)</button>
+              <button type="button" class="btn btn-xs btn-secondary" onclick="setEventPaymentMontant(1000)">1 000</button>
+              <button type="button" class="btn btn-xs btn-secondary" onclick="setEventPaymentMontant(2000)">2 000</button>
+              <button type="button" class="btn btn-xs btn-secondary" onclick="setEventPaymentMontant(3000)">3 000</button>
+              <button type="button" class="btn btn-xs btn-secondary" onclick="setEventPaymentMontant(5000)">5 000</button>
+              <button type="button" class="btn btn-xs btn-secondary" onclick="setEventPaymentMontant(10000)">10 000</button>
+            </div>
           </div>
         </div>
 

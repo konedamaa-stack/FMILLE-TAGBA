@@ -1,4 +1,4 @@
-// Contrôle en direct et instantané de l'unicité des numéros de téléphone
+﻿// Contrôle en direct et instantané de l'unicité des numéros de téléphone
 function checkPhoneLiveFeedback(inputEl, errorDivId, excludeId = null, siblingInputId = null) {
   if (!inputEl) return true;
   const errorEl = document.getElementById(errorDivId);
@@ -2709,8 +2709,16 @@ function bindFormSubmissions() {
         checkedRows.forEach(row => {
           const targetMemId = row.getAttribute('data-member-id');
           const targetMem = data.members.find(m => m.id === targetMemId);
-          const months = isEventMode ? 1 : Number(row.querySelector('.plage-member-months-select')?.value || 1);
-          const lineMontant = months * unitMonthly;
+          let lineMontant = 0;
+          let months = 1;
+          if (isEventMode) {
+            const amtInput = row.querySelector('.plage-member-event-amount');
+            lineMontant = amtInput ? Number(amtInput.value || 0) : unitMonthly;
+            months = 1;
+          } else {
+            months = Number(row.querySelector('.plage-member-months-select')?.value || 1);
+            lineMontant = months * unitMonthly;
+          }
           grandTotal += lineMontant;
           totalMonths += months;
 
@@ -3404,6 +3412,21 @@ function onCotMemberSelected() {
   // Afficher l'aperçu du statut du membre et ses échéances
   updateCotMemberAuditPreview(memberId);
 
+  // Si le mode Événement est sélectionné, préserver le mode sans forcer vers Mensuel
+  const cotTypeSelect = document.getElementById('cotType');
+  if (cotTypeSelect && cotTypeSelect.value === 'Événement') {
+    syncCotisationMontantField();
+    const data = TAGBA_DB.get();
+    const member = data.members.find(m => m.id === memberId);
+    if (!member) return;
+    const family = data.families.find(f => f.id === member.familyId);
+    const isChef = isMemberChefDeFamille(member, family);
+    if (isChef && currentGroupPaymentMode === 'group') {
+      setVersementFormMode('group', true);
+    }
+    return;
+  }
+
   // Verrouiller en priorité le premier mois échu (1 mois par défaut)
   currentAnticipationSelectedMonths = 1;
   setAnticipationMonths(1);
@@ -3485,6 +3508,10 @@ function setAnticipationMonths(nbMonths) {
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
   const unitMonthly = Number(cfg.cotisationMensuelle || 500);
+  const cotTypeSelect = document.getElementById('cotType');
+  const isEventType = cotTypeSelect && cotTypeSelect.value === 'Événement';
+  const activeEvt = isEventType ? TAGBA_DB.getActiveEvenement() : null;
+  const unitRate = isEventType ? Number(activeEvt?.montant || cfg.cotisationEvenement || 4000) : unitMonthly;
 
   // Mettre à jour l'état actif des boutons
   document.querySelectorAll('.btn-anticipate').forEach(btn => {
@@ -3726,16 +3753,30 @@ function renderGroupPaymentCard(family, chef, familyMembers = []) {
       <div id="groupPaymentChecklistSection">
         <!-- Barre d'outils de Versement Rapide -->
         <div class="family-plage-toolbar">
-          <div class="plage-duration-group">
-            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
-              ⏱️ Durée pour tous :
-            </span>
-            <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 1 ? 'active' : ''}" id="plageDurBtn_1" onclick="applyPlageDurationAll(1)">1 Mois</button>
-            <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 2 ? 'active' : ''}" id="plageDurBtn_2" onclick="applyPlageDurationAll(2)">2 Mois</button>
-            <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 3 ? 'active' : ''}" id="plageDurBtn_3" onclick="applyPlageDurationAll(3)">3 Mois (Trimestre)</button>
-            <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 6 ? 'active' : ''}" id="plageDurBtn_6" onclick="applyPlageDurationAll(6)">6 Mois</button>
-            <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 12 ? 'active' : ''}" id="plageDurBtn_12" onclick="applyPlageDurationAll(12)">12 Mois (Annuel)</button>
-          </div>
+          ${isEventType ? `
+            <div class="plage-duration-group">
+              <span style="font-size: 11px; font-weight: 700; color: var(--gold-400); text-transform: uppercase;">
+                🎯 Montant Événement :
+              </span>
+              <button type="button" class="plage-pill-btn active" onclick="applyPlageEventAmountAll(${unitRate})">${formatMoney(unitRate, cfg.currency)} (Fixé)</button>
+              <button type="button" class="plage-pill-btn" onclick="applyPlageEventAmountAll(1000)">1 000</button>
+              <button type="button" class="plage-pill-btn" onclick="applyPlageEventAmountAll(2000)">2 000</button>
+              <button type="button" class="plage-pill-btn" onclick="applyPlageEventAmountAll(3000)">3 000</button>
+              <button type="button" class="plage-pill-btn" onclick="applyPlageEventAmountAll(5000)">5 000</button>
+              <button type="button" class="plage-pill-btn" onclick="applyPlageEventAmountAll(10000)">10 000</button>
+            </div>
+          ` : `
+            <div class="plage-duration-group">
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">
+                ⏱️ Durée pour tous :
+              </span>
+              <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 1 ? 'active' : ''}" id="plageDurBtn_1" onclick="applyPlageDurationAll(1)">1 Mois</button>
+              <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 2 ? 'active' : ''}" id="plageDurBtn_2" onclick="applyPlageDurationAll(2)">2 Mois</button>
+              <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 3 ? 'active' : ''}" id="plageDurBtn_3" onclick="applyPlageDurationAll(3)">3 Mois (Trimestre)</button>
+              <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 6 ? 'active' : ''}" id="plageDurBtn_6" onclick="applyPlageDurationAll(6)">6 Mois</button>
+              <button type="button" class="plage-pill-btn ${currentPlageGlobalDuration === 12 ? 'active' : ''}" id="plageDurBtn_12" onclick="applyPlageDurationAll(12)">12 Mois (Annuel)</button>
+            </div>
+          `}
 
           <div style="font-size: 11px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
             <button type="button" class="btn btn-sm btn-secondary" onclick="toggleAllFamilyChecks(true)" style="padding: 4px 9px; font-size: 11px;">
@@ -3765,7 +3806,7 @@ function renderGroupPaymentCard(family, chef, familyMembers = []) {
                 <th>Membre du Groupe</th>
                 <th>Disponibilité</th>
                 <th>Statut actuel</th>
-                <th style="width: 140px;">Durée</th>
+                <th style="width: 140px;">${isEventType ? 'Montant Saisi' : 'Durée'}</th>
                 <th style="text-align: right; width: 110px;">Montant</th>
                 <th style="width: 40px; text-align: center;"></th>
               </tr>
@@ -3778,7 +3819,7 @@ function renderGroupPaymentCard(family, chef, familyMembers = []) {
     const statusColor = m.statutCotisation === 'A_JOUR' ? '#10b981' : (m.statutCotisation === 'PARTIEL' ? '#f59e0b' : '#ef4444');
     const statusLabel = m.statutCotisation === 'A_JOUR' ? 'À jour' : (m.statutCotisation === 'PARTIEL' ? 'Partiel' : 'En retard');
     const initialMonths = currentPlageGlobalDuration || 1;
-    const lineMontant = initialMonths * unitMonthly;
+    const lineMontant = isEventType ? unitRate : (initialMonths * unitMonthly);
 
     return `
                   <tr class="family-plage-row row-checked" id="plageRow_${m.id}" data-member-id="${m.id}" data-statut="${m.statutCotisation}">
@@ -3805,13 +3846,17 @@ function renderGroupPaymentCard(family, chef, familyMembers = []) {
                       </span>
                     </td>
                     <td>
-                      <select class="plage-months-select plage-member-months-select" id="monthsSelect_${m.id}" onchange="onPlageMemberMonthsChange('${m.id}')">
-                        <option value="1" ${initialMonths === 1 ? 'selected' : ''}>1 mois</option>
-                        <option value="2" ${initialMonths === 2 ? 'selected' : ''}>2 mois</option>
-                        <option value="3" ${initialMonths === 3 ? 'selected' : ''}>3 mois</option>
-                        <option value="6" ${initialMonths === 6 ? 'selected' : ''}>6 mois</option>
-                        <option value="12" ${initialMonths === 12 ? 'selected' : ''}>12 mois</option>
-                      </select>
+                      ${isEventType ? `
+                        <input type="number" class="form-control form-control-sm plage-member-event-amount" id="eventAmount_${m.id}" value="${unitRate}" min="0" step="500" style="width: 110px; text-align: right; font-weight: 700; color: var(--gold-400); background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.3); border-radius: 4px; padding: 4px 6px;" oninput="onPlageMemberEventAmountChange('${m.id}')" title="Modifier le montant pour ce membre">
+                      ` : `
+                        <select class="plage-months-select plage-member-months-select" id="monthsSelect_${m.id}" onchange="onPlageMemberMonthsChange('${m.id}')">
+                          <option value="1" ${initialMonths === 1 ? 'selected' : ''}>1 mois</option>
+                          <option value="2" ${initialMonths === 2 ? 'selected' : ''}>2 mois</option>
+                          <option value="3" ${initialMonths === 3 ? 'selected' : ''}>3 mois</option>
+                          <option value="6" ${initialMonths === 6 ? 'selected' : ''}>6 mois</option>
+                          <option value="12" ${initialMonths === 12 ? 'selected' : ''}>12 mois</option>
+                        </select>
+                      `}
                     </td>
                     <td style="text-align: right;">
                       <strong class="plage-line-amount" id="lineAmount_${m.id}" style="color: var(--emerald-400); font-size: 13px;">
@@ -3907,7 +3952,14 @@ function onFamilyRowCheckChange(memberId) {
         btn.innerHTML = '🟢 Prêt';
       }
       if (amountEl) {
-        amountEl.textContent = formatMoney(months * unitMonthly, cfg.currency);
+        const cotTypeSelect = document.getElementById('cotType');
+        const isEventType = cotTypeSelect && cotTypeSelect.value === 'Événement';
+        let rowAmt = months * unitMonthly;
+        if (isEventType) {
+          const evtInput = document.getElementById(`eventAmount_${memberId}`);
+          rowAmt = evtInput ? Number(evtInput.value || 0) : Number(TAGBA_DB.getActiveEvenement()?.montant || 4000);
+        }
+        amountEl.textContent = formatMoney(rowAmt, cfg.currency);
         amountEl.style.opacity = '1';
       }
     } else {
@@ -4099,9 +4151,19 @@ function syncCotisationMontantField() {
     const unitRate = isEventType ? Number(activeEvt?.montant || cfg.cotisationEvenement || 5000) : unitMonthly;
 
     checkedRows.forEach(row => {
-      const months = isEventType ? 1 : Number(row.querySelector('.plage-member-months-select')?.value || 1);
-      grandTotal += months * unitRate;
-      totalMonths += months;
+      let lineMontant = 0;
+      if (isEventType) {
+        const amtInput = row.querySelector('.plage-member-event-amount');
+        lineMontant = amtInput ? Number(amtInput.value || 0) : unitRate;
+        totalMonths += 1;
+      } else {
+        const months = Number(row.querySelector('.plage-member-months-select')?.value || 1);
+        lineMontant = months * unitMonthly;
+        totalMonths += months;
+      }
+      grandTotal += lineMontant;
+      const lineAmtEl = row.querySelector('.plage-line-amount');
+      if (lineAmtEl) lineAmtEl.textContent = formatMoney(lineMontant, cfg.currency);
     });
 
     const countEl = document.getElementById('groupCheckedCount');
@@ -4131,15 +4193,41 @@ function syncCotisationMontantField() {
 
     if (cotType === 'Événement') {
       const activeEvt = TAGBA_DB.getActiveEvenement();
-      const unitEvent = Number(activeEvt?.montant || cfg.cotisationEvenement || 5000);
-      cotMontantInput.value = unitEvent;
-      cotMontantInput.readOnly = true;
-      cotMontantInput.style.cursor = 'not-allowed';
-      if (lockIcon) lockIcon.textContent = '🎯';
+      const unitEvent = Number(activeEvt?.montant || cfg.cotisationEvenement || 4000);
+
+      // Ne pré-remplir que si le champ est vide ou s'il s'agit d'un nouveau basculement vers Événement
+      if (!cotMontantInput.value || cotMontantInput.getAttribute('data-last-type') !== 'Événement') {
+        cotMontantInput.value = unitEvent;
+      }
+
+      // RENDRE TOTALEMENT MODIFIABLE POUR PERMETTRE DE SAISIR UN AUTRE MONTANT QUE LE MONTANT FIXÉ
+      cotMontantInput.readOnly = false;
+      cotMontantInput.removeAttribute('readonly');
+      cotMontantInput.style.cursor = 'text';
+      cotMontantInput.style.background = 'rgba(245, 158, 11, 0.08)';
+      cotMontantInput.style.borderColor = 'var(--gold-400)';
+      cotMontantInput.setAttribute('data-last-type', 'Événement');
+
+      if (lockIcon) {
+        lockIcon.textContent = '✏️';
+        lockIcon.title = 'Montant modifiable librement pour cet événement';
+      }
       if (noticeEl) {
-        noticeEl.innerHTML = `🎯 Montant fixé pour <strong>${activeEvt.titre}</strong> : <strong>${formatMoney(unitEvent, cfg.currency)}</strong> / membre`;
+        noticeEl.innerHTML = `🎯 Montant fixé : <strong>${formatMoney(unitEvent, cfg.currency)}</strong> — <span style="color: var(--gold-400); font-weight: 600;">(Vous pouvez saisir un montant différent si souhaité)</span>`;
+      }
+
+      const quickPills = document.getElementById('cotEventQuickPills');
+      if (quickPills) {
+        quickPills.style.display = 'flex';
+        const fixedPill = document.getElementById('btnPillFixedEvt');
+        if (fixedPill) {
+          fixedPill.textContent = `${formatMoney(unitEvent, cfg.currency)} (Fixé)`;
+          fixedPill.onclick = () => setEventPaymentMontant(unitEvent);
+        }
       }
     } else if (cotType === 'Exceptionnel') {
+      const quickPills = document.getElementById('cotEventQuickPills');
+      if (quickPills) quickPills.style.display = 'none';
       cotMontantInput.readOnly = false;
       cotMontantInput.style.cursor = 'text';
       cotMontantInput.placeholder = 'Saisir montant exceptionnel';
@@ -4148,6 +4236,8 @@ function syncCotisationMontantField() {
         noticeEl.innerHTML = '✏️ <em>Saisie libre pour don ou contribution exceptionnelle</em>';
       }
     } else {
+      const cotPills = document.getElementById('cotEventQuickPills');
+      if (cotPills) cotPills.style.display = 'none';
       let multiplier = 1;
       if (cotType === '2 Mois') multiplier = 2;
       else if (cotType === 'Trimestriel') multiplier = 3;
@@ -5701,16 +5791,27 @@ function renderCotisationsEventsTracking() {
       let actionBtn = '';
 
       if (hasPaid) {
-        statutBadge = `<span class="badge badge-success">✅ Payé (${formatMoney(lastCot.montant, currency)})</span>`;
+        const totalPaidForMem = cotsForMem.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+        const isPartial = totalPaidForMem < unitEvent;
+        if (isPartial) {
+          statutBadge = `<span class="badge badge-warning" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4);">⚠️ Partiel (${formatMoney(totalPaidForMem, currency)} / ${formatMoney(unitEvent, currency)})</span>`;
+        } else {
+          statutBadge = `<span class="badge badge-success">✅ Payé (${formatMoney(totalPaidForMem, currency)})</span>`;
+        }
         dateRecuCell = `
           <div style="font-weight: 600; font-size: 12px; color: var(--text-main);">${formatDate(lastCot.datePaiement || lastCot.date_paiement)}</div>
           <div style="font-size: 11px; color: var(--emerald-400);">${lastCot.recuNum || lastCot.recu_num}</div>
         `;
         modeCell = `<span class="badge badge-purple" style="font-size: 10px;">${lastCot.modePaiement || lastCot.mode_paiement}</span>`;
         actionBtn = `
-          <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${lastCot.id}')" title="Voir le Reçu Officiel">
-            🧾 Reçu
-          </button>
+          <div style="display: inline-flex; gap: 4px;">
+            <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${lastCot.id}')" title="Voir le Reçu Officiel">
+              🧾 Reçu
+            </button>
+            <button class="btn btn-sm btn-outline-primary" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Ajouter un autre versement">
+              ➕
+            </button>
+          </div>
         `;
       } else {
         statutBadge = `<span class="badge badge-warning">⏳ En attente (${formatMoney(unitEvent, currency)})</span>`;
@@ -5883,9 +5984,36 @@ function openEventBatchPayModal(familyId = null, eventId = null) {
 }
 
 // ============================================================
+// GESTION PERSONNALISATION MONTANT ÉVÉNEMENT
+// ============================================================
+function setEventPaymentMontant(amount) {
+  const cotMontantInput = document.getElementById('cotMontant');
+  if (cotMontantInput) {
+    cotMontantInput.value = amount;
+    cotMontantInput.focus();
+    cotMontantInput.select();
+  }
+}
+
+function applyPlageEventAmountAll(amount) {
+  const inputs = document.querySelectorAll('.plage-member-event-amount');
+  inputs.forEach(inp => {
+    inp.value = amount;
+  });
+  syncCotisationMontantField();
+}
+
+function onPlageMemberEventAmountChange(memberId) {
+  syncCotisationMontantField();
+}
+
+// ============================================================
 // EXPOSITION GLOBALE EXPLICITE SUR WINDOW (Garantie Anti-ReferenceError)
 // ============================================================
 if (typeof window !== 'undefined') {
+  window.setEventPaymentMontant = setEventPaymentMontant;
+  window.applyPlageEventAmountAll = applyPlageEventAmountAll;
+  window.onPlageMemberEventAmountChange = onPlageMemberEventAmountChange;
   window.openModalCreateEvenement = openModalCreateEvenement;
   window.openModalEditEvenement = openModalEditEvenement;
   window.deleteCurrentEvenementConfirm = deleteCurrentEvenementConfirm;
