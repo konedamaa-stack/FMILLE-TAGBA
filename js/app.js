@@ -3689,6 +3689,7 @@ function onCotMontantInput(val) {
 // Ouvrir la modal d'audit chronologique détaillé du membre
 function openMemberMonthsAuditModal(memberId) {
   window.currentAuditMemberId = memberId;
+  const memberCotisations = (TAGBA_DB.get().cotisations || []).filter(c => (c.memberId || c.member_id) === memberId);
   const container = document.getElementById('memberMonthsAuditContent');
   if (!container) return;
 
@@ -3814,6 +3815,52 @@ function openMemberMonthsAuditModal(memberId) {
           </div>
         `;
   }).join('')}
+    </div>
+  `;
+
+  container.innerHTML += `
+    <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 18px;">
+      <h3 style="font-size: 15px; color: var(--text-main); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <span style="display: flex; align-items: center; gap: 6px;">🧾 Versements & Mois Enregistrés (${memberCotisations.length})</span>
+        <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">Cliquez sur 🗑️ pour supprimer un mois en cas d'erreur</span>
+      </h3>
+      ${memberCotisations.length === 0 ? `
+        <div style="text-align: center; padding: 16px; color: var(--text-dim); background: rgba(255,255,255,0.02); border-radius: var(--radius-md); font-size: 13px;">
+          Aucun versement enregistré pour le moment.
+        </div>
+      ` : `
+        <div style="overflow-x: auto;">
+          <table class="table" style="font-size: 13px; margin: 0; width: 100%;">
+            <thead>
+              <tr style="background: rgba(255,255,255,0.03);">
+                <th>N° Reçu</th>
+                <th>Mois / Période</th>
+                <th>Montant</th>
+                <th>Date</th>
+                <th>Mode</th>
+                <th style="text-align: right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${memberCotisations.map(c => `
+                <tr>
+                  <td><strong style="color: var(--emerald-400);">${c.recuNum}</strong></td>
+                  <td><strong>${c.periode}</strong></td>
+                  <td><strong style="color: var(--gold-400);">${formatMoney(c.montant, audit.currency)}</strong></td>
+                  <td style="color: var(--text-dim);">${c.datePaiement || '-'}</td>
+                  <td><span class="badge badge-purple" style="font-size: 10px;">${c.modePaiement || 'Espèces'}</span></td>
+                  <td style="text-align: right;">
+                    <div style="display: inline-flex; gap: 6px;">
+                      <button class="btn btn-xs btn-secondary" onclick="openReceiptModal('${c.id}')" title="Voir / Imprimer le reçu">🖨️ Reçu</button>
+                      <button class="btn btn-xs btn-danger" onclick="deleteCotisationPrompt('${c.id}', '${c.recuNum}', '${(mem.fullName || '').replace(/'/g, "\\'")}', ${c.montant})" title="Supprimer ce mois (Erreur)">🗑️ Supprimer ce mois</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `}
     </div>
   `;
 
@@ -5636,6 +5683,12 @@ function deleteCotisationPrompt(cotId, recuNum, memberName, montant) {
   }
 
   showToast(`Versement ${recuNum} (${memberName}) supprimé avec succès. Caisse et audits réajustés.`, 'info');
+  if (window.currentAuditMemberId) {
+    const auditModal = document.getElementById('modalMemberMonthsAudit');
+    if (auditModal && auditModal.classList.contains('active')) {
+      openMemberMonthsAuditModal(window.currentAuditMemberId);
+    }
+  }
   renderAllViews();
   if (typeof pushAllDataToSupabase === 'function' && navigator.onLine) {
     pushAllDataToSupabase(true);
