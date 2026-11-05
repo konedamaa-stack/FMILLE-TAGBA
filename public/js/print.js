@@ -1370,14 +1370,7 @@
     } else if (tabId === 'tab-familles') {
       printFamiliesAndMembersReport();
     } else if (tabId === 'tab-cotisations') {
-      // Détecter le sous-onglet actif
-      const subRegistres = document.getElementById('cotisationsGeneralRegistryView');
-      const isRegistry = subRegistres && subRegistres.style.display !== 'none';
-      if (isRegistry) {
-        printReceiptsJournal();
-      } else {
-        printMonthlyCotisationsReport();
-      }
+      printCotisationsCurrentSubView();
     } else if (tabId === 'tab-ceremonies') {
       // Détecter le sous-onglet actif
       const subCeremonies = document.getElementById('ceremoniesListView');
@@ -1404,8 +1397,9 @@
 
   // Sous-vues spécifiques
   function printSelectedMonthReport(monthName = null) {
-    if (typeof getMonthlyCotisationsBreakdown !== 'function') return;
-    const breakdown = getMonthlyCotisationsBreakdown();
+    const fnBreakdown = window.getMonthlyCotisationsBreakdown || (typeof getMonthlyCotisationsBreakdown === 'function' ? getMonthlyCotisationsBreakdown : null);
+    if (!fnBreakdown) return;
+    const breakdown = fnBreakdown();
     const targetMonth = monthName || window.currentSelectedRecapMonth || (breakdown.months[0]?.monthName);
     const m = breakdown.months.find(item => item.monthName === targetMonth);
     if (!m) {
@@ -1507,8 +1501,9 @@
   }
 
   function printAllMonthsRecapReport() {
-    if (typeof getMonthlyCotisationsBreakdown !== 'function') return;
-    const breakdown = getMonthlyCotisationsBreakdown();
+    const fnBreakdown = window.getMonthlyCotisationsBreakdown || (typeof getMonthlyCotisationsBreakdown === 'function' ? getMonthlyCotisationsBreakdown : null);
+    if (!fnBreakdown) return;
+    const breakdown = fnBreakdown();
     const dateTirage = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
     let rowsHtml = '';
@@ -1598,9 +1593,6 @@
     } else if (window.currentCotisSubTab === 'registre') {
       printReceiptsJournal();
     } else {
-      printMonthlyCotisationsReport();
-    }
-  }
       printMonthlyCotisationsReport();
     }
   }
