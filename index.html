@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261105-v30">
+  <link rel="stylesheet" href="css/style.css?v=20261105-v31">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -2853,10 +2853,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261105-v30"></script>
-  <script src="js/supabase.js?v=20261105-v30"></script>
-  <script src="js/app.js?v=20261105-v30"></script>
-  <script src="js/print.js?v=20261105-v30"></script>
+  <script src="js/data.js?v=20261105-v31"></script>
+  <script src="js/supabase.js?v=20261105-v31"></script>
+  <script src="js/app.js?v=20261105-v31"></script>
+  <script src="js/print.js?v=20261105-v31"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -2864,7 +2864,7 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v30) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v31) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

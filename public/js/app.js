@@ -3685,7 +3685,6 @@ function onCotMontantInput(val) {
     }
   }
 }
-}
 
 // Ouvrir la modal d'audit chronologique détaillé du membre
 function openMemberMonthsAuditModal(memberId) {
