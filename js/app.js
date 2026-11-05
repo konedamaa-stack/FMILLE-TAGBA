@@ -1,4 +1,4 @@
-﻿// Contrôle en direct et instantané de l'unicité des numéros de téléphone
+// Contrôle en direct et instantané de l'unicité des numéros de téléphone
 function checkPhoneLiveFeedback(inputEl, errorDivId, excludeId = null, siblingInputId = null) {
   if (!inputEl) return true;
   const errorEl = document.getElementById(errorDivId);
@@ -2080,6 +2080,7 @@ function openReceiptModal(cotisationId) {
 function quickPayMember(memberId) {
   if (!assertPermission('write', 'l’encaissement rapide')) return;
   openModal('modalAddCotisation');
+  setVersementFormMode('individual', false);
   const select = document.getElementById('cotMemberSelect');
   if (select) {
     select.value = memberId;
@@ -2654,146 +2655,157 @@ function bindFormSubmissions() {
   if (formAddCot) {
     formAddCot.addEventListener('submit', (e) => {
       e.preventDefault();
-      if (!assertPermission('write', 'l’enregistrement d’un versement')) return;
-      const memberId = document.getElementById('cotMemberSelect').value;
-      if (!memberId) {
-        showToast('Veuillez sélectionner un membre cotisant', 'warning');
-        return;
-      }
-
-      const data = TAGBA_DB.get();
-      const mem = data.members.find(m => m.id === memberId);
-      const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
-      const isChef = isMemberChefDeFamille(mem, fam);
-
-      const cotType = document.getElementById('cotType').value;
-      const periode = document.getElementById('cotPeriode').value.trim();
-      const modePaiement = document.getElementById('cotMode').value;
-      const datePaiement = document.getElementById('cotDate').value || new Date().toISOString().split('T')[0];
-      const agent = 'Seydou Coulibaly (Trésorier Général)';
-
-      const groupContainer = document.getElementById('cotGroupPaymentContainer');
-      const isGroupPayment = groupContainer && groupContainer.style.display !== 'none' && currentGroupPaymentMode === 'group';
-
-      if (isGroupPayment) {
-        // Mode Plage de Versement Groupé (Famille et/ou Autres membres sélectionnés)
-        const allRows = Array.from(document.querySelectorAll('.family-plage-row'));
-        const checkedRows = allRows.filter(row => {
-          const cb = row.querySelector('.family-member-cb');
-          return cb && cb.checked;
-        });
-
-        const unreadyRows = allRows.filter(row => {
-          const cb = row.querySelector('.family-member-cb');
-          return cb && !cb.checked;
-        });
-
-        if (checkedRows.length === 0) {
-          showToast('Veuillez cocher au moins un membre prêt pour ce versement groupé', 'warning');
+      try {
+        if (!assertPermission('write', 'l’enregistrement d’un versement')) return;
+        const memberId = document.getElementById('cotMemberSelect').value;
+        if (!memberId) {
+          showToast('Veuillez sélectionner un membre cotisant', 'warning');
           return;
         }
 
-        const unreadyMembers = unreadyRows.map(row => {
-          const targetMemId = row.getAttribute('data-member-id');
-          return data.members.find(m => m.id === targetMemId);
-        }).filter(Boolean);
+        const data = TAGBA_DB.get();
+        const mem = data.members.find(m => m.id === memberId);
+        const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
+        const isChef = isMemberChefDeFamille(mem, fam);
 
-        const cfg = data.config || {};
-        const isEventMode = cotType === 'Événement';
-        const unitMonthly = isEventMode ? Number(cfg.cotisationEvenement || 5000) : Number(cfg.cotisationMensuelle || 500);
-        let grandTotal = 0;
-        let totalMonths = 0;
-        const groupBatchRef = 'GRP-' + Date.now().toString().slice(-6);
-        const groupMembersInfo = [];
+        const cotType = document.getElementById('cotType').value;
+        const periode = document.getElementById('cotPeriode').value.trim() || 'Cotisation';
+        const modePaiement = document.getElementById('cotMode').value || 'Wave';
+        const datePaiement = document.getElementById('cotDate').value || new Date().toISOString().split('T')[0];
+        const agent = 'Seydou Coulibaly (Trésorier Général)';
 
-        checkedRows.forEach(row => {
-          const targetMemId = row.getAttribute('data-member-id');
-          const targetMem = data.members.find(m => m.id === targetMemId);
-          let lineMontant = 0;
-          let months = 1;
-          if (isEventMode) {
-            const amtInput = row.querySelector('.plage-member-event-amount');
-            lineMontant = amtInput ? Number(amtInput.value || 0) : unitMonthly;
-            months = 1;
-          } else {
-            months = Number(row.querySelector('.plage-member-months-select')?.value || 1);
-            lineMontant = months * unitMonthly;
+        const groupContainer = document.getElementById('cotGroupPaymentContainer');
+        const isGroupPayment = groupContainer && groupContainer.style.display !== 'none' && currentGroupPaymentMode === 'group';
+
+        if (isGroupPayment) {
+          // Mode Plage de Versement Groupé (Famille et/ou Autres membres sélectionnés)
+          const allRows = Array.from(document.querySelectorAll('.family-plage-row'));
+          const checkedRows = allRows.filter(row => {
+            const cb = row.querySelector('.family-member-cb');
+            return cb && cb.checked;
+          });
+
+          const unreadyRows = allRows.filter(row => {
+            const cb = row.querySelector('.family-member-cb');
+            return cb && !cb.checked;
+          });
+
+          if (checkedRows.length === 0) {
+            showToast('Veuillez cocher au moins un membre prêt pour ce versement groupé', 'warning');
+            return;
           }
-          grandTotal += lineMontant;
-          totalMonths += months;
 
-          const memberPeriode = isEventMode ? periode : (months === 1 ? periode : `${periode} (${months} mois)`);
+          const unreadyMembers = unreadyRows.map(row => {
+            const targetMemId = row.getAttribute('data-member-id');
+            return data.members.find(m => m.id === targetMemId);
+          }).filter(Boolean);
 
-          const selectedEventId = isEventMode ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
-          const cotRecord = {
-            memberId: targetMemId,
-            memberName: targetMem ? targetMem.fullName : 'Membre',
-            familyId: targetMem ? targetMem.familyId : (mem ? mem.familyId : 'fam-1'),
-            type: isEventMode ? 'Événement' : (months === 1 ? 'Mensuel' : (months === 3 ? 'Trimestriel' : `${months} Mois`)),
-            periode: memberPeriode,
+          const cfg = data.config || {};
+          const isEventMode = cotType === 'Événement';
+          const unitMonthly = isEventMode ? Number(cfg.cotisationEvenement || 5000) : Number(cfg.cotisationMensuelle || 500);
+          let grandTotal = 0;
+          let totalMonths = 0;
+          const groupBatchRef = 'GRP-' + Date.now().toString().slice(-6);
+          const groupMembersInfo = [];
+
+          checkedRows.forEach(row => {
+            const targetMemId = row.getAttribute('data-member-id');
+            const targetMem = data.members.find(m => m.id === targetMemId);
+            let lineMontant = 0;
+            let months = 1;
+            if (isEventMode) {
+              const amtInput = row.querySelector('.plage-member-event-amount');
+              lineMontant = amtInput ? Number(amtInput.value || 0) : unitMonthly;
+              months = 1;
+            } else {
+              months = Number(row.querySelector('.plage-member-months-select')?.value || 1);
+              lineMontant = months * unitMonthly;
+            }
+            grandTotal += lineMontant;
+            totalMonths += months;
+
+            const memberPeriode = isEventMode ? periode : (months === 1 ? periode : `${periode} (${months} mois)`);
+
+            const selectedEventId = isEventMode ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
+            const cotRecord = {
+              memberId: targetMemId,
+              memberName: targetMem ? targetMem.fullName : 'Membre',
+              familyId: targetMem ? targetMem.familyId : (mem ? mem.familyId : 'fam-1'),
+              type: isEventMode ? 'Événement' : (months === 1 ? 'Mensuel' : (months === 3 ? 'Trimestriel' : `${months} Mois`)),
+              periode: memberPeriode,
+              eventId: selectedEventId,
+              montant: lineMontant,
+              modePaiement: modePaiement,
+              datePaiement: datePaiement,
+              agent: agent,
+              groupRef: groupBatchRef,
+              payeurChef: mem ? mem.fullName : 'Représentant',
+              monthsPaid: months
+            };
+
+            const saved = TAGBA_DB.addCotisation(cotRecord);
+            groupMembersInfo.push({
+              member: targetMem,
+              cotisation: saved,
+              amount: lineMontant,
+              months: months
+            });
+          });
+
+          const unreadyMsg = unreadyMembers.length > 0 ? ` (${unreadyMembers.length} membre(s) non prêt(s) différé(s))` : '';
+          showToast(`✅ Versement groupé de ${formatMoney(grandTotal, data.config.currency)} validé pour ${checkedRows.length} membres${unreadyMsg} !`);
+          closeModal('modalAddCotisation');
+          currentGroupExtraMembers = [];
+          formAddCot.reset();
+          renderAllViews();
+
+          openGroupReceiptModal({
+            family: fam,
+            chef: mem,
+            members: groupMembersInfo,
+            unreadyMembers: unreadyMembers,
+            totalAmount: grandTotal,
+            totalMonths: totalMonths,
+            periode: periode,
+            datePaiement: datePaiement,
+            modePaiement: modePaiement,
+            groupBatchRef: groupBatchRef,
+            type: cotType,
+            currency: data.config.currency
+          });
+
+        } else {
+          // Mode Versement Individuel
+          const rawMontant = Number(document.getElementById('cotMontant').value);
+          if (isNaN(rawMontant) || rawMontant <= 0) {
+            showToast('Veuillez spécifier un montant valide supérieur à 0', 'warning');
+            return;
+          }
+
+          const selectedEventId = cotType === 'Événement' ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
+          const newCot = {
+            memberId: memberId,
+            memberName: mem ? mem.fullName : 'Membre',
+            familyId: mem ? mem.familyId : 'fam-1',
+            type: cotType,
+            periode: periode,
             eventId: selectedEventId,
-            montant: lineMontant,
+            montant: rawMontant,
             modePaiement: modePaiement,
             datePaiement: datePaiement,
-            agent: agent,
-            groupRef: groupBatchRef,
-            payeurChef: mem ? mem.fullName : 'Représentant',
-            monthsPaid: months
+            agent: agent
           };
 
-          const saved = TAGBA_DB.addCotisation(cotRecord);
-          groupMembersInfo.push({
-            member: targetMem,
-            cotisation: saved,
-            amount: lineMontant,
-            months: months
-          });
-        });
-
-        const unreadyMsg = unreadyMembers.length > 0 ? ` (${unreadyMembers.length} membre(s) non prêt(s) différé(s))` : '';
-        showToast(`✅ Versement groupé de ${formatMoney(grandTotal, data.config.currency)} validé pour ${checkedRows.length} membres${unreadyMsg} !`);
-        closeModal('modalAddCotisation');
-        currentGroupExtraMembers = [];
-        formAddCot.reset();
-        renderAllViews();
-
-        openGroupReceiptModal({
-          family: fam,
-          chef: mem,
-          members: groupMembersInfo,
-          unreadyMembers: unreadyMembers,
-          totalAmount: grandTotal,
-          totalMonths: totalMonths,
-          periode: periode,
-          datePaiement: datePaiement,
-          modePaiement: modePaiement,
-          groupBatchRef: groupBatchRef,
-          type: cotType,
-          currency: data.config.currency
-        });
-
-      } else {
-        // Mode Versement Individuel
-        const selectedEventId = cotType === 'Événement' ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
-        const newCot = {
-          memberId: memberId,
-          memberName: mem ? mem.fullName : 'Membre',
-          familyId: mem ? mem.familyId : 'fam-1',
-          type: cotType,
-          periode: periode,
-          eventId: selectedEventId,
-          montant: Number(document.getElementById('cotMontant').value),
-          modePaiement: modePaiement,
-          datePaiement: datePaiement,
-          agent: agent
-        };
-
-        const saved = TAGBA_DB.addCotisation(newCot);
-        showToast('Versement enregistré ! Reçu individuel généré.');
-        closeModal('modalAddCotisation');
-        formAddCot.reset();
-        renderAllViews();
-        openReceiptModal(saved.id);
+          const saved = TAGBA_DB.addCotisation(newCot);
+          showToast('✅ Versement enregistré avec succès ! Reçu officiel généré.');
+          closeModal('modalAddCotisation');
+          formAddCot.reset();
+          renderAllViews();
+          openReceiptModal(saved.id);
+        }
+      } catch (err) {
+        console.error('Erreur versement:', err);
+        showToast('Erreur lors du versement : ' + (err.message || 'problème inattendu'), 'error');
       }
     });
   }
@@ -3438,10 +3450,8 @@ function onCotMemberSelected() {
   const family = data.families.find(f => f.id === member.familyId);
   const isChef = isMemberChefDeFamille(member, family);
 
-  // Si c'est un chef de famille ou si le mode groupé était déjà activé
-  if (isChef) {
-    setVersementFormMode('group', true);
-  } else if (currentGroupPaymentMode === 'group') {
+  // Si le mode groupé est activé par l'onglet ou le bouton dédié
+  if (currentGroupPaymentMode === 'group') {
     setVersementFormMode('group', true);
   } else {
     setVersementFormMode('individual', false);
@@ -3717,6 +3727,11 @@ function renderGroupPaymentCard(family, chef, familyMembers = []) {
   const data = TAGBA_DB.get();
   const cfg = data.config || {};
   const unitMonthly = Number(cfg.cotisationMensuelle || 500);
+
+  const cotTypeSelect = document.getElementById('cotType');
+  const isEventType = cotTypeSelect && cotTypeSelect.value === 'Événement';
+  const activeEvt = isEventType ? TAGBA_DB.getActiveEvenement() : null;
+  const unitRate = isEventType ? Number(activeEvt?.montant || cfg.cotisationEvenement || 5000) : unitMonthly;
 
   // Fusionner les membres du foyer avec les membres supplémentaires ajoutés manuellement
   const baseMembers = [...familyMembers];
@@ -4304,10 +4319,11 @@ function updateCotisationModalDefaults() {
   }
   populateCotisationMembers('');
 
-  // 5. Réinitialiser la durée globale à 1 mois et synchroniser le montant
+  // 5. Réinitialiser la durée globale à 1 mois et synchroniser le montant (Mode individuel par défaut)
   currentPlageGlobalDuration = 1;
   currentAnticipationSelectedMonths = 1;
-  currentGroupPaymentMode = 'group';
+  currentGroupPaymentMode = 'individual';
+  setVersementFormMode('individual', false);
   setAnticipationMonths(1);
   syncCotisationMontantField();
 }
@@ -4397,7 +4413,7 @@ function openGroupReceiptModal(groupInfo) {
       <div style="display: flex; justify-content: space-between; margin-top: 36px; padding-top: 18px; border-top: 1px solid #e5e7eb; font-size: 12px;">
         <div style="text-align: center;">
           <p style="font-weight: 600; margin-bottom: 30px;">Le Chef de Famille Cotisant</p>
-          <p style="color: #6b7280; font-weight: 600;">${chef.fullName}</p>
+          <p style="color: #6b7280; font-weight: 600;">${chef ? chef.fullName : 'Représentant'}</p>
         </div>
         <div style="text-align: center;">
           <p style="font-weight: 600; margin-bottom: 30px;">Pour le Bureau Exécutif (Trésorerie)</p>
