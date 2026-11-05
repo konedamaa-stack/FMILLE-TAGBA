@@ -1494,8 +1494,8 @@ function getMemberCotisationAudit(memberId, refDateStr = null) {
     'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'
   ];
 
-  // Générer la timeline chronologique sur au moins 14 mois ou plus si anticipation
-  const totalMonthsToGenerate = Math.max(14, monthsPaidCount + 4);
+  // Générer la timeline chronologique sur au moins 36 mois ou plus si anticipation
+  const totalMonthsToGenerate = Math.max(36, monthsPaidCount + 24);
   const timeline = [];
   const paidMonthsLabels = [];
   const advanceMonthsLabels = [];
@@ -3547,12 +3547,24 @@ function setAnticipationMonths(nbMonths) {
     else if (nbMonths === 3) selectType.value = 'Trimestriel';
     else if (nbMonths === 6) selectType.value = 'Semestriel';
     else if (nbMonths === 12) selectType.value = 'Annuel';
+    else if (nbMonths === 15) selectType.value = '15 Mois';
+    else {
+      let customOpt = selectType.querySelector(`option[value="${nbMonths} Mois"]`);
+      if (!customOpt) {
+        customOpt = document.createElement('option');
+        customOpt.value = `${nbMonths} Mois`;
+        customOpt.textContent = `${nbMonths} Mois (${formatMoney(nbMonths * unitMonthly, cfg.currency)})`;
+        selectType.appendChild(customOpt);
+      }
+      selectType.value = `${nbMonths} Mois`;
+    }
   }
 
   // Calculer la période couverte exacte selon l'audit du membre sélectionné
   const memberSelect = document.getElementById('cotMemberSelect');
   const memberId = memberSelect ? memberSelect.value : null;
   const inputPeriode = document.getElementById('cotPeriode');
+  const noticeEl = document.getElementById('cotMontantNotice');
 
   if (inputPeriode) {
     if (memberId) {
@@ -3575,6 +3587,104 @@ function setAnticipationMonths(nbMonths) {
       inputPeriode.value = nbMonths === 1 ? '1 Mois' : `${nbMonths} Mois de cotisation`;
     }
   }
+
+  if (noticeEl) {
+    noticeEl.innerHTML = `⚡ <strong>${formatMoney(nbMonths * unitMonthly, cfg.currency)}</strong> = <strong>${nbMonths} mois de cotisation</strong> (${formatMoney(unitMonthly, cfg.currency)} / mois)`;
+  }
+}
+
+function enableCustomCotisationAmount() {
+  const cotMontantInput = document.getElementById('cotMontant');
+  const lockIcon = document.getElementById('cotMontantLockIcon');
+  if (cotMontantInput) {
+    cotMontantInput.readOnly = false;
+    cotMontantInput.removeAttribute('readonly');
+    cotMontantInput.style.cursor = 'text';
+    cotMontantInput.style.background = 'rgba(16, 185, 129, 0.08)';
+    cotMontantInput.style.borderColor = 'var(--emerald-400)';
+    cotMontantInput.focus();
+    cotMontantInput.select();
+  }
+  if (lockIcon) {
+    lockIcon.textContent = '✏️';
+    lockIcon.title = 'Saisie libre de montant activée';
+  }
+  document.querySelectorAll('.btn-anticipate').forEach(btn => btn.classList.remove('active'));
+  const btnCustom = document.getElementById('btnCustomAnticipate');
+  if (btnCustom) btnCustom.classList.add('active');
+}
+
+function onCotMontantInput(val) {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const unitMonthly = Number(cfg.cotisationMensuelle || 500);
+  const cotTypeSelect = document.getElementById('cotType');
+  const isEventType = cotTypeSelect && cotTypeSelect.value === 'Événement';
+  if (isEventType) return;
+
+  const numVal = Number(val) || 0;
+  if (numVal <= 0) return;
+
+  const nbMonths = Math.floor(numVal / unitMonthly);
+  const reliquat = numVal % unitMonthly;
+
+  if (nbMonths >= 1) {
+    currentAnticipationSelectedMonths = nbMonths;
+    document.querySelectorAll('.btn-anticipate').forEach(btn => {
+      const m = Number(btn.getAttribute('data-months'));
+      if (m === nbMonths && reliquat === 0) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+
+    const memberSelect = document.getElementById('cotMemberSelect');
+    const memberId = memberSelect ? memberSelect.value : null;
+    const inputPeriode = document.getElementById('cotPeriode');
+    const noticeEl = document.getElementById('cotMontantNotice');
+
+    if (inputPeriode && memberId) {
+      const audit = getMemberCotisationAudit(memberId);
+      if (audit && audit.timeline) {
+        const startIndex = audit.monthsPaidCount;
+        const targetMonths = audit.timeline.slice(startIndex, startIndex + nbMonths);
+        if (targetMonths.length > 0) {
+          if (nbMonths === 1) {
+            inputPeriode.value = `${targetMonths[0].fullLabel} (1 mois)`;
+          } else {
+            const first = targetMonths[0].shortLabel;
+            const last = targetMonths[targetMonths.length - 1].shortLabel;
+            inputPeriode.value = `${first} à ${last} (${nbMonths} mois - Anticipation)`;
+          }
+        }
+      }
+    }
+
+    if (noticeEl) {
+      noticeEl.innerHTML = `⚡ <strong>${formatMoney(numVal, cfg.currency)}</strong> = <strong>${nbMonths} mois de cotisation</strong> couverts${reliquat > 0 ? ` (+ reliquat ${formatMoney(reliquat, cfg.currency)})` : ''}`;
+    }
+
+    if (cotTypeSelect) {
+      if (nbMonths === 1) cotTypeSelect.value = 'Mensuel';
+      else if (nbMonths === 2) cotTypeSelect.value = '2 Mois';
+      else if (nbMonths === 3) cotTypeSelect.value = 'Trimestriel';
+      else if (nbMonths === 6) cotTypeSelect.value = 'Semestriel';
+      else if (nbMonths === 12) cotTypeSelect.value = 'Annuel';
+      else if (nbMonths === 15) cotTypeSelect.value = '15 Mois';
+      else {
+        let customOpt = cotTypeSelect.querySelector(`option[value="${nbMonths} Mois"]`);
+        if (!customOpt) {
+          customOpt = document.createElement('option');
+          customOpt.value = `${nbMonths} Mois`;
+          customOpt.textContent = `${nbMonths} Mois (${formatMoney(numVal, cfg.currency)})`;
+          cotTypeSelect.appendChild(customOpt);
+        }
+        cotTypeSelect.value = `${nbMonths} Mois`;
+      }
+    }
+  }
+}
 }
 
 // Ouvrir la modal d'audit chronologique détaillé du membre
@@ -4258,18 +4368,23 @@ function syncCotisationMontantField() {
       else if (cotType === 'Trimestriel') multiplier = 3;
       else if (cotType === 'Semestriel') multiplier = 6;
       else if (cotType === 'Annuel') multiplier = 12;
+      else if (cotType === '15 Mois') multiplier = 15;
 
-      if (currentAnticipationSelectedMonths && [1, 2, 3, 6, 12].includes(currentAnticipationSelectedMonths)) {
+      if (currentAnticipationSelectedMonths && currentAnticipationSelectedMonths >= 1) {
         multiplier = currentAnticipationSelectedMonths;
       }
 
       const totalVal = unitMonthly * multiplier;
       cotMontantInput.value = totalVal;
-      cotMontantInput.readOnly = true;
-      cotMontantInput.style.cursor = 'not-allowed';
-      if (lockIcon) lockIcon.textContent = '🔒';
+      cotMontantInput.readOnly = false;
+      cotMontantInput.removeAttribute('readonly');
+      cotMontantInput.style.cursor = 'text';
+      if (lockIcon) {
+        lockIcon.textContent = '✏️';
+        lockIcon.title = 'Montant modifiable librement (ex: 7 500)';
+      }
       if (noticeEl) {
-        noticeEl.innerHTML = `🔒 Calculé selon le tarif unique : <strong>${formatMoney(unitMonthly, cfg.currency)}</strong> × ${multiplier} mois = <strong>${formatMoney(totalVal, cfg.currency)}</strong>`;
+        noticeEl.innerHTML = `⚡ Calculé selon le barème : <strong>${formatMoney(unitMonthly, cfg.currency)}</strong> × ${multiplier} mois = <strong>${formatMoney(totalVal, cfg.currency)}</strong> (Modifiable librement si vous souhaitez saisir un autre montant)`;
       }
     }
   }
@@ -6027,6 +6142,8 @@ function onPlageMemberEventAmountChange(memberId) {
 // EXPOSITION GLOBALE EXPLICITE SUR WINDOW (Garantie Anti-ReferenceError)
 // ============================================================
 if (typeof window !== 'undefined') {
+  window.enableCustomCotisationAmount = enableCustomCotisationAmount;
+  window.onCotMontantInput = onCotMontantInput;
   window.setEventPaymentMontant = setEventPaymentMontant;
   window.applyPlageEventAmountAll = applyPlageEventAmountAll;
   window.onPlageMemberEventAmountChange = onPlageMemberEventAmountChange;
