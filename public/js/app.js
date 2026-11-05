@@ -1374,11 +1374,15 @@ function formatStatut(statut) {
 }
 
 // 4. Rendu Cotisations & Versements
-let currentCotisSubTab = 'months';
+// 4. Rendu Cotisations & Versements
+let currentCotisSubTab = 'recap_mois';
 let currentMonthsTrackingFilter = 'ALL';
 let currentMonthsLateFilter = 'ALL';
 window.currentMonthsTrackingFilter = currentMonthsTrackingFilter;
 window.currentMonthsLateFilter = currentMonthsLateFilter;
+window.currentCotisSubTab = currentCotisSubTab;
+let currentSelectedRecapMonth = null;
+let currentRecapMoisDetailMode = 'paid';
 
 function switchCotisSubTab(subTab) {
   if (subTab === 'events') {
@@ -1387,16 +1391,456 @@ function switchCotisSubTab(subTab) {
     return;
   }
   currentCotisSubTab = subTab;
+  window.currentCotisSubTab = subTab;
+  const btnRecap = document.getElementById('btnCotisSubTabRecapMois');
   const btnMonths = document.getElementById('btnCotisSubTabMonths');
   const btnRegistre = document.getElementById('btnCotisSubTabRegistre');
+  const viewRecap = document.getElementById('cotisationsRecapMoisView');
   const viewMonths = document.getElementById('cotisationsMonthsTrackingView');
   const viewRegistre = document.getElementById('cotisationsRegistreView');
 
+  if (btnRecap) btnRecap.classList.toggle('active', subTab === 'recap_mois');
   if (btnMonths) btnMonths.classList.toggle('active', subTab === 'months');
   if (btnRegistre) btnRegistre.classList.toggle('active', subTab === 'registre');
 
+  if (viewRecap) viewRecap.style.display = subTab === 'recap_mois' ? 'block' : 'none';
   if (viewMonths) viewMonths.style.display = subTab === 'months' ? 'block' : 'none';
   if (viewRegistre) viewRegistre.style.display = subTab === 'registre' ? 'block' : 'none';
+
+  if (subTab === 'recap_mois') {
+    renderCotisationsRecapMois();
+  }
+}
+
+// 4.0. Module de Synthèse des Versements Mois par Mois
+function getMonthlyCotisationsBreakdown() {
+  const data = TAGBA_DB.get();
+  const cfg = data.config || {};
+  const members = data.members || [];
+  const cotisations = data.cotisations || [];
+  const currency = cfg.currency || 'FCFA';
+
+  // Filtrer les cotisations régulières (hors événements et sacrifices)
+  const regularCots = cotisations.filter(c => {
+    const t = (c.type || '').toLowerCase();
+    const p = (c.periode || '').toLowerCase();
+    return !c.eventId && !t.includes('venement') && !t.includes('vènement') && !p.includes('sacrifice');
+  });
+
+  const monthNamesFr = [
+    'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+  ];
+
+  const monthMap = new Map();
+
+  function ensureMonth(monthName) {
+    if (!monthMap.has(monthName)) {
+      monthMap.set(monthName, {
+        monthName,
+        totalMontant: 0,
+        versements: [],
+        memberIds: new Set()
+      });
+    }
+    return monthMap.get(monthName);
+  }
+
+  // Initialiser au moins Octobre 2026 et Novembre 2026
+  const today = new Date();
+  const startDate = new Date(cfg.dateDebutCotisations || '2026-10-04');
+  const startYear = isNaN(startDate.getFullYear()) ? 2026 : startDate.getFullYear();
+  const startMonth = isNaN(startDate.getMonth()) ? 9 : startDate.getMonth();
+  const curYear = today.getFullYear();
+  const curMonth = today.getMonth();
+
+  const diffMonths = (curYear - startYear) * 12 + (curMonth - startMonth);
+  for (let i = 0; i <= Math.max(diffMonths, 1); i++) {
+    const mIdx = (startMonth + i) % 12;
+    const y = startYear + Math.floor((startMonth + i) / 12);
+    ensureMonth(`${monthNamesFr[mIdx]} ${y}`);
+  }
+
+  // Traiter chaque cotisation
+  regularCots.forEach(c => {
+    const p = (c.periode || '').trim();
+    const cleanMonth = p.replace(/\s*\(\d+\s*mois.*?\)/i, '').trim() || 'Non défini';
+    const mObj = ensureMonth(cleanMonth);
+    mObj.totalMontant += Number(c.montant) || 0;
+    mObj.versements.push(c);
+    const mId = c.memberId || c.member_id;
+    if (mId) mObj.memberIds.add(mId);
+  });
+
+  const totalMembers = members.length;
+  const months = [];
+
+  monthMap.forEach((obj, monthName) => {
+    const nbPaid = obj.memberIds.size;
+    const nbLate = Math.max(0, totalMembers - nbPaid);
+    const rate = totalMembers > 0 ? Math.round((nbPaid / totalMembers) * 100) : 0;
+
+    const paidMembers = members.filter(m => obj.memberIds.has(m.id));
+    const lateMembers = members.filter(m => !obj.memberIds.has(m.id));
+
+    months.push({
+      monthName,
+      totalMontant: obj.totalMontant,
+      versements: obj.versements,
+      nbPaid,
+      nbLate,
+      rate,
+      totalMembers,
+      paidMembers,
+      lateMembers
+    });
+  });
+
+  // Tri chronologique
+  months.sort((a, b) => {
+    const parseM = (str) => {
+      const parts = str.split(' ');
+      const mIdx = monthNamesFr.indexOf(parts[0]);
+      const y = parseInt(parts[1], 10) || 2026;
+      return y * 12 + (mIdx >= 0 ? mIdx : 0);
+    };
+    return parseM(a.monthName) - parseM(b.monthName);
+  });
+
+  return {
+    months,
+    totalMembers,
+    totalCotisationsGlobal: regularCots.reduce((sum, c) => sum + (Number(c.montant) || 0), 0),
+    currency
+  };
+}
+
+function renderCotisationsRecapMois() {
+  const breakdown = getMonthlyCotisationsBreakdown();
+  const kpiGrid = document.getElementById('recapMoisKpiCardsGrid');
+  const tbody = document.getElementById('recapMoisSummaryTableBody');
+  const summaryText = document.getElementById('recapMoisTableSummary');
+  if (!tbody) return;
+
+  if (!currentSelectedRecapMonth && breakdown.months.length > 0) {
+    const hasOct = breakdown.months.find(m => m.monthName.includes('Octobre'));
+    currentSelectedRecapMonth = hasOct ? hasOct.monthName : breakdown.months[0].monthName;
+  }
+
+  if (summaryText) {
+    summaryText.textContent = `${breakdown.months.length} mois répertoriés • Total : ${formatMoney(breakdown.totalCotisationsGlobal, breakdown.currency)}`;
+  }
+
+  // 1. Rendu des Cartes KPI Mensuelles
+  if (kpiGrid) {
+    kpiGrid.innerHTML = breakdown.months.map(m => {
+      const isSelected = m.monthName === currentSelectedRecapMonth;
+      const cardBorder = isSelected ? 'border: 2px solid var(--emerald-400); transform: translateY(-2px);' : 'border-left: 3px solid var(--emerald-500);';
+      const bg = isSelected ? 'background: rgba(16, 185, 129, 0.12);' : '';
+      return `
+        <div class="kpi-card" style="cursor: pointer; ${cardBorder} ${bg} transition: all 0.2s;" onclick="selectRecapMonth('${m.monthName}')" title="Cliquer pour afficher les détails du mois ${m.monthName}">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span class="kpi-title" style="font-weight: 700; color: ${isSelected ? 'var(--emerald-400)' : 'var(--text-main)'};">📅 ${m.monthName}</span>
+            <span class="badge ${m.rate >= 80 ? 'badge-success' : m.rate >= 40 ? 'badge-warning' : 'badge-danger'}" style="font-size: 10px;">${m.rate}%</span>
+          </div>
+          <div class="kpi-value" style="font-size: 20px; color: var(--emerald-400);">${formatMoney(m.totalMontant, breakdown.currency)}</div>
+          <div class="kpi-sub" style="margin-top: 4px;">
+            <strong style="color: var(--text-main);">${m.nbPaid}</strong> cotisant(s) sur ${breakdown.totalMembers}
+          </div>
+          <div style="width: 100%; background: rgba(255,255,255,0.08); height: 4px; border-radius: 2px; margin-top: 8px; overflow: hidden;">
+            <div style="background: ${m.rate >= 80 ? 'var(--emerald-400)' : m.rate >= 40 ? '#f59e0b' : '#ef4444'}; height: 100%; width: ${Math.min(100, m.rate)}%;"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // 2. Rendu du Tableau Synthétique des Mois
+  tbody.innerHTML = breakdown.months.map(m => {
+    const isSelected = m.monthName === currentSelectedRecapMonth;
+    const rowBg = isSelected ? 'background: rgba(16, 185, 129, 0.08);' : '';
+    let statutBadge = '';
+    if (m.rate >= 80) statutBadge = '<span class="badge badge-success">✅ Fort Recouvrement</span>';
+    else if (m.rate >= 40) statutBadge = '<span class="badge badge-warning">⚡ En Cours</span>';
+    else if (m.nbPaid > 0) statutBadge = '<span class="badge badge-purple">🚀 Anticipation</span>';
+    else statutBadge = '<span class="badge badge-danger">⚠️ À Recouvrer</span>';
+
+    return `
+      <tr style="${rowBg}">
+        <td>
+          <div style="font-weight: 700; font-size: 14px; color: ${isSelected ? 'var(--emerald-400)' : 'var(--text-main)'}; display: flex; align-items: center; gap: 6px;">
+            <span>📅</span> ${m.monthName}
+            ${isSelected ? '<span class="badge badge-info" style="font-size: 9px;">Sélectionné</span>' : ''}
+          </div>
+        </td>
+        <td><strong style="color: var(--emerald-400); font-size: 15px;">${formatMoney(m.totalMontant, breakdown.currency)}</strong></td>
+        <td>
+          <strong style="color: #34d399;">${m.nbPaid} membre(s)</strong>
+          <span style="font-size: 11px; color: var(--text-muted);"> (${m.versements.length} versement(s))</span>
+        </td>
+        <td>
+          <span style="color: ${m.nbLate > 0 ? 'var(--rose-400)' : 'var(--text-muted)'}; font-weight: ${m.nbLate > 0 ? '600' : 'normal'};">
+            ${m.nbLate > 0 ? `${m.nbLate} en attente` : 'Aucun retard'}
+          </span>
+        </td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; background: rgba(255,255,255,0.08); height: 6px; border-radius: 3px; min-width: 60px; overflow: hidden;">
+              <div style="background: ${m.rate >= 80 ? 'var(--emerald-400)' : m.rate >= 40 ? '#f59e0b' : '#ef4444'}; height: 100%; width: ${Math.min(100, m.rate)}%;"></div>
+            </div>
+            <span style="font-size: 12px; font-weight: 600;">${m.rate}%</span>
+          </div>
+        </td>
+        <td>${statutBadge}</td>
+        <td style="text-align: right;">
+          <div style="display: inline-flex; gap: 6px;">
+            <button class="btn btn-xs ${isSelected ? 'btn-primary' : 'btn-secondary'}" onclick="selectRecapMonth('${m.monthName}')" title="Voir la liste détaillée des membres">
+              👁️ Détails
+            </button>
+            <button class="btn btn-xs btn-secondary" onclick="printSelectedMonthReport('${m.monthName}')" title="Imprimer la fiche de ce mois">
+              🖨️ Imprimer
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  // 3. Rendu du Tableau Détail du Mois Sélectionné
+  renderRecapMoisDetailTable();
+
+  // 4. Mettre à jour le sélecteur dans le Registre Général
+  populateCotisRegistreMonthFilter(breakdown.months);
+}
+
+function selectRecapMonth(monthName) {
+  currentSelectedRecapMonth = monthName;
+  renderCotisationsRecapMois();
+  const panel = document.getElementById('recapMoisDetailPanel');
+  if (panel) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function setRecapMoisDetailViewMode(mode) {
+  currentRecapMoisDetailMode = mode;
+  const btnPaid = document.getElementById('btnFilterMoisPaid');
+  const btnLate = document.getElementById('btnFilterMoisLate');
+  if (btnPaid) btnPaid.classList.toggle('active', mode === 'paid');
+  if (btnLate) btnLate.classList.toggle('active', mode === 'late');
+  renderRecapMoisDetailTable();
+}
+
+function renderRecapMoisDetailTable() {
+  const breakdown = getMonthlyCotisationsBreakdown();
+  const data = TAGBA_DB.get();
+  const currentMonth = breakdown.months.find(m => m.monthName === currentSelectedRecapMonth) || breakdown.months[0];
+  if (!currentMonth) return;
+
+  const titleEl = document.getElementById('recapMoisDetailTitle');
+  const subtitleEl = document.getElementById('recapMoisDetailSubtitle');
+  const countPaidEl = document.getElementById('recapMoisPaidCount');
+  const countLateEl = document.getElementById('recapMoisLateCount');
+  const thead = document.getElementById('recapMoisDetailThead');
+  const tbody = document.getElementById('recapMoisDetailTbody');
+  const query = (document.getElementById('searchRecapMoisDetailInput')?.value || '').trim().toLowerCase();
+
+  if (titleEl) {
+    titleEl.innerHTML = `<span>📋</span> Versements du mois de <strong style="color: var(--emerald-400);">${currentMonth.monthName}</strong>`;
+  }
+  if (subtitleEl) {
+    subtitleEl.innerHTML = `Total collecté : <strong style="color: var(--emerald-400);">${formatMoney(currentMonth.totalMontant, breakdown.currency)}</strong> auprès de <strong>${currentMonth.nbPaid} membre(s)</strong> (${currentMonth.rate}% de recouvrement)`;
+  }
+  if (countPaidEl) countPaidEl.textContent = currentMonth.nbPaid;
+  if (countLateEl) countLateEl.textContent = currentMonth.nbLate;
+
+  if (!tbody || !thead) return;
+
+  if (currentRecapMoisDetailMode === 'paid') {
+    thead.innerHTML = `
+      <tr>
+        <th>N° Reçu</th>
+        <th>Membre</th>
+        <th>Foyer / Famille</th>
+        <th>Montant Versé</th>
+        <th>Date Paiement</th>
+        <th>Mode</th>
+        <th style="text-align: right;">Action</th>
+      </tr>
+    `;
+
+    let filteredCots = currentMonth.versements;
+    if (query) {
+      filteredCots = filteredCots.filter(c => {
+        const nom = (c.memberName || '').toLowerCase();
+        const recu = (c.recuNum || '').toLowerCase();
+        return nom.includes(query) || recu.includes(query);
+      });
+    }
+
+    if (filteredCots.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 24px; color: var(--text-muted);">
+            ${query ? `Aucun versement ne correspond à "${query}".` : `Aucun versement enregistré pour le mois de ${currentMonth.monthName}.`}
+          </td>
+        </tr>
+      `;
+    } else {
+      tbody.innerHTML = filteredCots.map(c => {
+        const mem = data.members.find(m => m.id === (c.memberId || c.member_id));
+        const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
+        return `
+          <tr>
+            <td><strong style="color: var(--emerald-400);">${c.recuNum}</strong></td>
+            <td>
+              <strong style="color: var(--text-main);">${c.memberName}</strong>
+              ${mem ? `<span style="font-size: 11px; color: var(--text-dim); margin-left: 4px;">(${mem.matricule})</span>` : ''}
+            </td>
+            <td>
+              <span style="color: var(--gold-400); font-weight: 500;">${fam ? fam.name : (c.payeurChef ? `👑 Foyer ${c.payeurChef}` : '-')}</span>
+            </td>
+            <td><strong style="color: var(--emerald-400); font-size: 14px;">${formatMoney(c.montant, breakdown.currency)}</strong></td>
+            <td style="color: var(--text-dim);">${c.datePaiement || '-'}</td>
+            <td><span class="badge badge-purple" style="font-size: 10px;">${c.modePaiement || 'Wave'}</span></td>
+            <td style="text-align: right;">
+              <button class="btn btn-xs btn-secondary" onclick="openReceiptModal('${c.id}')" title="Voir le reçu officiel">🖨️ Reçu</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+  } else {
+    thead.innerHTML = `
+      <tr>
+        <th>Matricule</th>
+        <th>Membre en Retard</th>
+        <th>Foyer / Famille</th>
+        <th>Téléphone</th>
+        <th>Montant Échu</th>
+        <th>Statut</th>
+        <th style="text-align: right;">Action</th>
+      </tr>
+    `;
+
+    let filteredMembers = currentMonth.lateMembers;
+    if (query) {
+      filteredMembers = filteredMembers.filter(m => {
+        const nom = (m.fullName || '').toLowerCase();
+        const mat = (m.matricule || '').toLowerCase();
+        const tel = (m.phone || '').toLowerCase();
+        return nom.includes(query) || mat.includes(query) || tel.includes(query);
+      });
+    }
+
+    if (filteredMembers.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 24px; color: var(--emerald-400); font-weight: 600;">
+            🎉 Félicitations ! Aucun membre n'est en retard pour le mois de ${currentMonth.monthName}.
+          </td>
+        </tr>
+      `;
+    } else {
+      tbody.innerHTML = filteredMembers.map(m => {
+        const fam = data.families.find(f => f.id === m.familyId);
+        return `
+          <tr>
+            <td><strong style="color: var(--emerald-400);">${m.matricule}</strong></td>
+            <td><strong style="color: var(--text-main);">${m.fullName}</strong></td>
+            <td><span style="color: var(--gold-400);">${fam ? fam.name : '-'}</span></td>
+            <td style="color: var(--text-muted);">${m.phone || '-'}</td>
+            <td><strong style="color: var(--rose-400);">${formatMoney(500, breakdown.currency)}</strong></td>
+            <td><span class="badge badge-danger">Non réglé</span></td>
+            <td style="text-align: right;">
+              <button class="btn btn-xs btn-primary" onclick="quickPayMember('${m.id}')" title="Encaisser la cotisation de ce membre">💳 Encaisser</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+}
+
+function filterRecapMoisDetailTable() {
+  renderRecapMoisDetailTable();
+}
+
+function populateCotisRegistreMonthFilter(months) {
+  const select = document.getElementById('filterCotisRegistreMonthSelect');
+  if (!select) return;
+  const currentVal = select.value;
+  select.innerHTML = '<option value="ALL">📅 Tous les mois (Global)</option>' +
+    months.map(m => `<option value="${m.monthName}">📅 ${m.monthName} (${formatMoney(m.totalMontant, 'FCFA')} - ${m.nbPaid} payeurs)</option>`).join('');
+  if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+    select.value = currentVal;
+  }
+}
+
+function filterCotisationsRegistreTable() {
+  const data = TAGBA_DB.get();
+  const tbody = document.getElementById('cotisationsTableBody');
+  const summaryEl = document.getElementById('cotisRegistreFilterSummary');
+  const selectMonth = document.getElementById('filterCotisRegistreMonthSelect')?.value || 'ALL';
+  const query = (document.getElementById('searchCotisRegistreInput')?.value || '').trim().toLowerCase();
+  if (!tbody) return;
+
+  let list = data.cotisations || [];
+
+  if (selectMonth !== 'ALL') {
+    list = list.filter(c => {
+      const p = (c.periode || '').toLowerCase();
+      return p.includes(selectMonth.toLowerCase());
+    });
+  }
+
+  if (query) {
+    list = list.filter(c => {
+      const name = (c.memberName || '').toLowerCase();
+      const recu = (c.recuNum || '').toLowerCase();
+      const chef = (c.payeurChef || '').toLowerCase();
+      return name.includes(query) || recu.includes(query) || chef.includes(query);
+    });
+  }
+
+  const totalFiltered = list.reduce((sum, c) => sum + (Number(c.montant) || 0), 0);
+  if (summaryEl) {
+    summaryEl.textContent = `${list.length} reçu(s) • Total : ${formatMoney(totalFiltered, data.config.currency)}`;
+  }
+
+  if (list.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" style="text-align: center; padding: 28px; color: var(--text-muted);">
+          Aucun versement ne correspond aux critères sélectionnés.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = list.map(cot => `
+    <tr>
+      <td><strong style="color: var(--emerald-400);">${cot.recuNum}</strong></td>
+      <td>
+        <div style="font-weight: 600;">${cot.memberName} ${cot.payeurChef ? `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: var(--gold-400); font-size: 10px; margin-left: 4px; border: 1px solid rgba(245, 158, 11, 0.3);">👑 Foyer ${cot.payeurChef}</span>` : ''}</div>
+        <div style="font-size: 11px; color: var(--text-muted);">Encaissé par: ${cot.agent || 'Bureau'}</div>
+      </td>
+      <td><span class="badge badge-info">${cot.type}</span></td>
+      <td>${cot.periode}</td>
+      <td><strong style="font-size: 14px;">${formatMoney(cot.montant, data.config.currency)}</strong></td>
+      <td><span class="badge badge-purple">${cot.modePaiement}</span></td>
+      <td>${cot.datePaiement}</td>
+      <td>
+        <div style="display: flex; gap: 6px; justify-content: flex-end; align-items: center;">
+          <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${cot.id}')" title="Imprimer le Reçu Officiel">🖨️ Reçu</button>
+          <button class="btn btn-sm btn-outline" style="border: 1px solid var(--border-color); padding: 5px 8px;" onclick="openEditCotisationModal('${cot.id}')" title="Modifier ce versement">✏️</button>
+          <button class="btn btn-sm btn-danger" style="padding: 5px 8px;" onclick="deleteCotisationPrompt('${cot.id}', '${cot.recuNum}', '${(cot.memberName || '').replace(/'/g, "\\'")}', ${cot.montant})" title="Supprimer ce versement en cas d'erreur">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
 }
 
 // 4.B. Rendu de l'onglet Événements & Sacrifices (Séparé)
@@ -1840,6 +2284,7 @@ function renderCotisations() {
     `).join('');
   }
 
+  renderCotisationsRecapMois();
   // Rendu de la vue de suivi des mois chronologique
   renderCotisationsMonthsTracking();
   renderCotisationsEventsTracking();
@@ -6209,4 +6654,11 @@ if (typeof window !== 'undefined') {
   window.renderCotisationsEventsTracking = renderCotisationsEventsTracking;
   window.populateEventSelects = populateEventSelects;
   window.onCotEventSelectChanged = onCotEventSelectChanged;
+  window.switchCotisSubTab = switchCotisSubTab;
+  window.renderCotisationsRecapMois = renderCotisationsRecapMois;
+  window.selectRecapMonth = selectRecapMonth;
+  window.setRecapMoisDetailViewMode = setRecapMoisDetailViewMode;
+  window.filterRecapMoisDetailTable = filterRecapMoisDetailTable;
+  window.filterCotisationsRegistreTable = filterCotisationsRegistreTable;
+  window.getMonthlyCotisationsBreakdown = getMonthlyCotisationsBreakdown;
 }

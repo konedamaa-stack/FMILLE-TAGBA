@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261105-v33">
+  <link rel="stylesheet" href="css/style.css?v=20261105-v34">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -658,8 +658,11 @@
 
           <!-- Sous-navigation des Cotisations : Suivi des Mois vs Registre Reçus -->
           <div class="cotis-subtabs-nav">
-            <button type="button" class="cotis-subtab-btn active" id="btnCotisSubTabMonths" onclick="switchCotisSubTab('months')">
-              <span>📅</span> Suivi des Mois (Cotisations Ordinaires)
+            <button type="button" class="cotis-subtab-btn active" id="btnCotisSubTabRecapMois" onclick="switchCotisSubTab('recap_mois')">
+              <span>📊</span> Synthèse Mois par Mois
+            </button>
+            <button type="button" class="cotis-subtab-btn" id="btnCotisSubTabMonths" onclick="switchCotisSubTab('months')">
+              <span>📅</span> Diagnostic par Membre
             </button>
             <button type="button" class="cotis-subtab-btn" id="btnCotisSubTabRegistre" onclick="switchCotisSubTab('registre')">
               <span>📜</span> Registre des Encaissements & Reçus
@@ -669,7 +672,118 @@
           <!-- ============================================================ -->
           <!-- SOUS-VUE 1 : SUIVI DES MOIS (PAYÉS, RETARDS & ANTICIPATIONS) -->
           <!-- ============================================================ -->
-          <div id="cotisationsMonthsTrackingView">
+          <!-- ============================================================ -->
+          <!-- SOUS-VUE 0 : SYNTHÈSE DES VERSEMENTS PAR MOIS -->
+          <!-- ============================================================ -->
+          <div id="cotisationsRecapMoisView">
+            
+            <!-- Bannière officielle de la synthèse par mois -->
+            <div class="card-panel" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(15,23,42,0.95) 100%); border-left: 4px solid var(--emerald-400);">
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span class="badge badge-success">Recouvrement Mensuel</span>
+                    <span style="font-size: 12px; color: var(--text-muted);">Cotisations Ordinaires TAGBA</span>
+                  </div>
+                  <h3 style="font-size: 17px; color: #fff;">
+                    📊 Montants collectés mois par mois
+                  </h3>
+                  <p style="font-size: 13px; color: var(--text-secondary); margin-top: 4px; max-width: 680px;">
+                    Visualisez instantanément pour chaque mois le <strong>total encaissé</strong>, le <strong>nombre de cotisants</strong>, et la liste des membres à jour ou en retard.
+                  </p>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="printAllMonthsRecapReport()" title="Imprimer le bilan comparatif complet de tous les mois">
+                    🖨️ Imprimer la Synthèse
+                  </button>
+                  <button type="button" class="btn btn-primary btn-sm" onclick="openModal('modalAddCotisation')">
+                    💳 + Enregistrer un Versement
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grille des Cartes KPI Mensuelles cliquables -->
+            <div class="kpi-grid" id="recapMoisKpiCardsGrid" style="margin-bottom: 22px;">
+              <!-- Rempli dynamiquement en JS -->
+            </div>
+
+            <!-- Tableau Comparatif Mensuel -->
+            <div class="card-panel" style="margin-bottom: 24px;">
+              <div class="card-header-flex">
+                <h3><span>🗓️</span> Tableau Récapitulatif Mois par Mois</h3>
+                <span style="font-size: 12px; color: var(--text-muted);" id="recapMoisTableSummary">Chargement des mois...</span>
+              </div>
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead>
+                    <tr>
+                      <th>Mois</th>
+                      <th>Montant Total Encaissé</th>
+                      <th>Cotisants à Jour</th>
+                      <th>Membres Non Réglés</th>
+                      <th>Taux de Recouvrement</th>
+                      <th>Statut</th>
+                      <th style="text-align: right;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recapMoisSummaryTableBody">
+                    <!-- Rempli dynamiquement en JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Section Détail Interactif du Mois Sélectionné -->
+            <div class="card-panel" id="recapMoisDetailPanel">
+              <div class="card-header-flex" style="flex-wrap: wrap; gap: 12px;">
+                <div>
+                  <h3 id="recapMoisDetailTitle"><span>📋</span> Détail des cotisations pour le mois sélectionné</h3>
+                  <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;" id="recapMoisDetailSubtitle">
+                    Chargement des membres...
+                  </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="printSelectedMonthReport()" title="Imprimer la fiche officielle des versements de ce mois">
+                    🖨️ Imprimer la Fiche de ce Mois
+                  </button>
+                </div>
+              </div>
+
+              <!-- Filtres : Ayant payé vs En retard + Barre de recherche -->
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px 16px; background: rgba(255,255,255,0.02); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <button type="button" class="filter-pill-btn active" id="btnFilterMoisPaid" onclick="setRecapMoisDetailViewMode('paid')">
+                    ✅ Membres Ayant Payé (<span id="recapMoisPaidCount">0</span>)
+                  </button>
+                  <button type="button" class="filter-pill-btn" id="btnFilterMoisLate" onclick="setRecapMoisDetailViewMode('late')">
+                    ⚠️ Membres En Retard (<span id="recapMoisLateCount">0</span>)
+                  </button>
+                </div>
+                <div style="min-width: 220px; max-width: 300px; flex-grow: 1;">
+                  <input type="text" class="form-control" id="searchRecapMoisDetailInput" placeholder="🔍 Rechercher un membre..." oninput="filterRecapMoisDetailTable()">
+                </div>
+              </div>
+
+              <!-- Table des membres pour le mois sélectionné -->
+              <div class="table-responsive">
+                <table class="modern-table">
+                  <thead id="recapMoisDetailThead">
+                    <!-- En-tête dynamique -->
+                  </thead>
+                  <tbody id="recapMoisDetailTbody">
+                    <!-- Rempli dynamiquement en JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- ============================================================ -->
+          <!-- SOUS-VUE 1 : SUIVI DES MOIS (PAYÉS, RETARDS & ANTICIPATIONS) -->
+          <!-- ============================================================ -->
+          <div id="cotisationsMonthsTrackingView" style="display: none;">
             
             <!-- Bannière officielle du calendrier de versement -->
             <div class="card-panel" style="margin-bottom: 20px; background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(15,23,42,0.95) 100%); border-left: 4px solid var(--emerald-400);">
@@ -818,6 +932,22 @@
                 <button type="button" class="btn btn-secondary btn-sm" onclick="printReceiptsJournal()" title="Imprimer le journal complet des reçus et encaissements">
                   🖨️ Imprimer le Journal des Reçus
                 </button>
+              </div>
+
+              <!-- Filtre par Mois & Recherche rapide dans le registre -->
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 10px 14px; background: rgba(255,255,255,0.02); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                  <label for="filterCotisRegistreMonthSelect" style="font-size: 13px; color: var(--text-muted); font-weight: 600;">📅 Filtrer par Mois :</label>
+                  <select class="form-control" id="filterCotisRegistreMonthSelect" style="width: auto; height: 34px; padding: 4px 10px; font-size: 13px;" onchange="filterCotisationsRegistreTable()">
+                    <option value="ALL">📅 Tous les mois (Global)</option>
+                  </select>
+                </div>
+                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; flex-grow: 1; justify-content: flex-end;">
+                  <span style="font-size: 12px; color: var(--emerald-400); font-weight: 600;" id="cotisRegistreFilterSummary"></span>
+                  <div style="min-width: 220px; max-width: 280px; width: 100%;">
+                    <input type="text" class="form-control" id="searchCotisRegistreInput" placeholder="🔍 Rechercher reçu, membre..." oninput="filterCotisationsRegistreTable()" style="height: 34px; font-size: 13px;">
+                  </div>
+                </div>
               </div>
               <div class="table-responsive">
                 <table class="modern-table">
@@ -2853,10 +2983,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261105-v33"></script>
-  <script src="js/supabase.js?v=20261105-v33"></script>
-  <script src="js/app.js?v=20261105-v33"></script>
-  <script src="js/print.js?v=20261105-v33"></script>
+  <script src="js/data.js?v=20261105-v34"></script>
+  <script src="js/supabase.js?v=20261105-v34"></script>
+  <script src="js/app.js?v=20261105-v34"></script>
+  <script src="js/print.js?v=20261105-v34"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -2864,7 +2994,7 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v33) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v34) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * TAGBA - Moteur d'Impression Officiel & Export PDF
  * Association Mutuelle de Solidarité et d'Entraide (Famille TAGBA)
  * Permet d'imprimer partout dans l'application avec en-têtes officielles et blocs de signatures
@@ -1403,12 +1403,204 @@
   }
 
   // Sous-vues spécifiques
+  function printSelectedMonthReport(monthName = null) {
+    if (typeof getMonthlyCotisationsBreakdown !== 'function') return;
+    const breakdown = getMonthlyCotisationsBreakdown();
+    const targetMonth = monthName || window.currentSelectedRecapMonth || (breakdown.months[0]?.monthName);
+    const m = breakdown.months.find(item => item.monthName === targetMonth);
+    if (!m) {
+      alert('Aucune donnée trouvée pour ce mois.');
+      return;
+    }
+
+    const data = TAGBA_DB.get();
+    const cfg = data.config || {};
+    const dateTirage = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    let rowsHtml = '';
+    m.versements.forEach((c, idx) => {
+      const mem = data.members.find(mbr => mbr.id === (c.memberId || c.member_id));
+      const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
+      rowsHtml += `
+        <tr>
+          <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+          <td style="font-weight: bold; color: #047857;">${c.recuNum}</td>
+          <td><strong>${c.memberName}</strong></td>
+          <td>${mem ? mem.matricule : '-'}</td>
+          <td>${fam ? fam.name : (c.payeurChef ? `Foyer ${c.payeurChef}` : '-')}</td>
+          <td style="text-align: right; font-weight: bold;">${formatMoney(c.montant, breakdown.currency)}</td>
+          <td>${c.datePaiement || '-'}</td>
+          <td>${c.modePaiement || 'Espèces'}</td>
+        </tr>
+      `;
+    });
+
+    const content = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #111;">
+        <div style="text-align: center; border-bottom: 2px solid #047857; padding-bottom: 15px; margin-bottom: 20px;">
+          <h2 style="margin: 0; color: #047857; text-transform: uppercase;">ASSOCIATION MUTUELLE TAGBA</h2>
+          <p style="margin: 4px 0; font-size: 13px; color: #555;">Union • Solidarité • Entraide Familiale | Divo, Côte d'Ivoire</p>
+          <h3 style="margin: 12px 0 4px 0; font-size: 18px; color: #111; text-transform: uppercase; letter-spacing: 0.5px;">
+            FICHE OFFICIELLE DES VERSEMENTS - MOIS DE ${m.monthName.toUpperCase()}
+          </h3>
+          <p style="margin: 0; font-size: 12px; color: #666;">Date d'édition : ${dateTirage}</p>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 18px;">
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748b;">Mois concerné</div>
+            <div style="font-size: 16px; font-weight: bold; color: #0f172a;">${m.monthName}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748b;">Total Collecté</div>
+            <div style="font-size: 16px; font-weight: bold; color: #047857;">${formatMoney(m.totalMontant, breakdown.currency)}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748b;">Membres Cotisants</div>
+            <div style="font-size: 16px; font-weight: bold; color: #0f172a;">${m.nbPaid} / ${breakdown.totalMembers} (${m.rate}%)</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748b;">En attente / Retard</div>
+            <div style="font-size: 16px; font-weight: bold; color: #dc2626;">${m.nbLate} membre(s)</div>
+          </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 30px;">
+          <thead>
+            <tr style="background: #047857; color: white;">
+              <th style="padding: 8px; border: 1px solid #047857;">N°</th>
+              <th style="padding: 8px; border: 1px solid #047857;">N° Reçu</th>
+              <th style="padding: 8px; border: 1px solid #047857; text-align: left;">Membre</th>
+              <th style="padding: 8px; border: 1px solid #047857;">Matricule</th>
+              <th style="padding: 8px; border: 1px solid #047857; text-align: left;">Foyer / Famille</th>
+              <th style="padding: 8px; border: 1px solid #047857; text-align: right;">Montant</th>
+              <th style="padding: 8px; border: 1px solid #047857;">Date</th>
+              <th style="padding: 8px; border: 1px solid #047857;">Mode</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="8" style="text-align: center; padding: 20px;">Aucun versement enregistré.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr style="background: #f1f5f9; font-weight: bold;">
+              <td colspan="5" style="padding: 10px; border: 1px solid #cbd5e1; text-align: right;">TOTAL ENCAISSÉ :</td>
+              <td style="padding: 10px; border: 1px solid #cbd5e1; text-align: right; color: #047857; font-size: 13px;">${formatMoney(m.totalMontant, breakdown.currency)}</td>
+              <td colspan="2" style="border: 1px solid #cbd5e1;"></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 40px;">
+          <div style="text-align: center;">
+            <p style="font-weight: bold; margin-bottom: 60px;">Le Trésorier Général</p>
+            <p style="font-size: 11px; color: #666;">(Signature & Date)</p>
+          </div>
+          <div style="text-align: center;">
+            <p style="font-weight: bold; margin-bottom: 60px;">Le Président de la Mutuelle</p>
+            <p style="font-size: 11px; color: #666;">(Visa & Cachet)</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    executeTagbaPrint(content, `Rapport_Cotisations_${m.monthName.replace(/\s+/g, '_')}`);
+  }
+
+  function printAllMonthsRecapReport() {
+    if (typeof getMonthlyCotisationsBreakdown !== 'function') return;
+    const breakdown = getMonthlyCotisationsBreakdown();
+    const dateTirage = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    let rowsHtml = '';
+    breakdown.months.forEach((m, idx) => {
+      rowsHtml += `
+        <tr>
+          <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+          <td style="font-weight: bold; font-size: 13px;">📅 ${m.monthName}</td>
+          <td style="text-align: right; font-weight: bold; color: #047857; font-size: 13px;">${formatMoney(m.totalMontant, breakdown.currency)}</td>
+          <td style="text-align: center; font-weight: bold;">${m.nbPaid} / ${breakdown.totalMembers}</td>
+          <td style="text-align: center; color: ${m.nbLate > 0 ? '#dc2626' : '#555'};">${m.nbLate > 0 ? `${m.nbLate} en retard` : 'Complet'}</td>
+          <td style="text-align: center; font-weight: bold;">${m.rate}%</td>
+          <td style="text-align: center;">${m.rate >= 80 ? 'Fort recouvrement' : m.rate >= 40 ? 'En cours' : m.nbPaid > 0 ? 'Anticipation' : 'À recouvrer'}</td>
+        </tr>
+      `;
+    });
+
+    const content = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #111;">
+        <div style="text-align: center; border-bottom: 2px solid #047857; padding-bottom: 15px; margin-bottom: 20px;">
+          <h2 style="margin: 0; color: #047857; text-transform: uppercase;">ASSOCIATION MUTUELLE TAGBA</h2>
+          <p style="margin: 4px 0; font-size: 13px; color: #555;">Union • Solidarité • Entraide Familiale | Divo, Côte d'Ivoire</p>
+          <h3 style="margin: 12px 0 4px 0; font-size: 18px; color: #111; text-transform: uppercase; letter-spacing: 0.5px;">
+            SYNTHÈSE GÉNÉRALE DES COTISATIONS MOIS PAR MOIS
+          </h3>
+          <p style="margin: 0; font-size: 12px; color: #666;">Date d'édition : ${dateTirage}</p>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 18px;">
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748b;">Total Cotisations Ordinaires</div>
+            <div style="font-size: 18px; font-weight: bold; color: #047857;">${formatMoney(breakdown.totalCotisationsGlobal, breakdown.currency)}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748b;">Mois Répertoriés</div>
+            <div style="font-size: 18px; font-weight: bold; color: #0f172a;">${breakdown.months.length} mois</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #64748b;">Effectif des Membres</div>
+            <div style="font-size: 18px; font-weight: bold; color: #0f172a;">${breakdown.totalMembers} membres</div>
+          </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 30px;">
+          <thead>
+            <tr style="background: #047857; color: white;">
+              <th style="padding: 8px; border: 1px solid #047857;">N°</th>
+              <th style="padding: 8px; border: 1px solid #047857; text-align: left;">Mois</th>
+              <th style="padding: 8px; border: 1px solid #047857; text-align: right;">Total Encaissé</th>
+              <th style="padding: 8px; border: 1px solid #047857;">Cotisants</th>
+              <th style="padding: 8px; border: 1px solid #047857;">Retards</th>
+              <th style="padding: 8px; border: 1px solid #047857;">Taux</th>
+              <th style="padding: 8px; border: 1px solid #047857;">Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+          <tfoot>
+            <tr style="background: #f1f5f9; font-weight: bold;">
+              <td colspan="2" style="padding: 10px; border: 1px solid #cbd5e1; text-align: right;">GRAND TOTAL :</td>
+              <td style="padding: 10px; border: 1px solid #cbd5e1; text-align: right; color: #047857; font-size: 14px;">${formatMoney(breakdown.totalCotisationsGlobal, breakdown.currency)}</td>
+              <td colspan="4" style="border: 1px solid #cbd5e1;"></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 40px;">
+          <div style="text-align: center;">
+            <p style="font-weight: bold; margin-bottom: 60px;">Le Trésorier Général</p>
+            <p style="font-size: 11px; color: #666;">(Signature & Date)</p>
+          </div>
+          <div style="text-align: center;">
+            <p style="font-weight: bold; margin-bottom: 60px;">Le Président de la Mutuelle</p>
+            <p style="font-size: 11px; color: #666;">(Visa & Cachet)</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    executeTagbaPrint(content, `Synthese_Cotisations_Mois_TAGBA`);
+  }
+
   function printCotisationsCurrentSubView() {
-    const subRegistres = document.getElementById('cotisationsGeneralRegistryView');
-    const isRegistry = subRegistres && subRegistres.style.display !== 'none';
-    if (isRegistry) {
+    if (window.currentCotisSubTab === 'recap_mois') {
+      printSelectedMonthReport();
+    } else if (window.currentCotisSubTab === 'registre') {
       printReceiptsJournal();
     } else {
+      printMonthlyCotisationsReport();
+    }
+  }
       printMonthlyCotisationsReport();
     }
   }
@@ -1443,6 +1635,8 @@
   window.printCeremoniesReport = printCeremoniesReport;
   window.printFinancesReport = printFinancesReport;
   window.printEntraideReport = printEntraideReport;
+  window.printSelectedMonthReport = printSelectedMonthReport;
+  window.printAllMonthsRecapReport = printAllMonthsRecapReport;
   window.printMemberAudit = printMemberAudit;
   window.printCotisationsCurrentSubView = printCotisationsCurrentSubView;
   window.printCeremoniesCurrentSubView = printCeremoniesCurrentSubView;

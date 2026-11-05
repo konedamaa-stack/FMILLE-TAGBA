@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tagba-pwa-v33';
+const CACHE_NAME = 'tagba-pwa-v34';
 
 const LOCAL_ASSETS = [
   '/',
