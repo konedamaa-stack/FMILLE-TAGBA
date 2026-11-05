@@ -50,6 +50,38 @@ const defaultData = {
   lastModified: 0
 };
 
+// TAGBA - Règle stricte d'assainissement et de réduction des cotisations (> 1000 FCFA)
+function cleanExcessCotisations(cotisations) {
+  if (!Array.isArray(cotisations)) return [];
+  return cotisations.filter(c => {
+    if (!c) return false;
+    const mId = c.memberId || c.member_id;
+    const per = (c.periode || '').trim().toLowerCase();
+    const type = (c.type || '').trim().toLowerCase();
+
+    // 1. BAKARIBA KONE (TGB-001) : Plafonné à 1 000 FCFA (Octobre + Novembre 2026 uniquement)
+    if (mId === 'mem-1793393195456') {
+      const isOct = per.includes('octobre 2026');
+      const isNov = per.includes('novembre 2026');
+      const isNotEvt = !type.includes('venement') && !type.includes('vènement') && !c.eventId && !per.includes('sacrifice');
+      return (isOct || isNov) && isNotEvt;
+    }
+
+    // 2. TGB-051 (INCONU PASSAGER), TGB-052 (TRAORE ABOULAYE), TGB-029 (BAMBA SOULEYMANE) : Retirer Janvier 2028 indue
+    if (['mem-1793794652782', 'mem-1793795393663', 'mem-1793398109112'].includes(mId)) {
+      if (per.includes('janvier 2028')) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+if (typeof window !== 'undefined') {
+  window.cleanExcessCotisations = cleanExcessCotisations;
+}
+
 // Gestionnaire du Store
 const TAGBA_DB = {
   get: function () {
@@ -121,6 +153,15 @@ const TAGBA_DB = {
             const validCotisations = parsed.cotisations.filter(c => validMemberIds.has(c.memberId || c.member_id));
             if (validCotisations.length !== parsed.cotisations.length) {
               parsed.cotisations = validCotisations;
+              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) { }
+            }
+          }
+
+          // Assainissement strict : réduction des cotisations dépassant 1 000 FCFA
+          if (parsed.cotisations && parsed.cotisations.length > 0) {
+            const cleaned = cleanExcessCotisations(parsed.cotisations);
+            if (cleaned.length !== parsed.cotisations.length) {
+              parsed.cotisations = cleaned;
               try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) { }
             }
           }
@@ -308,6 +349,9 @@ const TAGBA_DB = {
   },
 
   save: function (data, skipSync = false) {
+    if (data && data.cotisations) {
+      data.cotisations = (typeof cleanExcessCotisations === 'function') ? cleanExcessCotisations(data.cotisations) : data.cotisations;
+    }
     try {
       if (!skipSync) {
         data.lastModified = Date.now();
