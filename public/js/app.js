@@ -1688,14 +1688,22 @@ function renderRecapMoisDetailTable() {
       `;
     } else {
       tbody.innerHTML = filteredCots.map(c => {
-        const mem = data.members.find(m => m.id === (c.memberId || c.member_id));
+        const mem = data.members.find(m =>
+          (c.memberId && m.id === c.memberId) ||
+          (c.member_id && m.id === c.member_id) ||
+          (c.matricule && m.matricule === c.matricule) ||
+          (c.memberName && m.fullName && m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase())
+        );
         const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
+        const memMat = mem ? mem.matricule : (c.matricule || '');
+        const memTel = mem && mem.phone ? (mem.phone + (mem.phone2 ? ' / ' + mem.phone2 : '')) : (c.phone || '');
         return `
           <tr>
             <td><strong style="color: var(--emerald-400);">${c.recuNum}</strong></td>
             <td>
               <strong style="color: var(--text-main);">${c.memberName}</strong>
-              ${mem ? `<span style="font-size: 11px; color: var(--text-dim); margin-left: 4px;">(${mem.matricule})</span>` : ''}
+              ${memMat ? `<span style="font-size: 11px; color: var(--emerald-400); font-weight: 700; margin-left: 4px;">(${memMat})</span>` : ''}
+              ${memTel ? `<div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">📞 ${memTel}</div>` : ''}
             </td>
             <td>
               <span style="color: var(--gold-400); font-weight: 500;">${fam ? fam.name : (c.payeurChef ? `👑 Foyer ${c.payeurChef}` : '-')}</span>
@@ -2470,11 +2478,19 @@ function openReceiptModal(cotisationId) {
   const cot = data.cotisations.find(c => c.id === cotisationId);
   if (!cot) return;
 
-  const mem = data.members.find(m => m.id === cot.memberId);
-  const fam = data.families.find(f => f.id === cot.familyId);
+  const mem = data.members.find(m =>
+    (cot.memberId && m.id === cot.memberId) ||
+    (cot.member_id && m.id === cot.member_id) ||
+    (cot.matricule && m.matricule === cot.matricule) ||
+    (cot.memberName && m.fullName && m.fullName.trim().toLowerCase() === cot.memberName.trim().toLowerCase())
+  );
+  const fam = data.families.find(f => f.id === (cot.familyId || (mem ? mem.familyId : '')));
 
   const container = document.getElementById('receiptContent');
   if (!container) return;
+
+  const memMatricule = mem ? mem.matricule : (cot.matricule || 'N/A');
+  const memPhone = mem && mem.phone ? (mem.phone + (mem.phone2 ? ' / ' + mem.phone2 : '')) : (cot.phone || 'Non renseigné');
 
   container.innerHTML = `
     <div class="receipt-paper">
@@ -2493,7 +2509,8 @@ function openReceiptModal(cotisationId) {
         </div>
         <div>
           <p><strong>Membre cotisant :</strong> ${cot.memberName}</p>
-          <p><strong>Matricule :</strong> ${mem ? mem.matricule : 'N/A'}</p>
+          <p><strong>N° Membre (Matricule) :</strong> <strong style="color: #047857;">${memMatricule}</strong></p>
+          <p><strong>N° Téléphone :</strong> ${memPhone}</p>
           <p><strong>Famille :</strong> ${fam ? fam.name : 'N/A'}</p>
           <p><strong>Chef de famille :</strong> ${fam ? fam.chefDeFamille : 'N/A'}</p>
         </div>

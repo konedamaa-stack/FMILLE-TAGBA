@@ -1,4 +1,4 @@
-﻿/**
+/**
  * TAGBA - Moteur d'Impression Officiel & Export PDF
  * Association Mutuelle de Solidarité et d'Entraide (Famille TAGBA)
  * Permet d'imprimer partout dans l'application avec en-têtes officielles et blocs de signatures
@@ -490,8 +490,8 @@
           <thead>
             <tr>
               <th style="width: 30px; text-align: center;">N°</th>
-              <th>Matricule</th>
-              <th>Nom & Prénoms</th>
+              <th>Matricule / N° Membre</th>
+              <th>Nom & Prénoms / Contact</th>
               <th>Foyer & Chef de Famille</th>
               <th>Lien</th>
               <th>Téléphone</th>
@@ -680,6 +680,7 @@
           <td style="font-weight: 600;">
             ${m.fullName}
             ${m.bureauRole ? `<small style="color: #6366f1;">(${m.bureauRole})</small>` : ''}
+            ${m.phone ? `<br><small style="color: #64748b;">📞 ${m.phone}${m.phone2 ? ' / ' + m.phone2 : ''}</small>` : ''}
           </td>
           <td>${fam ? fam.name : 'N/A'}</td>
           <td style="text-align: right; font-weight: 700; color: #047857;">${formatMoney(totalVerse, curr)}</td>
@@ -703,8 +704,8 @@
           <thead>
             <tr>
               <th style="width: 30px; text-align: center;">N°</th>
-              <th>Matricule</th>
-              <th>Nom & Prénoms</th>
+              <th>Matricule / N° Membre</th>
+              <th>Nom & Prénoms / Contact</th>
               <th>Foyer</th>
               <th style="text-align: right;">Total Versé</th>
               <th style="text-align: center;">Mois Réglés</th>
@@ -754,19 +755,33 @@
 
     const header = getOfficialPrintHeader('Journal Général des Reçus & Encaissements', 'Grand livre chronologique de tous les paiements enregistrés', meta);
 
-    const rowsHtml = sortedCotis.map((c, idx) => `
+    const rowsHtml = sortedCotis.map((c, idx) => {
+      const mem = (data.members || []).find(mbr =>
+        (c.memberId && mbr.id === c.memberId) ||
+        (c.member_id && mbr.id === c.member_id) ||
+        (c.matricule && mbr.matricule === c.matricule) ||
+        (c.memberName && mbr.fullName && mbr.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase())
+      );
+      const memMat = mem ? mem.matricule : (c.matricule || '');
+      const memTel = mem && mem.phone ? (mem.phone + (mem.phone2 ? ' / ' + mem.phone2 : '')) : (c.phone || '');
+      return `
       <tr>
         <td style="text-align: center;">${idx + 1}</td>
         <td style="font-weight: 700; color: #047857;">${c.recuNum || 'N/A'}</td>
         <td>${formatDate(c.datePaiement)}</td>
-        <td style="font-weight: 600;">${c.memberName || 'Membre'}</td>
+        <td style="font-weight: 600;">
+          ${c.memberName || 'Membre'}
+          ${memMat ? `<br><small style="color: #047857; font-weight: 700;">N° ${memMat}</small>` : ''}
+          ${memTel ? `<small style="color: #64748b; margin-left: 4px;">(📞 ${memTel})</small>` : ''}
+        </td>
         <td>${c.type || 'Ordinaire'}</td>
         <td>${c.periode || 'N/A'}</td>
         <td style="font-weight: 700; text-align: right;">${formatMoney(c.montant, curr)}</td>
         <td>${c.modePaiement || 'Espèces'}</td>
         <td style="font-size: 10px; color: #475569;">${c.agent || 'Trésorerie'}</td>
       </tr>
-    `).join('');
+      `;
+    }).join('');
 
     const html = `
       ${printDocStyle}
@@ -871,7 +886,10 @@
         <tr>
           <td style="text-align: center;">${idx + 1}</td>
           <td style="font-weight: 700; color: #047857;">${m.matricule || 'N/A'}</td>
-          <td style="font-weight: 600;">${m.fullName}</td>
+          <td style="font-weight: 600;">
+            ${m.fullName}
+            ${m.phone ? `<br><small style="color: #64748b;">📞 ${m.phone}${m.phone2 ? ' / ' + m.phone2 : ''}</small>` : ''}
+          </td>
           <td>${fam ? fam.name : 'N/A'}</td>
           <td style="text-align: right;">${formatMoney(unitPrice, curr)}</td>
           <td style="text-align: right; font-weight: 700; color: ${isPaye ? '#047857' : '#b45309'};">${formatMoney(montantPaye, curr)}</td>
@@ -899,8 +917,8 @@
           <thead>
             <tr>
               <th style="width: 30px; text-align: center;">N°</th>
-              <th>Matricule</th>
-              <th>Nom & Prénoms</th>
+              <th>Matricule / N° Membre</th>
+              <th>Nom & Prénoms / Contact</th>
               <th>Foyer</th>
               <th style="text-align: right;">Montant Dû</th>
               <th style="text-align: right;">Montant Versé</th>
@@ -1413,18 +1431,26 @@
 
     let rowsHtml = '';
     m.versements.forEach((c, idx) => {
-      const mem = data.members.find(mbr => mbr.id === (c.memberId || c.member_id));
+      const mem = data.members.find(mbr =>
+        (c.memberId && mbr.id === c.memberId) ||
+        (c.member_id && mbr.id === c.member_id) ||
+        (c.matricule && mbr.matricule === c.matricule) ||
+        (c.memberName && mbr.fullName && mbr.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase())
+      );
       const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
+      const memMatricule = mem ? mem.matricule : (c.matricule || '-');
+      const memPhone = mem && mem.phone ? (mem.phone + (mem.phone2 ? ' / ' + mem.phone2 : '')) : (c.phone || '-');
       rowsHtml += `
         <tr>
           <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
-          <td style="font-weight: bold; color: #047857;">${c.recuNum}</td>
-          <td><strong>${c.memberName}</strong></td>
-          <td>${mem ? mem.matricule : '-'}</td>
+          <td style="font-weight: bold; color: #047857; text-align: center;">${c.recuNum || '-'}</td>
+          <td style="font-weight: 600;">${c.memberName || '-'}</td>
+          <td style="text-align: center; font-weight: bold; color: #047857;">${memMatricule}</td>
+          <td style="text-align: center; color: #334155; font-size: 11px;">${memPhone}</td>
           <td>${fam ? fam.name : (c.payeurChef ? `Foyer ${c.payeurChef}` : '-')}</td>
-          <td style="text-align: right; font-weight: bold;">${formatMoney(c.montant, breakdown.currency)}</td>
-          <td>${c.datePaiement || '-'}</td>
-          <td>${c.modePaiement || 'Espèces'}</td>
+          <td style="text-align: right; font-weight: bold; color: #047857;">${formatMoney(c.montant, breakdown.currency)}</td>
+          <td style="text-align: center;">${c.datePaiement || '-'}</td>
+          <td style="text-align: center;">${c.modePaiement || 'Espèces'}</td>
         </tr>
       `;
     });
@@ -1459,25 +1485,26 @@
           </div>
         </div>
 
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 30px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 30px;">
           <thead>
             <tr style="background: #047857; color: white;">
-              <th style="padding: 8px; border: 1px solid #047857;">N°</th>
-              <th style="padding: 8px; border: 1px solid #047857;">N° Reçu</th>
-              <th style="padding: 8px; border: 1px solid #047857; text-align: left;">Membre</th>
-              <th style="padding: 8px; border: 1px solid #047857;">Matricule</th>
-              <th style="padding: 8px; border: 1px solid #047857; text-align: left;">Foyer / Famille</th>
-              <th style="padding: 8px; border: 1px solid #047857; text-align: right;">Montant</th>
-              <th style="padding: 8px; border: 1px solid #047857;">Date</th>
-              <th style="padding: 8px; border: 1px solid #047857;">Mode</th>
+              <th style="padding: 7px; border: 1px solid #047857; width: 30px; text-align: center;">N°</th>
+              <th style="padding: 7px; border: 1px solid #047857; text-align: center;">N° Reçu</th>
+              <th style="padding: 7px; border: 1px solid #047857; text-align: left;">Nom & Prénoms</th>
+              <th style="padding: 7px; border: 1px solid #047857; text-align: center;">N° Membre (Matricule)</th>
+              <th style="padding: 7px; border: 1px solid #047857; text-align: center;">N° Téléphone</th>
+              <th style="padding: 7px; border: 1px solid #047857; text-align: left;">Foyer / Famille</th>
+              <th style="padding: 7px; border: 1px solid #047857; text-align: right;">Montant</th>
+              <th style="padding: 7px; border: 1px solid #047857; text-align: center;">Date</th>
+              <th style="padding: 7px; border: 1px solid #047857; text-align: center;">Mode</th>
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml || '<tr><td colspan="8" style="text-align: center; padding: 20px;">Aucun versement enregistré.</td></tr>'}
+            ${rowsHtml || '<tr><td colspan="9" style="text-align: center; padding: 20px;">Aucun versement enregistré.</td></tr>'}
           </tbody>
           <tfoot>
             <tr style="background: #f1f5f9; font-weight: bold;">
-              <td colspan="5" style="padding: 10px; border: 1px solid #cbd5e1; text-align: right;">TOTAL ENCAISSÉ :</td>
+              <td colspan="6" style="padding: 10px; border: 1px solid #cbd5e1; text-align: right;">TOTAL ENCAISSÉ :</td>
               <td style="padding: 10px; border: 1px solid #cbd5e1; text-align: right; color: #047857; font-size: 13px;">${formatMoney(m.totalMontant, breakdown.currency)}</td>
               <td colspan="2" style="border: 1px solid #cbd5e1;"></td>
             </tr>
