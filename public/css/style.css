@@ -805,6 +805,8 @@ body.light-theme .hero-badge.highlight {
   background: rgba(244, 63, 94, 0.2);
 }
 
+.btn-outline-success {   background: rgba(16, 185, 129, 0.08);   border: 1px solid rgba(16, 185, 129, 0.3);   color: var(--emerald-400); }  .btn-outline-success:hover {   background: rgba(16, 185, 129, 0.2); }
+
 /* Filters & Search Toolbar */
 .toolbar-bar {
   display: flex;

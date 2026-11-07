@@ -50,32 +50,10 @@ const defaultData = {
   lastModified: 0
 };
 
-// TAGBA - Règle stricte d'assainissement et de réduction des cotisations (> 1000 FCFA)
+// Vérification d'intégrité de la liste des cotisations (sans blocage de membre)
 function cleanExcessCotisations(cotisations) {
   if (!Array.isArray(cotisations)) return [];
-  return cotisations.filter(c => {
-    if (!c) return false;
-    const mId = c.memberId || c.member_id;
-    const per = (c.periode || '').trim().toLowerCase();
-    const type = (c.type || '').trim().toLowerCase();
-
-    // 1. BAKARIBA KONE (TGB-001) : Plafonné à 1 000 FCFA (Octobre + Novembre 2026 uniquement)
-    if (mId === 'mem-1793393195456') {
-      const isOct = per.includes('octobre 2026');
-      const isNov = per.includes('novembre 2026');
-      const isNotEvt = !type.includes('venement') && !type.includes('vènement') && !c.eventId && !per.includes('sacrifice');
-      return (isOct || isNov) && isNotEvt;
-    }
-
-    // 2. TGB-051 (INCONU PASSAGER), TGB-052 (TRAORE ABOULAYE), TGB-029 (BAMBA SOULEYMANE) : Retirer Janvier 2028 indue
-    if (['mem-1793794652782', 'mem-1793795393663', 'mem-1793398109112'].includes(mId)) {
-      if (per.includes('janvier 2028')) {
-        return false;
-      }
-    }
-
-    return true;
-  });
+  return cotisations.filter(c => Boolean(c));
 }
 
 if (typeof window !== 'undefined') {
@@ -128,14 +106,13 @@ const TAGBA_DB = {
             } catch (e) { }
           }
 
-          // Nettoyage de sécurité : dédoublonner les cotisations mensuelles par membre et période
+          // Nettoyage de sécurité : dédoublonner uniquement les reçus ayant exactement le même identifiant (id)
           if (parsed.cotisations && parsed.cotisations.length > 0) {
             const seen = new Set();
             const deduplicated = [];
             for (const c of parsed.cotisations) {
-              const mId = c.memberId || c.member_id;
-              const per = (c.periode || '').trim().toLowerCase();
-              const key = `${mId}_${per}`;
+              if (!c) continue;
+              const key = c.id || `${c.memberId || c.member_id}_${c.recuNum || ''}_${c.periode || ''}_${c.montant || 0}`;
               if (!seen.has(key)) {
                 seen.add(key);
                 deduplicated.push(c);
@@ -640,8 +617,29 @@ const TAGBA_DB = {
   // Cotisations
   addCotisation: function (cot) {
     const data = this.get();
-    cot.id = cot.id || ('cot-' + Date.now());
-    cot.recuNum = cot.recuNum || ('REC-2026-' + String((data.cotisations || []).length + 1).padStart(3, '0'));
+    if (!data.cotisations) data.cotisations = [];
+
+    cot.id = cot.id || ('cot-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7));
+
+    if (!cot.recuNum) {
+      const existingRecus = new Set(data.cotisations.map(c => c.recuNum || c.recu_num).filter(Boolean));
+      let nextNum = data.cotisations.length + 1;
+      for (const c of data.cotisations) {
+        const r = String(c.recuNum || c.recu_num || '');
+        const match = r.match(/REC-\d+-(\d+)/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num >= nextNum) {
+            nextNum = num + 1;
+          }
+        }
+      }
+      while (existingRecus.has('REC-2026-' + String(nextNum).padStart(3, '0'))) {
+        nextNum++;
+      }
+      cot.recuNum = 'REC-2026-' + String(nextNum).padStart(3, '0');
+    }
+
     cot.datePaiement = cot.datePaiement || new Date().toISOString().split('T')[0];
     cot.statut = 'Validé';
 
@@ -651,7 +649,6 @@ const TAGBA_DB = {
       mem.statutCotisation = 'A_JOUR';
     }
 
-    if (!data.cotisations) data.cotisations = [];
     data.cotisations.unshift(cot);
     this.save(data);
     return cot;

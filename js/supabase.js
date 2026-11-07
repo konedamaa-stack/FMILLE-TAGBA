@@ -247,9 +247,6 @@ function mergeDatasets(local, remote) {
     if (merged.cotisations && merged.members) {
       const activeIds = new Set(merged.members.map(m => m.id));
       merged.cotisations = merged.cotisations.filter(c => activeIds.has(c.memberId || c.member_id));
-    if (typeof window.cleanExcessCotisations === 'function') {
-      merged.cotisations = window.cleanExcessCotisations(merged.cotisations);
-    }
       if (typeof window.cleanExcessCotisations === 'function') {
         merged.cotisations = window.cleanExcessCotisations(merged.cotisations);
       }

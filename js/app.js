@@ -1919,8 +1919,15 @@ function getMemberCotisationAudit(memberId, refDateStr = null) {
     monthsDueCount = 1;
   }
 
-  // Somme totale des versements validés de ce membre
-  const memberCotisations = (data.cotisations || []).filter(c => c.memberId === memberId && c.statut !== 'Annulé');
+  // Somme totale des versements mensuels/périodiques validés de ce membre (hors événements et sacrifices)
+  const memberCotisations = (data.cotisations || []).filter(c => {
+    const mId = c.memberId || c.member_id;
+    if (mId !== memberId || c.statut === 'Annulé') return false;
+    const t = (c.type || '').toLowerCase();
+    const p = (c.periode || '').toLowerCase();
+    const isEvt = !!c.eventId || t.includes('venement') || t.includes('vènement') || p.includes('sacrifice');
+    return !isEvt;
+  });
   const totalVerse = memberCotisations.reduce((sum, c) => sum + Number(c.montant || 0), 0);
 
   const monthsPaidCount = Math.floor(totalVerse / unitMonthly);
