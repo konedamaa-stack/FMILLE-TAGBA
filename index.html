@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261107-v37">
+  <link rel="stylesheet" href="css/style.css?v=20261107-v38">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -743,9 +743,12 @@
                     Chargement des membres...
                   </div>
                 </div>
-                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                   <button type="button" class="btn btn-secondary btn-sm" onclick="printSelectedMonthReport()" title="Imprimer la fiche officielle des versements de ce mois">
                     🖨️ Imprimer la Fiche de ce Mois
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="printSelectedMonthLateReport()" title="Imprimer uniquement les membres en retard de cotisation pour ce mois" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 700; background: rgba(244, 63, 94, 0.08); cursor: pointer;">
+                    ⚠️ Imprimer les Retards de ce Mois
                   </button>
                 </div>
               </div>
@@ -2994,10 +2997,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261107-v37"></script>
-  <script src="js/supabase.js?v=20261107-v37"></script>
-  <script src="js/app.js?v=20261107-v37"></script>
-  <script src="js/print.js?v=20261107-v37"></script>
+  <script src="js/data.js?v=20261107-v38"></script>
+  <script src="js/supabase.js?v=20261107-v38"></script>
+  <script src="js/app.js?v=20261107-v38"></script>
+  <script src="js/print.js?v=20261107-v38"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3005,7 +3008,7 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v37) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v38) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

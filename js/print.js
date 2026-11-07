@@ -1465,7 +1465,12 @@
   }
 
   // Sous-vues spécifiques
-  function printSelectedMonthReport(monthName = null) {
+  function printSelectedMonthReport(monthName = null, mode = 'auto') {
+    if (mode === 'late' || mode === 'retard' || (mode === 'auto' && window.currentRecapMoisDetailMode === 'late')) {
+      printSelectedMonthLateReport(monthName);
+      return;
+    }
+
     const fnBreakdown = window.getMonthlyCotisationsBreakdown || (typeof getMonthlyCotisationsBreakdown === 'function' ? getMonthlyCotisationsBreakdown : null);
     if (!fnBreakdown) return;
     const breakdown = fnBreakdown();
@@ -1576,6 +1581,115 @@
     `;
 
     executeTagbaPrint(content, `Rapport_Cotisations_${m.monthName.replace(/\s+/g, '_')}`);
+  }
+
+  function printSelectedMonthLateReport(monthName = null) {
+    const fnBreakdown = window.getMonthlyCotisationsBreakdown || (typeof getMonthlyCotisationsBreakdown === 'function' ? getMonthlyCotisationsBreakdown : null);
+    if (!fnBreakdown) return;
+    const breakdown = fnBreakdown();
+    const targetMonth = monthName || window.currentSelectedRecapMonth || (breakdown.months[0]?.monthName);
+    const m = breakdown.months.find(item => item.monthName === targetMonth);
+    if (!m) {
+      alert('Aucune donnée trouvée pour ce mois.');
+      return;
+    }
+
+    const data = TAGBA_DB.get();
+    const cfg = data.config || {};
+    const unitPrice = Number(cfg.cotisationMensuelle || 500);
+    const dateTirage = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    let rowsHtml = '';
+    const lateList = m.lateMembers || [];
+    lateList.forEach((mem, idx) => {
+      const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
+      const memMatricule = mem.matricule || '-';
+      const memPhone = mem.phone ? (mem.phone + (mem.phone2 ? ' / ' + mem.phone2 : '')) : '-';
+      rowsHtml += `
+        <tr>
+          <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+          <td style="text-align: center; font-weight: bold; color: #047857;">${memMatricule}</td>
+          <td style="font-weight: 600;">${mem.fullName}</td>
+          <td style="text-align: center; color: #334155; font-size: 11px;">${memPhone}</td>
+          <td>${fam ? fam.name : '-'}</td>
+          <td>${fam ? (fam.chefDeFamille || '-') : '-'}</td>
+          <td style="text-align: right; font-weight: bold; color: #b91c1c;">${formatMoney(unitPrice, breakdown.currency)}</td>
+          <td style="text-align: center;"><span class="print-badge print-badge-danger">⚠️ En Retard</span></td>
+        </tr>
+      `;
+    });
+
+    const totalArriereMois = lateList.length * unitPrice;
+
+    const content = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #111;">
+        <div style="text-align: center; border-bottom: 2px solid #b91c1c; padding-bottom: 15px; margin-bottom: 20px;">
+          <h2 style="margin: 0; color: #047857; text-transform: uppercase;">ASSOCIATION MUTUELLE TAGBA</h2>
+          <p style="margin: 4px 0; font-size: 13px; color: #555;">Union • Solidarité • Entraide Familiale | Divo, Côte d'Ivoire</p>
+          <h3 style="margin: 12px 0 4px 0; font-size: 18px; color: #b91c1c; text-transform: uppercase; letter-spacing: 0.5px;">
+            FICHE OFFICIELLE DES RETARDS DE COTISATION - MOIS DE ${m.monthName.toUpperCase()}
+          </h3>
+          <p style="margin: 0; font-size: 12px; color: #666;">Date d'édition : ${dateTirage}</p>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 6px; padding: 12px 18px;">
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #9f1239; font-weight: 700;">Mois concerné</div>
+            <div style="font-size: 16px; font-weight: bold; color: #0f172a;">${m.monthName}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #9f1239; font-weight: 700;">Membres en Retard</div>
+            <div style="font-size: 16px; font-weight: bold; color: #b91c1c;">${lateList.length} membre(s) / ${breakdown.totalMembers}</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #9f1239; font-weight: 700;">Tarif Mensuel</div>
+            <div style="font-size: 16px; font-weight: bold; color: #0f172a;">${formatMoney(unitPrice, breakdown.currency)} / membre</div>
+          </div>
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #9f1239; font-weight: 700;">Total Arriérés du Mois</div>
+            <div style="font-size: 16px; font-weight: bold; color: #b91c1c;">${formatMoney(totalArriereMois, breakdown.currency)}</div>
+          </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 11px; margin-bottom: 30px;">
+          <thead>
+            <tr style="background: #991b1b; color: white;">
+              <th style="padding: 7px; border: 1px solid #991b1b; width: 30px; text-align: center;">N°</th>
+              <th style="padding: 7px; border: 1px solid #991b1b; text-align: center;">N° Membre (Matricule)</th>
+              <th style="padding: 7px; border: 1px solid #991b1b; text-align: left;">Nom & Prénoms</th>
+              <th style="padding: 7px; border: 1px solid #991b1b; text-align: center;">Téléphone</th>
+              <th style="padding: 7px; border: 1px solid #991b1b; text-align: left;">Foyer / Famille</th>
+              <th style="padding: 7px; border: 1px solid #991b1b; text-align: left;">Chef de Famille</th>
+              <th style="padding: 7px; border: 1px solid #991b1b; text-align: right;">Montant Échu</th>
+              <th style="padding: 7px; border: 1px solid #991b1b; text-align: center;">Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml || '<tr><td colspan="8" style="text-align: center; padding: 20px; color: #047857; font-weight: bold;">🎉 Félicitations ! Aucun membre n\'est en retard pour ce mois.</td></tr>'}
+          </tbody>
+          <tfoot>
+            <tr style="background: #f1f5f9; font-weight: bold;">
+              <td colspan="6" style="padding: 10px; border: 1px solid #cbd5e1; text-align: right;">TOTAL ARRIÉRÉS À RECOUVRER :</td>
+              <td style="padding: 10px; border: 1px solid #cbd5e1; text-align: right; color: #b91c1c; font-size: 13px;">${formatMoney(totalArriereMois, breakdown.currency)}</td>
+              <td style="border: 1px solid #cbd5e1; text-align: center; color: #b91c1c;">${lateList.length} retard(s)</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 50px; padding: 0 40px;">
+          <div style="text-align: center;">
+            <p style="font-weight: bold; margin-bottom: 60px;">Le Trésorier Général</p>
+            <p style="font-size: 11px; color: #666;">(Signature & Date)</p>
+          </div>
+          <div style="text-align: center;">
+            <p style="font-weight: bold; margin-bottom: 60px;">Le Président de la Mutuelle</p>
+            <p style="font-size: 11px; color: #666;">(Visa & Cachet)</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    executeTagbaPrint(content, `TAGBA_Retards_Cotisations_${m.monthName.replace(/\s+/g, '_')}`);
   }
 
   function printAllMonthsRecapReport() {
@@ -1708,6 +1822,7 @@
   window.printFinancesReport = printFinancesReport;
   window.printEntraideReport = printEntraideReport;
   window.printSelectedMonthReport = printSelectedMonthReport;
+  window.printSelectedMonthLateReport = printSelectedMonthLateReport;
   window.printAllMonthsRecapReport = printAllMonthsRecapReport;
   window.printMemberAudit = printMemberAudit;
   window.printCotisationsCurrentSubView = printCotisationsCurrentSubView;
