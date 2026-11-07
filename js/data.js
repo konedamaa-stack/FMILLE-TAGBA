@@ -53,7 +53,37 @@ const defaultData = {
 // Vérification d'intégrité de la liste des cotisations (sans blocage de membre)
 function cleanExcessCotisations(cotisations) {
   if (!Array.isArray(cotisations)) return [];
-  return cotisations.filter(c => Boolean(c));
+  const usedIds = new Set();
+  const usedRecus = new Set();
+  let maxRecuNum = cotisations.length;
+  for (const c of cotisations) {
+    if (!c) continue;
+    const m = String(c.recuNum || c.recu_num || '').match(/REC-\d+-(\d+)/i);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (!isNaN(n) && n > maxRecuNum) maxRecuNum = n;
+    }
+  }
+  return cotisations.filter(c => Boolean(c)).map((c, idx) => {
+    const mId = c.memberId || c.member_id || idx;
+    let cid = c.id || `cot-${Date.now()}-${idx}`;
+    if (usedIds.has(cid)) {
+      cid = `${cid}-${String(mId).replace(/^mem-/, '')}-${c.recuNum || idx}`;
+    }
+    usedIds.add(cid);
+
+    let rNum = c.recuNum || c.recu_num || `REC-2026-${String(idx + 1).padStart(3, '0')}`;
+    if (usedRecus.has(rNum)) {
+      maxRecuNum++;
+      rNum = `REC-2026-${String(maxRecuNum).padStart(3, '0')}`;
+    }
+    usedRecus.add(rNum);
+
+    if (cid !== c.id || rNum !== c.recuNum) {
+      return { ...c, id: cid, recuNum: rNum };
+    }
+    return c;
+  });
 }
 
 if (typeof window !== 'undefined') {
@@ -106,13 +136,16 @@ const TAGBA_DB = {
             } catch (e) { }
           }
 
-          // Nettoyage de sécurité : dédoublonner uniquement les reçus ayant exactement le même identifiant (id)
+          // Nettoyage de sécurité : dédoublonner uniquement les reçus strictement identiques (même membre, même reçu, même période et même montant)
           if (parsed.cotisations && parsed.cotisations.length > 0) {
             const seen = new Set();
             const deduplicated = [];
             for (const c of parsed.cotisations) {
               if (!c) continue;
-              const key = c.id || `${c.memberId || c.member_id}_${c.recuNum || ''}_${c.periode || ''}_${c.montant || 0}`;
+              const mId = c.memberId || c.member_id || '';
+              const recu = c.recuNum || c.recu_num || '';
+              const per = (c.periode || '').trim().toLowerCase();
+              const key = `${mId}_${recu}_${per}_${c.montant || 0}`;
               if (!seen.has(key)) {
                 seen.add(key);
                 deduplicated.push(c);
@@ -134,13 +167,30 @@ const TAGBA_DB = {
             }
           }
 
-          // Assainissement strict : réduction des cotisations dépassant 1 000 FCFA
+          // Assainissement et unicité des cotisations et matricules
           if (parsed.cotisations && parsed.cotisations.length > 0) {
-            const cleaned = cleanExcessCotisations(parsed.cotisations);
-            if (cleaned.length !== parsed.cotisations.length) {
-              parsed.cotisations = cleaned;
-              try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch (e) { }
+            parsed.cotisations = cleanExcessCotisations(parsed.cotisations);
+          }
+
+          if (Array.isArray(parsed.members) && parsed.members.length > 0) {
+            const usedMats = new Set();
+            let maxMat = parsed.members.length;
+            for (const m of parsed.members) {
+              const match = String(m.matricule || '').match(/TGB-(\d+)/i);
+              if (match) {
+                const n = parseInt(match[1], 10);
+                if (!isNaN(n) && n > maxMat) maxMat = n;
+              }
             }
+            parsed.members.forEach((m, idx) => {
+              let mat = m.matricule || `TGB-${String(idx + 1).padStart(3, '0')}`;
+              if (usedMats.has(mat)) {
+                maxMat++;
+                mat = `TGB-${String(maxMat).padStart(3, '0')}`;
+                m.matricule = mat;
+              }
+              usedMats.add(mat);
+            });
           }
 
           // Tri alphabétique systématique de toutes les listes
@@ -546,8 +596,20 @@ const TAGBA_DB = {
       }
     }
     const data = this.get();
-    mem.id = 'mem-' + Date.now();
-    mem.matricule = 'TGB-' + String(data.members.length + 1).padStart(3, '0');
+    mem.id = 'mem-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const existingMats = new Set((data.members || []).map(m => m.matricule).filter(Boolean));
+    let nextMat = (data.members || []).length + 1;
+    for (const m of (data.members || [])) {
+      const match = String(m.matricule || '').match(/TGB-(\d+)/i);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (!isNaN(n) && n >= nextMat) nextMat = n + 1;
+      }
+    }
+    while (existingMats.has('TGB-' + String(nextMat).padStart(3, '0'))) {
+      nextMat++;
+    }
+    mem.matricule = 'TGB-' + String(nextMat).padStart(3, '0');
     mem.joinDate = new Date().toISOString().split('T')[0];
     if (!mem.statutCotisation) mem.statutCotisation = 'A_JOUR';
     data.members.push(mem);

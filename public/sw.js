@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tagba-pwa-v39';
+const CACHE_NAME = 'tagba-pwa-v41';
 
 const LOCAL_ASSETS = [
   '/',
@@ -54,7 +54,7 @@ self.addEventListener('fetch', (event) => {
   if (url.hostname.includes('supabase.co')) return;
 
   event.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-store' })
       .then((networkRes) => {
         if (networkRes && networkRes.status === 200 && networkRes.type !== 'opaque') {
           const copy = networkRes.clone();

@@ -14,6 +14,8 @@ let tagbaSupabaseClient = null;
 let tagbaRealtimeChannel = null;
 let isSyncingToCloud = false;
 let isPullingFromCloud = false;
+let pendingPushAfterSync = false;
+let lastPushCompletedAt = 0;
 let autoSyncTimer = null;
 
 function getSupabaseClient() {
@@ -80,6 +82,7 @@ function setupSupabaseRealtime() {
 
     // 2. Réception directe des mutations Postgres
     tagbaRealtimeChannel.on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+      if (isSyncingToCloud || (Date.now() - lastPushCompletedAt < 2500)) return;
       console.log('⚡ [Realtime] Événement base Postgres détecté :', payload);
       pullAllDataFromSupabase(true, true);
     });
@@ -261,8 +264,8 @@ function mergeDatasets(local, remote) {
     const localArr = Array.isArray(local[k]) ? local[k] : [];
     const remoteArr = Array.isArray(remote[k]) ? remote[k] : [];
     const map = new Map();
-    localArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
     remoteArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
+    localArr.forEach(item => { if (item && item.id) map.set(item.id, item); });
     merged[k] = Array.from(map.values());
   }
   if (merged.cotisations && merged.members) {
@@ -277,7 +280,10 @@ function mergeDatasets(local, remote) {
 
 // Envoi complet des données locales vers Supabase (Push)
 async function pushAllDataToSupabase(silent = false) {
-  if (isSyncingToCloud) return;
+  if (isSyncingToCloud) {
+    pendingPushAfterSync = true;
+    return;
+  }
   const client = getSupabaseClient();
   if (!client) {
     if (!silent) showToast('SDK Supabase introuvable', 'error');
@@ -290,6 +296,7 @@ async function pushAllDataToSupabase(silent = false) {
 
   const localData = TAGBA_DB.get();
   localData.lastModified = Date.now();
+  TAGBA_DB.save(localData, true);
 
   try {
     // 1. Sauvegarde intégrale absolue dans app_config (Source unique de vérité atomique)
@@ -461,7 +468,12 @@ async function pushAllDataToSupabase(silent = false) {
     updateSyncStatusBadge('error');
     if (!silent) showToast(`Erreur lors de la synchronisation : ${err.message}`, 'error');
   } finally {
+    lastPushCompletedAt = Date.now();
     isSyncingToCloud = false;
+    if (pendingPushAfterSync) {
+      pendingPushAfterSync = false;
+      pushAllDataToSupabase(true);
+    }
   }
 }
 
