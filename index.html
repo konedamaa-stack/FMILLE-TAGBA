@@ -991,6 +991,7 @@
             </div>
             <div class="toolbar-group">
               <button class="btn btn-secondary" onclick="printCeremoniesCurrentSubView()" title="Imprimer la vue événements / cérémonies active">🖨️ Imprimer cette Vue</button>
+              <button class="btn btn-outline-warning" onclick="printAllEventsRecapReport()" title="Imprimer la synthèse générale des cotisations et retards d'événements par mois" style="border: 1px solid var(--gold-500); color: var(--gold-400); font-weight: 700; background: rgba(217, 119, 6, 0.1); cursor: pointer;">📊 Retards par Mois</button>
               <button class="btn btn-gold" id="btnEvenementsCreateMain" onclick="openModal('modalCreateEvenement')">➕ Créer un Événement</button>
               <button class="btn btn-secondary" id="btnAddCeremonieMain" onclick="openModal('modalAddCeremonie')">🎉 + Programmer une Cérémonie</button>
             </div>
@@ -1039,8 +1040,11 @@
                   <button type="button" class="btn btn-sm btn-secondary" onclick="printEventCotisationsReport()" title="Imprimer l'état général complet de cet événement">
                     🖨️ Imprimer l'État
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="printEventCotisationsReport(null, 'retard')" title="Imprimer uniquement la liste des membres en retard de paiement" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 700; background: rgba(244, 63, 94, 0.08); cursor: pointer;">
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="printEventCotisationsReport(null, 'retard')" title="Imprimer uniquement la liste des membres en retard de paiement pour cet événement" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 700; background: rgba(244, 63, 94, 0.08); cursor: pointer;">
                     ⚠️ Imprimer les Retards
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-warning" onclick="printAllEventsRecapReport()" title="Imprimer la synthèse générale de tous les événements et retards mois par mois" style="border: 1px solid var(--gold-500); color: var(--gold-400); font-weight: 700; background: rgba(217, 119, 6, 0.1); cursor: pointer;">
+                    📊 Retards par Mois
                   </button>
                   <button type="button" id="btnOpenCreateEventModal" class="btn btn-sm btn-gold" onclick="openModal('modalCreateEvenement')" style="font-weight: 700; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35); cursor: pointer;">
                     ➕ Créer un Événement
@@ -2997,10 +3001,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261107-v38"></script>
-  <script src="js/supabase.js?v=20261107-v38"></script>
-  <script src="js/app.js?v=20261107-v38"></script>
-  <script src="js/print.js?v=20261107-v38"></script>
+  <script src="js/data.js?v=20261107-v39"></script>
+  <script src="js/supabase.js?v=20261107-v39"></script>
+  <script src="js/app.js?v=20261107-v39"></script>
+  <script src="js/print.js?v=20261107-v39"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3008,7 +3012,7 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v38) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v39) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

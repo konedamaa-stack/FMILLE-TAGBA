@@ -6198,17 +6198,30 @@ function populateEventSelects() {
   const activeEvt = TAGBA_DB.getActiveEvenement();
   const curr = data.config?.currency || 'FCFA';
 
+  function getEvtMonth(e) {
+    const dStr = e ? (e.dateLimite || e.createdAt) : null;
+    if (!dStr) return '';
+    const d = new Date(dStr);
+    if (isNaN(d.getTime())) return '';
+    const m = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    return m.charAt(0).toUpperCase() + m.slice(1);
+  }
+
   // 1. Sélecteur dans le panneau de suivi des événements
   const selectActive = document.getElementById('selectActiveEvent');
   if (selectActive) {
     if (evts.length === 0) {
       selectActive.innerHTML = '<option value="" disabled selected>Aucun événement créé</option>';
     } else {
-      selectActive.innerHTML = evts.map(e => `
+      selectActive.innerHTML = evts.map(e => {
+        const mLabel = getEvtMonth(e);
+        const prefix = mLabel ? `[${mLabel}] ` : '';
+        return `
         <option value="${e.id}" ${e.id === activeEvt.id ? 'selected' : ''}>
-          ${e.titre} — ${formatMoney(e.montant, curr)} / membre (${e.statut || 'Actif'})
+          ${prefix}${e.titre} — ${formatMoney(e.montant, curr)} / membre (${e.statut || 'Actif'})
         </option>
-      `).join('');
+        `;
+      }).join('');
     }
   }
 
@@ -6218,11 +6231,15 @@ function populateEventSelects() {
     if (evts.length === 0) {
       selectModal.innerHTML = '<option value="" disabled selected>Aucun événement disponible</option>';
     } else {
-      selectModal.innerHTML = evts.map(e => `
+      selectModal.innerHTML = evts.map(e => {
+        const mLabel = getEvtMonth(e);
+        const prefix = mLabel ? `[${mLabel}] ` : '';
+        return `
         <option value="${e.id}" ${e.id === activeEvt.id ? 'selected' : ''} data-amount="${e.montant}" data-title="${e.titre}">
-          ${e.titre} — ${formatMoney(e.montant, curr)} / membre
+          ${prefix}${e.titre} — ${formatMoney(e.montant, curr)} / membre
         </option>
-      `).join('');
+        `;
+      }).join('');
     }
   }
 }
@@ -6361,7 +6378,10 @@ function renderCotisationsEventsTracking() {
     }
 
     if (dateLimiteEl) {
-      dateLimiteEl.textContent = activeEvt.dateLimite ? `📅 Échéance : ${formatDate(activeEvt.dateLimite)}` : '';
+      const dObj = activeEvt.dateLimite ? new Date(activeEvt.dateLimite) : null;
+      const mNom = dObj && !isNaN(dObj.getTime()) ? dObj.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '';
+      const mNomCap = mNom ? ` (Mois de ${mNom.charAt(0).toUpperCase() + mNom.slice(1)})` : '';
+      dateLimiteEl.textContent = activeEvt.dateLimite ? `📅 Échéance : ${formatDate(activeEvt.dateLimite)}${mNomCap}` : '';
     }
 
     if (badgeEl) badgeEl.textContent = `${formatMoney(unitEvent, currency)} / membre`;

@@ -929,22 +929,35 @@
       `;
     }).join('');
 
+    function getEvtMonth(e) {
+      const dStr = e ? (e.dateLimite || e.createdAt) : null;
+      if (!dStr) return 'Mois Indéfini';
+      const d = new Date(dStr);
+      if (isNaN(d.getTime())) return 'Mois Indéfini';
+      const m = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      return m.charAt(0).toUpperCase() + m.slice(1);
+    }
+    const evtMonth = getEvtMonth(activeEvt);
+
     const objectifTotal = members.length * unitPrice;
     const docTitle = isRetardOnly
       ? `État des Retards de Cotisation : ${activeEvt.titre}`
       : `État des Cotisations : ${activeEvt.titre}`;
     const docSubtitle = isRetardOnly
-      ? `Liste nominative officielle des membres en retard de paiement (Non payés et Paiements partiels)`
-      : (activeEvt.description || 'Suivi nominatif du recouvrement de la contribution spéciale');
+      ? `Liste nominative officielle des membres en retard pour l'échéance de ${evtMonth} (Date limite : ${formatDate(activeEvt.dateLimite)})`
+      : (activeEvt.description || `Suivi nominatif du recouvrement - Échéance de ${evtMonth}`);
 
     const meta = isRetardOnly ? [
       { label: 'Événement', value: activeEvt.titre },
+      { label: 'Mois d\'Échéance', value: `📅 ${evtMonth}` },
+      { label: 'Date Limite', value: formatDate(activeEvt.dateLimite) },
       { label: 'Filtrage Sélectionné', value: '⚠️ Retards de Paiement' },
       { label: 'Membres en Retard', value: `${targetMembers.length} sur ${members.length} adhérent(s)` },
       { label: 'Montant Restant Dû', value: formatMoney(totalResteSelection, curr) },
       { label: 'Cotisation Exigée', value: `${formatMoney(unitPrice, curr)} / membre` }
     ] : [
       { label: 'Événement', value: activeEvt.titre },
+      { label: 'Mois d\'Échéance', value: `📅 ${evtMonth}` },
       { label: 'Montant Fixé', value: `${formatMoney(unitPrice, curr)} / membre` },
       { label: 'Date Limite', value: formatDate(activeEvt.dateLimite) },
       { label: 'Progression', value: `${countPayes} payés sur ${members.length} (${formatMoney(totalEncaise, curr)} / ${formatMoney(objectifTotal, curr)})` }
@@ -992,10 +1005,267 @@
     `;
 
     const pdfTitle = isRetardOnly
-      ? `TAGBA_Retards_${activeEvt.titre.replace(/[^a-zA-Z0-9]/g, '_')}`
-      : `TAGBA_Cotisations_${activeEvt.titre.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      ? `TAGBA_Retards_${evtMonth.replace(/[^a-zA-Z0-9]/g, '_')}_${activeEvt.titre.replace(/[^a-zA-Z0-9]/g, '_')}`
+      : `TAGBA_Cotisations_${evtMonth.replace(/[^a-zA-Z0-9]/g, '_')}_${activeEvt.titre.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
     executeTagbaPrint(html, pdfTitle);
+  }
+
+  // ============================================================
+  // 6.b. SYNTHÈSE DES COTISATIONS & RETARDS PAR ÉVÉNEMENT PAR MOIS
+  // ============================================================
+  function printAllEventsRecapReport() {
+    const data = getDbData();
+    const curr = data.config?.currency || 'FCFA';
+    const allMembers = [...(data.members || [])].sort((a,b) => (a.fullName || "").localeCompare(b.fullName || "", "fr", { sensitivity: "base" }));
+    const events = [...(data.evenements || [])];
+
+    if (events.length === 0) {
+      alert("Aucun événement n'est enregistré dans l'application.");
+      return;
+    }
+
+    function getEvtMonth(e) {
+      const dStr = e ? (e.dateLimite || e.createdAt) : null;
+      if (!dStr) return 'Mois indéfini';
+      const d = new Date(dStr);
+      if (isNaN(d.getTime())) return 'Mois indéfini';
+      const m = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      return m.charAt(0).toUpperCase() + m.slice(1);
+    }
+
+    // Trier les événements par date d'échéance (du plus ancien au plus récent)
+    events.sort((a, b) => new Date(a.dateLimite || a.createdAt || 0) - new Date(b.dateLimite || b.createdAt || 0));
+
+    let grandTotalAttendu = 0;
+    let grandTotalEncaise = 0;
+    let grandTotalReste = 0;
+    let grandTotalMembresRetard = 0;
+
+    const summaryByEvent = events.map(evt => {
+      const targetEvtId = evt.id;
+      const unitPrice = Number(evt.montant || 0);
+      const moisNom = getEvtMonth(evt);
+
+      let countPayes = 0;
+      let countPartiels = 0;
+      let countNonPayes = 0;
+      let totalEncaise = 0;
+      const lateMembers = [];
+
+      allMembers.forEach(m => {
+        const fam = (data.families || []).find(f => f.id === m.familyId);
+        const eventCotis = (data.cotisations || []).filter(c => {
+          const isMem = c.memberId === m.id || c.member_id === m.id || (m.matricule && c.matricule === m.matricule) || (m.fullName && c.memberName && m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase());
+          if (!isMem) return false;
+          if (c.evenementId && c.evenementId === targetEvtId) return true;
+          if (c.eventId && c.eventId === targetEvtId) return true;
+          const isEvtType = c.type === 'Événement' || c.type === 'Evenement' || c.type === 'événement';
+          if (isEvtType && (!c.evenementId && !c.eventId || c.evenementId === targetEvtId || c.eventId === targetEvtId)) return true;
+          if (c.periode && (c.periode === evt.titre || c.periode.includes(evt.titre))) return true;
+          return false;
+        });
+
+        const montantPaye = eventCotis.reduce((s, c) => s + Number(c.montant || 0), 0);
+        const reste = Math.max(0, unitPrice - montantPaye);
+        totalEncaise += montantPaye;
+
+        if (montantPaye >= unitPrice) {
+          countPayes++;
+        } else {
+          if (montantPaye > 0) countPartiels++;
+          else countNonPayes++;
+
+          lateMembers.push({
+            member: m,
+            family: fam,
+            montantPaye,
+            reste,
+            statut: montantPaye > 0 ? `Partiel (${formatMoney(montantPaye, curr)})` : 'Non payé'
+          });
+        }
+      });
+
+      const totalAttendu = allMembers.length * unitPrice;
+      const totalReste = Math.max(0, totalAttendu - totalEncaise);
+      const countRetards = countPartiels + countNonPayes;
+      const taux = totalAttendu > 0 ? Math.round((totalEncaise / totalAttendu) * 100) : 0;
+
+      grandTotalAttendu += totalAttendu;
+      grandTotalEncaise += totalEncaise;
+      grandTotalReste += totalReste;
+      grandTotalMembresRetard += countRetards;
+
+      return {
+        evt,
+        moisNom,
+        unitPrice,
+        countPayes,
+        countPartiels,
+        countNonPayes,
+        countRetards,
+        totalAttendu,
+        totalEncaise,
+        totalReste,
+        taux,
+        lateMembers
+      };
+    });
+
+    const meta = [
+      { label: 'Total Événements Répertoriés', value: `${events.length} événement(s)` },
+      { label: 'Effectif Total des Adhérents', value: `${allMembers.length} membres` },
+      { label: 'Budget Total Attendu', value: formatMoney(grandTotalAttendu, curr) },
+      { label: 'Total Encaissé Événements', value: formatMoney(grandTotalEncaise, curr) },
+      { label: 'Reste Total à Recouvrer (Retards)', value: formatMoney(grandTotalReste, curr) }
+    ];
+
+    const header = getOfficialPrintHeader(
+      'Synthèse des Cotisations & Retards par Événement Mois par Mois',
+      'Tableau comparatif du recouvrement et relevé nominatif officiel des arriérés d\'événements par mois',
+      meta
+    );
+
+    // Lignes tableau 1 : Synthèse des événements
+    const recapRowsHtml = summaryByEvent.map((item, idx) => `
+      <tr>
+        <td style="text-align: center; font-weight: 700;">${idx + 1}</td>
+        <td style="font-weight: 700; color: #047857; white-space: nowrap;">📅 ${item.moisNom}</td>
+        <td style="font-weight: 600;">
+          ${item.evt.titre}
+          ${item.evt.description ? `<br><small style="color: #64748b;">${item.evt.description}</small>` : ''}
+        </td>
+        <td style="text-align: center; font-size: 11px;">${formatDate(item.evt.dateLimite)}</td>
+        <td style="text-align: right; font-weight: 600;">${formatMoney(item.unitPrice, curr)}</td>
+        <td style="text-align: center; font-weight: 700; color: #047857;">${item.countPayes} / ${allMembers.length}</td>
+        <td style="text-align: center; font-weight: 700; color: ${item.countRetards > 0 ? '#b91c1c' : '#047857'};">
+          ${item.countRetards > 0 ? `⚠️ ${item.countRetards}` : '✅ 0'}
+        </td>
+        <td style="text-align: right; font-weight: 600;">${formatMoney(item.totalAttendu, curr)}</td>
+        <td style="text-align: right; font-weight: 700; color: #047857;">${formatMoney(item.totalEncaise, curr)}</td>
+        <td style="text-align: right; font-weight: 800; color: ${item.totalReste > 0 ? '#b91c1c' : '#047857'};">
+          ${item.totalReste > 0 ? `-${formatMoney(item.totalReste, curr)}` : '0 FCFA'}
+        </td>
+        <td style="text-align: center; font-weight: 700; color: ${item.taux >= 80 ? '#047857' : item.taux >= 50 ? '#b45309' : '#b91c1c'};">${item.taux}%</td>
+      </tr>
+    `).join('');
+
+    // Section 2 : Relevé nominatif détaillé des membres en retard par événement
+    let detailRetardsHtml = '';
+    summaryByEvent.forEach(item => {
+      detailRetardsHtml += `
+        <div style="margin-top: 24px; page-break-inside: avoid;">
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #fef2f2; border-left: 4px solid #ef4444; padding: 8px 12px; margin-bottom: 8px; border-radius: 4px;">
+            <div style="font-weight: 800; color: #991b1b; font-size: 13px;">
+              ⚠️ Retards : ${item.evt.titre} — Mois de ${item.moisNom} (Échéance : ${formatDate(item.evt.dateLimite)})
+            </div>
+            <div style="font-size: 12px; color: #b91c1c; font-weight: 700;">
+              ${item.lateMembers.length} retardataire(s) | Reste à recouvrer : ${formatMoney(item.totalReste, curr)}
+            </div>
+          </div>
+          <table class="tagba-print-table" style="font-size: 11px; margin-bottom: 16px;">
+            <thead>
+              <tr style="background: #f8fafc;">
+                <th style="width: 30px; text-align: center;">N°</th>
+                <th style="text-align: center; width: 90px;">Matricule</th>
+                <th>Nom & Prénoms / Contact</th>
+                <th>Foyer</th>
+                <th style="text-align: right; width: 90px;">Déjà Versé</th>
+                <th style="text-align: right; width: 100px;">Reste Dû</th>
+                <th style="text-align: center; width: 100px;">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${item.lateMembers.length === 0 ? `
+                <tr><td colspan="7" style="text-align: center; color: #047857; padding: 12px; font-weight: 600;">✅ Félicitations ! Tous les membres sont à jour pour cet événement.</td></tr>
+              ` : item.lateMembers.map((lm, lIdx) => `
+                <tr>
+                  <td style="text-align: center;">${lIdx + 1}</td>
+                  <td style="font-weight: 700; color: #047857; text-align: center;">${lm.member.matricule || 'N/A'}</td>
+                  <td style="font-weight: 600;">
+                    ${lm.member.fullName}
+                    ${lm.member.phone ? `<br><small style="color: #64748b;">📞 ${lm.member.phone}${lm.member.phone2 ? ' / ' + lm.member.phone2 : ''}</small>` : ''}
+                  </td>
+                  <td>${lm.family ? lm.family.name : 'N/A'}</td>
+                  <td style="text-align: right; font-weight: 600; color: ${lm.montantPaye > 0 ? '#047857' : '#64748b'};">${formatMoney(lm.montantPaye, curr)}</td>
+                  <td style="text-align: right; font-weight: 800; color: #b91c1c;">-${formatMoney(lm.reste, curr)}</td>
+                  <td style="text-align: center;">
+                    <span class="print-badge ${lm.montantPaye > 0 ? 'print-badge-warning' : 'print-badge-danger'}">
+                      ${lm.montantPaye > 0 ? 'Partiel' : 'Non payé'}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" style="text-align: right; font-weight: 700;">Sous-total retards (${item.evt.titre}) :</td>
+                <td style="text-align: right; font-weight: 700; color: #047857;">${formatMoney(item.totalEncaise, curr)}</td>
+                <td style="text-align: right; font-weight: 800; color: #b91c1c;">-${formatMoney(item.totalReste, curr)}</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      `;
+    });
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+        
+        <h4 style="margin: 16px 0 8px 0; color: #0f172a; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">
+          1. Synthèse Mensuelle de Tous les Événements & Retards
+        </h4>
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 30px; text-align: center;">N°</th>
+              <th>Mois</th>
+              <th>Événement</th>
+              <th style="text-align: center;">Échéance</th>
+              <th style="text-align: right;">Tarif / Mbr</th>
+              <th style="text-align: center;">À Jour</th>
+              <th style="text-align: center;">Retards</th>
+              <th style="text-align: right;">Total Attendu</th>
+              <th style="text-align: right;">Total Encaissé</th>
+              <th style="text-align: right;">Reste à Recouvrer</th>
+              <th style="text-align: center;">Taux</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${recapRowsHtml}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="5" style="text-align: right; font-weight: 700;">GRAND TOTAL TOUS ÉVÉNEMENTS :</td>
+              <td style="text-align: center; font-weight: 800;">-</td>
+              <td style="text-align: center; font-weight: 800; color: ${grandTotalMembresRetard > 0 ? '#b91c1c' : '#047857'};">
+                ${grandTotalMembresRetard} cas
+              </td>
+              <td style="text-align: right; font-weight: 800; color: #0f172a;">${formatMoney(grandTotalAttendu, curr)}</td>
+              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(grandTotalEncaise, curr)}</td>
+              <td style="text-align: right; font-weight: 800; color: ${grandTotalReste > 0 ? '#b91c1c' : '#047857'};">
+                ${grandTotalReste > 0 ? `-${formatMoney(grandTotalReste, curr)}` : '0 FCFA'}
+              </td>
+              <td style="text-align: center; font-weight: 800; color: #047857;">
+                ${grandTotalAttendu > 0 ? Math.round((grandTotalEncaise / grandTotalAttendu) * 100) : 0}%
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <h4 style="margin: 28px 0 8px 0; color: #0f172a; text-transform: uppercase; font-size: 13px; letter-spacing: 0.5px;">
+          2. Relevé Nominatif Officiel des Membres en Retard par Événement & Mois
+        </h4>
+        ${detailRetardsHtml}
+
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, 'TAGBA_Synthese_Evenements_Retards_Mois');
   }
 
   // ============================================================
@@ -1818,6 +2088,7 @@
   window.printMonthlyCotisationsReport = printMonthlyCotisationsReport;
   window.printReceiptsJournal = printReceiptsJournal;
   window.printEventCotisationsReport = printEventCotisationsReport;
+  window.printAllEventsRecapReport = printAllEventsRecapReport;
   window.printCeremoniesReport = printCeremoniesReport;
   window.printFinancesReport = printFinancesReport;
   window.printEntraideReport = printEntraideReport;
