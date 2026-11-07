@@ -822,7 +822,7 @@
   // ============================================================
   // 6. ÉTAT DE COTISATION PAR ÉVÉNEMENT / SACRIFICE
   // ============================================================
-  function printEventCotisationsReport(eventId) {
+  function printEventCotisationsReport(eventId, filterMode = 'all') {
     const data = getDbData();
     const curr = data.config?.currency || 'FCFA';
     const members = [...(data.members || [])].sort((a,b) => (a.fullName || "").localeCompare(b.fullName || "", "fr", { sensitivity: "base" }));
@@ -853,61 +853,104 @@
     let countAttente = 0;
     let totalEncaise = 0;
 
-    const rowsHtml = members.map((m, idx) => {
+    // Évaluer chaque membre
+    const evaluatedMembers = members.map(m => {
       const fam = (data.families || []).find(f => f.id === m.familyId);
 
-      // Trouver le versement lié à cet événement
+      // Trouver les versements liés à cet événement
       const eventCotis = (data.cotisations || []).filter(c => {
-        if (c.memberId !== m.id) return false;
+        const isMem = c.memberId === m.id || c.member_id === m.id || (m.matricule && c.matricule === m.matricule) || (m.fullName && c.memberName && m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase());
+        if (!isMem) return false;
         if (c.evenementId && c.evenementId === targetEvtId) return true;
-        if (c.type === 'Événement' && (!c.evenementId || c.evenementId === targetEvtId)) return true;
+        if (c.eventId && c.eventId === targetEvtId) return true;
+        const isEvtType = c.type === 'Événement' || c.type === 'Evenement' || c.type === 'événement';
+        if (isEvtType && (!c.evenementId && !c.eventId || c.evenementId === targetEvtId || c.eventId === targetEvtId)) return true;
+        if (c.periode && (c.periode === activeEvt.titre || c.periode.includes(activeEvt.titre))) return true;
         return false;
       });
 
       const montantPaye = eventCotis.reduce((s, c) => s + Number(c.montant || 0), 0);
       const isPaye = montantPaye >= unitPrice;
+      const reste = Math.max(0, unitPrice - montantPaye);
       const recuRef = eventCotis.map(c => c.recuNum).filter(Boolean).join(', ');
 
       if (isPaye) {
         countPayes++;
-        totalEncaise += montantPaye;
       } else {
         countAttente++;
-        totalEncaise += montantPaye;
       }
+      totalEncaise += montantPaye;
 
-      const statutBadge = isPaye
+      return {
+        member: m,
+        fam,
+        montantPaye,
+        isPaye,
+        reste,
+        recuRef
+      };
+    });
+
+    // Déterminer le mode de filtrage (retard uniquement ou tous)
+    const isRetardOnly = filterMode === 'retard' || filterMode === 'late';
+    const targetMembers = isRetardOnly
+      ? evaluatedMembers.filter(item => !item.isPaye)
+      : evaluatedMembers;
+
+    const totalResteSelection = targetMembers.reduce((s, item) => s + item.reste, 0);
+    const totalVerseSelection = targetMembers.reduce((s, item) => s + item.montantPaye, 0);
+
+    const rowsHtml = targetMembers.map((item, idx) => {
+      const m = item.member;
+      const fam = item.fam;
+      const statutBadge = item.isPaye
         ? '<span class="print-badge print-badge-success">✅ Payé</span>'
-        : (montantPaye > 0)
-          ? `<span class="print-badge print-badge-warning">⏳ Partiel (${formatMoney(montantPaye, curr)})</span>`
-          : '<span class="print-badge print-badge-danger">⏳ Non Payé</span>';
+        : (item.montantPaye > 0)
+          ? `<span class="print-badge print-badge-warning">⏳ Partiel (${formatMoney(item.montantPaye, curr)})</span>`
+          : '<span class="print-badge print-badge-danger">❌ Non Payé</span>';
 
       return `
         <tr>
           <td style="text-align: center;">${idx + 1}</td>
-          <td style="font-weight: 700; color: #047857;">${m.matricule || 'N/A'}</td>
+          <td style="font-weight: 700; color: #047857; text-align: center;">${m.matricule || 'N/A'}</td>
           <td style="font-weight: 600;">
             ${m.fullName}
             ${m.phone ? `<br><small style="color: #64748b;">📞 ${m.phone}${m.phone2 ? ' / ' + m.phone2 : ''}</small>` : ''}
           </td>
           <td>${fam ? fam.name : 'N/A'}</td>
           <td style="text-align: right;">${formatMoney(unitPrice, curr)}</td>
-          <td style="text-align: right; font-weight: 700; color: ${isPaye ? '#047857' : '#b45309'};">${formatMoney(montantPaye, curr)}</td>
+          <td style="text-align: right; font-weight: 700; color: ${item.isPaye ? '#047857' : '#b45309'};">${formatMoney(item.montantPaye, curr)}</td>
+          <td style="text-align: right; font-weight: 800; color: ${item.reste > 0 ? '#b91c1c' : '#047857'};">
+            ${item.reste > 0 ? `-${formatMoney(item.reste, curr)}` : '0 FCFA'}
+          </td>
           <td style="text-align: center;">${statutBadge}</td>
-          <td style="font-size: 10px;">${recuRef || '-'}</td>
+          <td style="font-size: 10px; text-align: center;">${item.recuRef || '-'}</td>
         </tr>
       `;
     }).join('');
 
     const objectifTotal = members.length * unitPrice;
-    const meta = [
+    const docTitle = isRetardOnly
+      ? `État des Retards de Cotisation : ${activeEvt.titre}`
+      : `État des Cotisations : ${activeEvt.titre}`;
+    const docSubtitle = isRetardOnly
+      ? `Liste nominative officielle des membres en retard de paiement (Non payés et Paiements partiels)`
+      : (activeEvt.description || 'Suivi nominatif du recouvrement de la contribution spéciale');
+
+    const meta = isRetardOnly ? [
+      { label: 'Événement', value: activeEvt.titre },
+      { label: 'Filtrage Sélectionné', value: '⚠️ Retards de Paiement' },
+      { label: 'Membres en Retard', value: `${targetMembers.length} sur ${members.length} adhérent(s)` },
+      { label: 'Montant Restant Dû', value: formatMoney(totalResteSelection, curr) },
+      { label: 'Cotisation Exigée', value: `${formatMoney(unitPrice, curr)} / membre` }
+    ] : [
       { label: 'Événement', value: activeEvt.titre },
       { label: 'Montant Fixé', value: `${formatMoney(unitPrice, curr)} / membre` },
       { label: 'Date Limite', value: formatDate(activeEvt.dateLimite) },
       { label: 'Progression', value: `${countPayes} payés sur ${members.length} (${formatMoney(totalEncaise, curr)} / ${formatMoney(objectifTotal, curr)})` }
     ];
 
-    const header = getOfficialPrintHeader(`État des Cotisations : ${activeEvt.titre}`, activeEvt.description || 'Suivi nominatif du recouvrement de la contribution spéciale', meta);
+    const header = getOfficialPrintHeader(docTitle, docSubtitle, meta);
 
     const html = `
       ${printDocStyle}
@@ -917,25 +960,29 @@
           <thead>
             <tr>
               <th style="width: 30px; text-align: center;">N°</th>
-              <th>Matricule / N° Membre</th>
+              <th style="text-align: center;">Matricule / N° Membre</th>
               <th>Nom & Prénoms / Contact</th>
               <th>Foyer</th>
               <th style="text-align: right;">Montant Dû</th>
               <th style="text-align: right;">Montant Versé</th>
+              <th style="text-align: right;">Reste à Payer</th>
               <th style="text-align: center;">Statut</th>
-              <th>Réf. Reçu</th>
+              <th style="text-align: center;">Réf. Reçu</th>
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml || '<tr><td colspan="8" style="text-align: center;">Aucun membre à afficher.</td></tr>'}
+            ${rowsHtml || `<tr><td colspan="9" style="text-align: center; padding: 20px; color: #64748b;">${isRetardOnly ? 'Félicitations ! Aucun membre n\'est en retard pour cet événement.' : 'Aucun membre à afficher.'}</td></tr>`}
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="4" style="text-align: right; font-weight: 700;">TOTAL COLLECTÉ :</td>
-              <td style="text-align: right; font-weight: 800; color: #0f172a;">${formatMoney(objectifTotal, curr)}</td>
-              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalEncaise, curr)}</td>
+              <td colspan="4" style="text-align: right; font-weight: 700;">TOTAL ${isRetardOnly ? 'RETARDS DE LA SÉLECTION' : 'GÉNÉRAL'} :</td>
+              <td style="text-align: right; font-weight: 800; color: #0f172a;">${formatMoney(isRetardOnly ? targetMembers.length * unitPrice : objectifTotal, curr)}</td>
+              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalVerseSelection, curr)}</td>
+              <td style="text-align: right; font-weight: 800; color: ${totalResteSelection > 0 ? '#b91c1c' : '#047857'};">
+                ${totalResteSelection > 0 ? `-${formatMoney(totalResteSelection, curr)}` : '0 FCFA'}
+              </td>
               <td colspan="2" style="text-align: center; font-weight: 700; color: #b45309;">
-                Reste à recouvrer : ${formatMoney(Math.max(0, objectifTotal - totalEncaise), curr)}
+                ${isRetardOnly ? `${targetMembers.length} membre(s) à relancer` : `Reste : ${formatMoney(Math.max(0, objectifTotal - totalEncaise), curr)}`}
               </td>
             </tr>
           </tfoot>
@@ -944,7 +991,11 @@
       </div>
     `;
 
-    executeTagbaPrint(html, `TAGBA_Cotisations_${activeEvt.titre.replace(/[^a-zA-Z0-9]/g, '_')}`);
+    const pdfTitle = isRetardOnly
+      ? `TAGBA_Retards_${activeEvt.titre.replace(/[^a-zA-Z0-9]/g, '_')}`
+      : `TAGBA_Cotisations_${activeEvt.titre.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+    executeTagbaPrint(html, pdfTitle);
   }
 
   // ============================================================
@@ -1630,7 +1681,9 @@
     if (isCeremonies) {
       printCeremoniesReport();
     } else {
-      printEventCotisationsReport();
+      const statusSelect = document.getElementById('filterEventStatusSelect');
+      const isLate = statusSelect && statusSelect.value === 'LATE';
+      printEventCotisationsReport(null, isLate ? 'retard' : 'all');
     }
   }
 

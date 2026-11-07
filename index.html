@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261107-v36">
+  <link rel="stylesheet" href="css/style.css?v=20261107-v37">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -1033,8 +1033,11 @@
                 </div>
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <button type="button" class="btn btn-sm btn-secondary" onclick="printEventCotisationsReport()" title="Imprimer l'état nominatif des cotisations de cet événement">
+                  <button type="button" class="btn btn-sm btn-secondary" onclick="printEventCotisationsReport()" title="Imprimer l'état général complet de cet événement">
                     🖨️ Imprimer l'État
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="printEventCotisationsReport(null, 'retard')" title="Imprimer uniquement la liste des membres en retard de paiement" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 700; background: rgba(244, 63, 94, 0.08); cursor: pointer;">
+                    ⚠️ Imprimer les Retards
                   </button>
                   <button type="button" id="btnOpenCreateEventModal" class="btn btn-sm btn-gold" onclick="openModal('modalCreateEvenement')" style="font-weight: 700; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35); cursor: pointer;">
                     ➕ Créer un Événement
@@ -1060,14 +1063,17 @@
                 <div class="kpi-sub" id="kpiEventPaidCountSub">0 versement(s) reçu(s)</div>
               </div>
 
-              <div class="kpi-card" style="border-left: 3px solid var(--gold-500);">
+              <div class="kpi-card" style="border-left: 3px solid var(--gold-500); cursor: pointer;" onclick="document.getElementById('filterEventStatusSelect').value='PAID'; renderCotisationsEventsTracking();" title="Cliquer pour afficher les membres à jour">
                 <span class="kpi-title">Membres Ayant Cotisé</span>
                 <div class="kpi-value" style="color: var(--gold-400);" id="kpiEventPaidMembersCount">0 / 0</div>
                 <div class="kpi-sub" id="kpiEventPercentSub">0% de taux de participation</div>
               </div>
 
-              <div class="kpi-card" style="border-left: 3px solid var(--rose-500);">
-                <span class="kpi-title">Reste à Recouvrer</span>
+              <div class="kpi-card" style="border-left: 3px solid var(--rose-500); cursor: pointer;" onclick="document.getElementById('filterEventStatusSelect').value='LATE'; renderCotisationsEventsTracking();" title="Cliquer pour filtrer les retards">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span class="kpi-title">Reste à Recouvrer</span>
+                  <span style="font-size: 10px; color: var(--rose-400); font-weight: 700; background: rgba(244,63,94,0.15); padding: 2px 6px; border-radius: 4px;">⚠️ Filtrer</span>
+                </div>
                 <div class="kpi-value" style="color: var(--rose-400);" id="kpiEventResteRecouvrer">0 FCFA</div>
                 <div class="kpi-sub" id="kpiEventPendingCountSub">0 membre(s) en attente</div>
               </div>
@@ -1088,8 +1094,13 @@
                     Suivez en direct qui a cotisé pour le sacrifice et encaissez les membres en attente en 1 clic.
                   </p>
                 </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                  <input type="text" class="form-control" id="filterEventMemberSearch" placeholder="🔍 Filtrer un membre..." style="width: 220px; font-size: 12px;" oninput="renderCotisationsEventsTracking()">
+                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                  <select class="form-control" id="filterEventStatusSelect" style="width: 175px; font-size: 12px;" onchange="renderCotisationsEventsTracking()" title="Filtrer par statut de paiement">
+                    <option value="ALL">📋 Tous les membres</option>
+                    <option value="LATE">⚠️ En retard uniquement</option>
+                    <option value="PAID">✅ À jour uniquement</option>
+                  </select>
+                  <input type="text" class="form-control" id="filterEventMemberSearch" placeholder="🔍 Filtrer un membre..." style="width: 200px; font-size: 12px;" oninput="renderCotisationsEventsTracking()">
                 </div>
               </div>
 
@@ -2983,10 +2994,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261107-v36"></script>
-  <script src="js/supabase.js?v=20261107-v36"></script>
-  <script src="js/app.js?v=20261107-v36"></script>
-  <script src="js/print.js?v=20261107-v36"></script>
+  <script src="js/data.js?v=20261107-v37"></script>
+  <script src="js/supabase.js?v=20261107-v37"></script>
+  <script src="js/app.js?v=20261107-v37"></script>
+  <script src="js/print.js?v=20261107-v37"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -2994,7 +3005,7 @@
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v36) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v37) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

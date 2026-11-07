@@ -6399,11 +6399,27 @@ function renderCotisationsEventsTracking() {
     const evenementsSumEl = document.getElementById('evenementsSumDisplay');
     if (evenementsSumEl) evenementsSumEl.textContent = formatMoney(fin.totalCotisationsEvenements, currency);
 
-    // Filtre recherche
+    // Filtres statut & recherche
+    const statusSelect = document.getElementById('filterEventStatusSelect');
+    const filterStatus = statusSelect ? statusSelect.value : 'ALL';
     const searchInput = document.getElementById('filterEventMemberSearch');
     const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
     let membersToDisplay = (data.members || []);
+    if (filterStatus === 'LATE') {
+      membersToDisplay = membersToDisplay.filter(m => {
+        const cots = eventCotisations.filter(c => (c.memberId === m.id || c.member_id === m.id));
+        const paid = cots.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+        return paid < unitEvent;
+      });
+    } else if (filterStatus === 'PAID') {
+      membersToDisplay = membersToDisplay.filter(m => {
+        const cots = eventCotisations.filter(c => (c.memberId === m.id || c.member_id === m.id));
+        const paid = cots.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+        return paid >= unitEvent;
+      });
+    }
+
     if (query) {
       membersToDisplay = membersToDisplay.filter(m =>
         (m.fullName || '').toLowerCase().includes(query) ||
