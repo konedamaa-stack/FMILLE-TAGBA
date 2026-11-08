@@ -746,8 +746,13 @@
             <div class="card-panel" id="recapMoisDetailPanel">
               <div class="card-header-flex" style="flex-wrap: wrap; gap: 12px;">
                 <div>
-                  <h3 id="recapMoisDetailTitle"><span>📋</span> Détail des cotisations pour le mois sélectionné</h3>
-                  <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;" id="recapMoisDetailSubtitle">
+                  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <h3 id="recapMoisDetailTitle" style="margin: 0;"><span>📋</span> Versements du mois de</h3>
+                    <select id="recapMoisDirectSelect" class="form-control" style="width: auto; min-width: 190px; font-weight: 800; font-size: 15px; color: var(--emerald-400); background: rgba(16, 185, 129, 0.1); border: 2px solid var(--emerald-500); border-radius: 8px; padding: 6px 12px; cursor: pointer;" onchange="selectRecapMonth(this.value)" title="Choisir un autre mois">
+                      <!-- Rempli dynamiquement en JS -->
+                    </select>
+                  </div>
+                  <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px;" id="recapMoisDetailSubtitle">
                     Chargement des membres...
                   </div>
                 </div>
@@ -759,6 +764,11 @@
                     ⚠️ Imprimer Non À Jour (ce Mois)
                   </button>
                 </div>
+              </div>
+
+              <!-- Barre rapide de changement de mois -->
+              <div id="recapMoisQuickSwitcher" style="display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 10px 12px; margin-bottom: 12px; background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md);">
+                <!-- Boutons des mois remplis dynamiquement en JS -->
               </div>
 
               <!-- Filtres : Ayant payé vs En retard + Barre de recherche -->
@@ -3018,10 +3028,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261108-v43"></script>
-  <script src="js/supabase.js?v=20261108-v43"></script>
-  <script src="js/app.js?v=20261108-v43"></script>
-  <script src="js/print.js?v=20261108-v43"></script>
+  <script src="js/data.js?v=20261108-v44"></script>
+  <script src="js/supabase.js?v=20261108-v44"></script>
+  <script src="js/app.js?v=20261108-v44"></script>
+  <script src="js/print.js?v=20261108-v44"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3029,7 +3039,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v43') caches.delete(k);
+            if (k !== 'tagba-pwa-v44') caches.delete(k);
           });
         });
       }
@@ -3041,9 +3051,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261108-v43')
+        navigator.serviceWorker.register('/sw.js?v=20261108-v44')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v43) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v44) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

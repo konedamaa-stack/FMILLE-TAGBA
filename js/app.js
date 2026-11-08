@@ -1447,7 +1447,7 @@ function getMonthlyCotisationsBreakdown() {
     return monthMap.get(monthName);
   }
 
-  // Initialiser au moins Octobre 2026 et Novembre 2026
+  // Initialiser le cycle annuel complet (12 mois : Octobre 2026 à Septembre 2027)
   const today = new Date();
   const startDate = new Date(cfg.dateDebutCotisations || '2026-10-04');
   const startYear = isNaN(startDate.getFullYear()) ? 2026 : startDate.getFullYear();
@@ -1456,7 +1456,7 @@ function getMonthlyCotisationsBreakdown() {
   const curMonth = today.getMonth();
 
   const diffMonths = (curYear - startYear) * 12 + (curMonth - startMonth);
-  for (let i = 0; i <= Math.max(diffMonths, 1); i++) {
+  for (let i = 0; i <= Math.max(diffMonths, 11); i++) {
     const mIdx = (startMonth + i) % 12;
     const y = startYear + Math.floor((startMonth + i) / 12);
     ensureMonth(`${monthNamesFr[mIdx]} ${y}`);
@@ -1532,9 +1532,10 @@ function renderCotisationsRecapMois() {
     summaryText.textContent = `${breakdown.months.length} mois répertoriés • Total : ${formatMoney(breakdown.totalCotisationsGlobal, breakdown.currency)}`;
   }
 
-  // 1. Rendu des Cartes KPI Mensuelles
+  // 1. Rendu des Cartes KPI Mensuelles (mois actifs + 4 premiers mois + mois sélectionné)
   if (kpiGrid) {
-    kpiGrid.innerHTML = breakdown.months.map(m => {
+    const kpiMonths = breakdown.months.filter((m, idx) => m.nbPaid > 0 || idx < 4 || m.monthName === currentSelectedRecapMonth);
+    kpiGrid.innerHTML = kpiMonths.map(m => {
       const isSelected = m.monthName === currentSelectedRecapMonth;
       const cardBorder = isSelected ? 'border: 2px solid var(--emerald-400); transform: translateY(-2px);' : 'border-left: 3px solid var(--emerald-500);';
       const bg = isSelected ? 'background: rgba(16, 185, 129, 0.12);' : '';
@@ -1645,6 +1646,8 @@ function renderRecapMoisDetailTable() {
   if (!currentMonth) return;
 
   const titleEl = document.getElementById('recapMoisDetailTitle');
+  const directSelectEl = document.getElementById('recapMoisDirectSelect');
+  const quickSwitcherEl = document.getElementById('recapMoisQuickSwitcher');
   const subtitleEl = document.getElementById('recapMoisDetailSubtitle');
   const countPaidEl = document.getElementById('recapMoisPaidCount');
   const countLateEl = document.getElementById('recapMoisLateCount');
@@ -1653,7 +1656,38 @@ function renderRecapMoisDetailTable() {
   const query = (document.getElementById('searchRecapMoisDetailInput')?.value || '').trim().toLowerCase();
 
   if (titleEl) {
-    titleEl.innerHTML = `<span>📋</span> Versements du mois de <strong style="color: var(--emerald-400);">${currentMonth.monthName}</strong>`;
+    if (directSelectEl) {
+      titleEl.innerHTML = `<span>📋</span> Versements du mois de`;
+    } else {
+      titleEl.innerHTML = `<span>📋</span> Versements du mois de <strong style="color: var(--emerald-400);">${currentMonth.monthName}</strong>`;
+    }
+  }
+
+  if (directSelectEl) {
+    directSelectEl.innerHTML = breakdown.months.map(m =>
+      `<option value="${m.monthName}" ${m.monthName === currentMonth.monthName ? 'selected' : ''} style="background: #0f172a; color: #f8fafc;">📅 ${m.monthName} (${m.nbPaid}/${breakdown.totalMembers} à jour)</option>`
+    ).join('');
+  }
+
+  if (quickSwitcherEl) {
+    const curIdx = breakdown.months.findIndex(m => m.monthName === currentMonth.monthName);
+    const prevMonth = curIdx > 0 ? breakdown.months[curIdx - 1].monthName : null;
+    const nextMonth = curIdx >= 0 && curIdx < breakdown.months.length - 1 ? breakdown.months[curIdx + 1].monthName : null;
+
+    const prevBtn = `<button type="button" class="btn btn-xs btn-secondary" ${prevMonth ? `onclick="selectRecapMonth('${prevMonth}')"` : 'disabled'} style="white-space: nowrap; opacity: ${prevMonth ? '1' : '0.4'};" title="${prevMonth ? 'Mois précédent : ' + prevMonth : ''}">◀ Mois préc.</button>`;
+    const nextBtn = `<button type="button" class="btn btn-xs btn-secondary" ${nextMonth ? `onclick="selectRecapMonth('${nextMonth}')"` : 'disabled'} style="white-space: nowrap; opacity: ${nextMonth ? '1' : '0.4'};" title="${nextMonth ? 'Mois suivant : ' + nextMonth : ''}">Mois suiv. ▶</button>`;
+
+    const monthPills = breakdown.months.map(m => {
+      const active = m.monthName === currentMonth.monthName;
+      const style = active
+        ? 'background: var(--emerald-500); color: #fff; font-weight: 800; border: 1px solid var(--emerald-400); box-shadow: 0 2px 8px rgba(16,185,129,0.35);'
+        : (m.nbPaid > 0
+            ? 'background: rgba(16, 185, 129, 0.12); color: var(--emerald-400); border: 1px solid rgba(16, 185, 129, 0.35); font-weight: 600;'
+            : 'background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border-color);');
+      return `<button type="button" class="btn btn-xs" onclick="selectRecapMonth('${m.monthName}')" style="white-space: nowrap; border-radius: 999px; padding: 5px 11px; cursor: pointer; ${style}">📅 ${m.monthName} <span style="opacity: 0.85; font-size: 11px;">(${m.nbPaid})</span></button>`;
+    }).join('');
+
+    quickSwitcherEl.innerHTML = `<span style="font-size: 12px; font-weight: 700; color: var(--text-muted); white-space: nowrap; margin-right: 4px;">Changer de mois :</span> ${prevBtn} ${monthPills} ${nextBtn}`;
   }
   if (subtitleEl) {
     subtitleEl.innerHTML = `Total collecté : <strong style="color: var(--emerald-400);">${formatMoney(currentMonth.totalMontant, breakdown.currency)}</strong> auprès de <strong>${currentMonth.nbPaid} membre(s)</strong> (${currentMonth.rate}% de recouvrement)`;
