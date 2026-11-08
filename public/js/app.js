@@ -1563,49 +1563,50 @@ function renderCotisationsRecapMois() {
     const isSelected = m.monthName === currentSelectedRecapMonth;
     const rowBg = isSelected ? 'background: rgba(16, 185, 129, 0.08);' : '';
     let statutBadge = '';
-    if (m.rate >= 80) statutBadge = '<span class="badge badge-success" style="font-size: 10px; padding: 3px 8px;">✅ Fort</span>';
-    else if (m.rate >= 40) statutBadge = '<span class="badge badge-warning" style="font-size: 10px; padding: 3px 8px;">⚡ En Cours</span>';
-    else if (m.nbPaid > 0) statutBadge = '<span class="badge badge-purple" style="font-size: 10px; padding: 3px 8px;">🚀 Anticipé</span>';
-    else statutBadge = '<span class="badge badge-danger" style="font-size: 10px; padding: 3px 8px;">⚠️ À Recouvrer</span>';
+    if (m.rate >= 80) statutBadge = '<span class="badge badge-success" style="font-size: 9.5px; padding: 2px 6px;">✅ Fort</span>';
+    else if (m.rate >= 40) statutBadge = '<span class="badge badge-warning" style="font-size: 9.5px; padding: 2px 6px;">⚡ En cours</span>';
+    else if (m.nbPaid > 0) statutBadge = '<span class="badge badge-purple" style="font-size: 9.5px; padding: 2px 6px;">🚀 Anticipé</span>';
+    else statutBadge = '<span class="badge badge-danger" style="font-size: 9.5px; padding: 2px 6px;">⚠️ À recouvrer</span>';
 
     return `
-      <tr style="${rowBg}">
-        <td style="white-space: nowrap; padding: 8px 10px;">
-          <div style="font-weight: 700; font-size: 13px; color: ${isSelected ? 'var(--emerald-400)' : 'var(--text-main)'}; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;">
+      <tr style="${rowBg}; cursor: pointer;" onclick="if (!event.target.closest('button')) selectRecapMonth('${m.monthName}')" title="Cliquer pour afficher les détails de ${m.monthName}">
+        <td style="white-space: nowrap; padding: 6px 8px;">
+          <div style="font-weight: 700; font-size: 12.5px; color: ${isSelected ? 'var(--emerald-400)' : 'var(--text-main)'}; display: inline-flex; align-items: center; gap: 4px;">
             <span>📅</span> <span>${m.monthName}</span>
-            ${isSelected ? '<span class="badge badge-info" style="font-size: 9px; padding: 2px 6px;">Actif</span>' : ''}
+            ${isSelected ? '<span class="badge badge-info" style="font-size: 8.5px; padding: 1px 4px;">Actif</span>' : ''}
           </div>
         </td>
-        <td style="white-space: nowrap; padding: 8px 10px;"><strong style="color: var(--emerald-400); font-size: 14px;">${formatMoney(m.totalMontant, breakdown.currency)}</strong></td>
-        <td style="white-space: nowrap; padding: 8px 10px;">
-          <strong style="color: #34d399; font-size: 13px;">${m.nbPaid}</strong>
-          <span style="font-size: 11px; color: var(--text-muted);"> / ${breakdown.totalMembers} membres</span>
+        <td style="white-space: nowrap; padding: 6px 8px;">
+          <strong style="color: var(--emerald-400); font-size: 13px;">${formatMoney(m.totalMontant, breakdown.currency)}</strong>
         </td>
-        <td style="white-space: nowrap; padding: 8px 10px;">
-          <span style="color: ${m.nbLate > 0 ? 'var(--rose-400)' : 'var(--text-muted)'}; font-weight: ${m.nbLate > 0 ? '600' : 'normal'}; font-size: 12px;">
-            ${m.nbLate > 0 ? `${m.nbLate} en retard` : 'Aucun retard'}
+        <td style="white-space: nowrap; padding: 6px 4px; text-align: center;">
+          <strong style="color: #34d399; font-size: 12px;">${m.nbPaid}</strong><span style="font-size: 10.5px; color: var(--text-muted);">/${breakdown.totalMembers}</span>
+        </td>
+        <td style="white-space: nowrap; padding: 6px 4px; text-align: center;">
+          <span style="color: ${m.nbLate > 0 ? 'var(--rose-400)' : 'var(--emerald-400)'}; font-weight: 700; font-size: 11.5px;">
+            ${m.nbLate > 0 ? `${m.nbLate}` : '0'}
           </span>
         </td>
-        <td style="white-space: nowrap; padding: 8px 10px; min-width: 95px;">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <div style="flex: 1; background: rgba(255,255,255,0.08); height: 6px; border-radius: 3px; width: 48px; overflow: hidden;">
+        <td style="white-space: nowrap; padding: 6px 4px; text-align: center;">
+          <div style="display: inline-flex; align-items: center; gap: 4px; justify-content: center;">
+            <div style="background: rgba(255,255,255,0.08); height: 5px; border-radius: 3px; width: 28px; overflow: hidden;">
               <div style="background: ${m.rate >= 80 ? 'var(--emerald-400)' : m.rate >= 40 ? '#f59e0b' : '#ef4444'}; height: 100%; width: ${Math.min(100, m.rate)}%;"></div>
             </div>
-            <span style="font-size: 12px; font-weight: 700;">${m.rate}%</span>
+            <span style="font-size: 11px; font-weight: 700;">${m.rate}%</span>
           </div>
         </td>
-        <td style="white-space: nowrap; padding: 8px 10px;">${statutBadge}</td>
-        <td style="text-align: right; white-space: nowrap; padding: 8px 10px;">
-          <div style="display: inline-flex; gap: 5px; flex-wrap: nowrap; align-items: center; justify-content: flex-end;">
-            <button class="btn btn-xs ${isSelected ? 'btn-primary' : 'btn-secondary'}" onclick="selectRecapMonth('${m.monthName}')" title="Voir la liste détaillée des membres" style="white-space: nowrap; padding: 4px 8px; font-size: 11px;">
+        <td style="white-space: nowrap; padding: 6px 4px; text-align: center;">${statutBadge}</td>
+        <td style="text-align: right; padding: 6px 8px;">
+          <div style="display: inline-flex; gap: 4px; flex-wrap: nowrap; align-items: center; justify-content: flex-end;">
+            <button class="btn btn-xs ${isSelected ? 'btn-primary' : 'btn-secondary'}" onclick="selectRecapMonth('${m.monthName}')" title="Afficher la liste détaillée des membres" style="white-space: nowrap; padding: 3px 6px; font-size: 10.5px; border-radius: 5px;">
               👁️ Détails
             </button>
-            <button class="btn btn-xs btn-outline-success" onclick="printSelectedMonthReport('${m.monthName}', 'paid')" title="Imprimer les ${m.nbPaid} membres à jour pour ${m.monthName}" style="border: 1px solid var(--emerald-500); color: var(--emerald-400); font-weight: 600; white-space: nowrap; padding: 4px 8px; font-size: 11px;">
+            <button class="btn btn-xs btn-outline-success" onclick="printSelectedMonthReport('${m.monthName}', 'paid')" title="Imprimer les ${m.nbPaid} membres à jour pour ${m.monthName}" style="border: 1px solid var(--emerald-500); color: var(--emerald-400); font-weight: 600; white-space: nowrap; padding: 3px 6px; font-size: 10.5px; border-radius: 5px;">
               ✅ À Jour (${m.nbPaid})
             </button>
             ${m.nbLate > 0 ? `
-              <button class="btn btn-xs btn-outline-danger" onclick="printSelectedMonthLateReport('${m.monthName}')" title="Imprimer les ${m.nbLate} membres non à jour (en retard) pour ${m.monthName}" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 600; white-space: nowrap; padding: 4px 8px; font-size: 11px;">
-                ⚠️ Non À Jour (${m.nbLate})
+              <button class="btn btn-xs btn-outline-danger" onclick="printSelectedMonthLateReport('${m.monthName}')" title="Imprimer les ${m.nbLate} membres en retard pour ${m.monthName}" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 600; white-space: nowrap; padding: 3px 6px; font-size: 10.5px; border-radius: 5px;">
+                ⚠️ Retards (${m.nbLate})
               </button>
             ` : ''}
           </div>

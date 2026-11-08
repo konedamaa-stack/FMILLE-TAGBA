@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261108-v47">
+  <link rel="stylesheet" href="css/style.css?v=20261108-v48">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -723,16 +723,16 @@
                 <span style="font-size: 12px; color: var(--text-muted);" id="recapMoisTableSummary">Chargement des mois...</span>
               </div>
               <div class="table-responsive">
-                <table class="modern-table">
+                <table class="modern-table" id="tableCotisationsRecapMois" style="width: 100%; table-layout: auto;">
                   <thead>
                     <tr>
-                      <th>Mois</th>
-                      <th>Total Encaissé</th>
-                      <th>À Jour</th>
-                      <th>Non À Jour</th>
-                      <th>Recouvrement</th>
-                      <th>Statut</th>
-                      <th style="text-align: right;">Actions</th>
+                      <th style="padding: 7px 8px;">Mois</th>
+                      <th style="padding: 7px 8px;">Total Encaissé</th>
+                      <th style="padding: 7px 4px; text-align: center;">À Jour</th>
+                      <th style="padding: 7px 4px; text-align: center;">Retards</th>
+                      <th style="padding: 7px 4px; text-align: center;">Taux</th>
+                      <th style="padding: 7px 4px; text-align: center;">Statut</th>
+                      <th style="padding: 7px 8px; text-align: right;">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="recapMoisSummaryTableBody">
@@ -3028,10 +3028,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261108-v47"></script>
-  <script src="js/supabase.js?v=20261108-v47"></script>
-  <script src="js/app.js?v=20261108-v47"></script>
-  <script src="js/print.js?v=20261108-v47"></script>
+  <script src="js/data.js?v=20261108-v48"></script>
+  <script src="js/supabase.js?v=20261108-v48"></script>
+  <script src="js/app.js?v=20261108-v48"></script>
+  <script src="js/print.js?v=20261108-v48"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3039,7 +3039,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v47') caches.delete(k);
+            if (k !== 'tagba-pwa-v48') caches.delete(k);
           });
         });
       }
@@ -3051,9 +3051,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261108-v47')
+        navigator.serviceWorker.register('/sw.js?v=20261108-v48')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v47) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v48) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

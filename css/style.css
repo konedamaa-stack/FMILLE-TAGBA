@@ -954,6 +954,26 @@ body.light-theme .hero-badge.highlight {
   background: rgba(255, 255, 255, 0.03);
 }
 
+/* Optimisation Tableau Récapitulatif Mois par Mois (suppression barre horizontale) */
+#tableCotisationsRecapMois {
+  width: 100%;
+  table-layout: auto;
+}
+#tableCotisationsRecapMois th {
+  padding: 8px 6px;
+  font-size: 11px;
+}
+#tableCotisationsRecapMois td {
+  padding: 6px 6px;
+}
+#tableCotisationsRecapMois .btn-xs {
+  padding: 3px 6px;
+  font-size: 10.5px;
+  border-radius: 5px;
+  gap: 3px;
+  line-height: 1.2;
+}
+
 /* Status Badges */
 .badge {
   display: inline-flex;
