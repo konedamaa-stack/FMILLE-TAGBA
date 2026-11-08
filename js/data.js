@@ -77,9 +77,9 @@ function cleanExcessCotisations(cotisations) {
     if (c.id === 'cot-1794155741016-1111r' || c.recuNum === 'REC-2026-130' || c.recu_num === 'REC-2026-130') {
       continue;
     }
-    // Harmoniser REC-2026-109 à 4000 FCFA
+    // Harmoniser REC-2026-109 à 3000 FCFA (Acompte TRAORE BRAMA TGB-023)
     if (c.id === 'cot-1794062512664' || c.recuNum === 'REC-2026-109' || c.recu_num === 'REC-2026-109') {
-      c.montant = 4000;
+      c.montant = 3000;
       c.type = 'Événement';
     }
     const mId = c.memberId || c.member_id;
