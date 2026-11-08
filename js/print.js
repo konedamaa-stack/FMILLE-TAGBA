@@ -756,12 +756,13 @@
     const header = getOfficialPrintHeader('Journal Général des Reçus & Encaissements', 'Grand livre chronologique de tous les paiements enregistrés', meta);
 
     const rowsHtml = sortedCotis.map((c, idx) => {
-      const mem = (data.members || []).find(mbr =>
-        (c.memberId && mbr.id === c.memberId) ||
-        (c.member_id && mbr.id === c.member_id) ||
-        (c.matricule && mbr.matricule === c.matricule) ||
-        (c.memberName && mbr.fullName && mbr.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase())
-      );
+      const cMemId = c.memberId || c.member_id;
+      const mem = (data.members || []).find(mbr => {
+        if (cMemId) return mbr.id === cMemId;
+        if (c.matricule && mbr.matricule) return mbr.matricule === c.matricule;
+        if (c.memberName && mbr.fullName) return mbr.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase();
+        return false;
+      });
       const memMat = mem ? mem.matricule : (c.matricule || '');
       const memTel = mem && mem.phone ? (mem.phone + (mem.phone2 ? ' / ' + mem.phone2 : '')) : (c.phone || '');
       return `
@@ -859,7 +860,15 @@
 
       // Trouver les versements liés à cet événement
       const eventCotis = (data.cotisations || []).filter(c => {
-        const isMem = c.memberId === m.id || c.member_id === m.id || (m.matricule && c.matricule === m.matricule) || (m.fullName && c.memberName && m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase());
+        const cMemId = c.memberId || c.member_id;
+        let isMem = false;
+        if (cMemId) {
+          isMem = (cMemId === m.id);
+        } else if (c.matricule && m.matricule) {
+          isMem = (c.matricule === m.matricule);
+        } else if (m.fullName && c.memberName) {
+          isMem = (m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase());
+        }
         if (!isMem) return false;
         if (c.evenementId && c.evenementId === targetEvtId) return true;
         if (c.eventId && c.eventId === targetEvtId) return true;
@@ -1077,7 +1086,15 @@
       allMembers.forEach(m => {
         const fam = (data.families || []).find(f => f.id === m.familyId);
         const eventCotis = (data.cotisations || []).filter(c => {
-          const isMem = c.memberId === m.id || c.member_id === m.id || (m.matricule && c.matricule === m.matricule) || (m.fullName && c.memberName && m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase());
+          const cMemId = c.memberId || c.member_id;
+          let isMem = false;
+          if (cMemId) {
+            isMem = (cMemId === m.id);
+          } else if (c.matricule && m.matricule) {
+            isMem = (c.matricule === m.matricule);
+          } else if (m.fullName && c.memberName) {
+            isMem = (m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase());
+          }
           if (!isMem) return false;
           if (c.evenementId && c.evenementId === targetEvtId) return true;
           if (c.eventId && c.eventId === targetEvtId) return true;
@@ -1778,12 +1795,13 @@
 
     let rowsHtml = '';
     m.versements.forEach((c, idx) => {
-      const mem = data.members.find(mbr =>
-        (c.memberId && mbr.id === c.memberId) ||
-        (c.member_id && mbr.id === c.member_id) ||
-        (c.matricule && mbr.matricule === c.matricule) ||
-        (c.memberName && mbr.fullName && mbr.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase())
-      );
+      const cMemId = c.memberId || c.member_id;
+      const mem = data.members.find(mbr => {
+        if (cMemId) return mbr.id === cMemId;
+        if (c.matricule && mbr.matricule) return mbr.matricule === c.matricule;
+        if (c.memberName && mbr.fullName) return mbr.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase();
+        return false;
+      });
       const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
       const memMatricule = mem ? mem.matricule : (c.matricule || '-');
       const memPhone = mem && mem.phone ? (mem.phone + (mem.phone2 ? ' / ' + mem.phone2 : '')) : (c.phone || '-');

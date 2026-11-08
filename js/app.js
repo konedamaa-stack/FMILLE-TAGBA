@@ -1743,12 +1743,13 @@ function renderRecapMoisDetailTable() {
       `;
     } else {
       tbody.innerHTML = filteredCots.map(c => {
-        const mem = data.members.find(m =>
-          (c.memberId && m.id === c.memberId) ||
-          (c.member_id && m.id === c.member_id) ||
-          (c.matricule && m.matricule === c.matricule) ||
-          (c.memberName && m.fullName && m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase())
-        );
+        const cMemId = c.memberId || c.member_id;
+        const mem = data.members.find(m => {
+          if (cMemId) return m.id === cMemId;
+          if (c.matricule && m.matricule) return m.matricule === c.matricule;
+          if (c.memberName && m.fullName) return m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase();
+          return false;
+        });
         const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
         const displayName = mem ? mem.fullName : (c.memberName || '-');
         const memMat = mem ? mem.matricule : (c.matricule || '');
@@ -2543,12 +2544,13 @@ function openReceiptModal(cotisationId) {
   const cot = data.cotisations.find(c => c.id === cotisationId);
   if (!cot) return;
 
-  const mem = data.members.find(m =>
-    (cot.memberId && m.id === cot.memberId) ||
-    (cot.member_id && m.id === cot.member_id) ||
-    (cot.matricule && m.matricule === cot.matricule) ||
-    (cot.memberName && m.fullName && m.fullName.trim().toLowerCase() === cot.memberName.trim().toLowerCase())
-  );
+  const cMemId = cot.memberId || cot.member_id;
+  const mem = data.members.find(m => {
+    if (cMemId) return m.id === cMemId;
+    if (cot.matricule && m.matricule) return m.matricule === cot.matricule;
+    if (cot.memberName && m.fullName) return m.fullName.trim().toLowerCase() === cot.memberName.trim().toLowerCase();
+    return false;
+  });
   const fam = data.families.find(f => f.id === (cot.familyId || (mem ? mem.familyId : '')));
 
   const container = document.getElementById('receiptContent');
