@@ -763,7 +763,25 @@ body.light-theme .hero-badge.highlight {
   border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all var(--transition-fast);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-xs {
+  padding: 5px 10px;
+  font-size: 11px;
+  border-radius: 7px;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .btn-sm {
@@ -927,6 +945,7 @@ body.light-theme .hero-badge.highlight {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .badge-success {

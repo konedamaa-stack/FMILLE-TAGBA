@@ -1558,7 +1558,8 @@ function renderCotisationsRecapMois() {
   }
 
   // 2. Rendu du Tableau Synthétique des Mois
-  tbody.innerHTML = breakdown.months.map(m => {
+  const tableMonths = breakdown.months.filter((m, idx) => m.nbPaid > 0 || idx < 3 || m.monthName === currentSelectedRecapMonth);
+  tbody.innerHTML = tableMonths.map(m => {
     const isSelected = m.monthName === currentSelectedRecapMonth;
     const rowBg = isSelected ? 'background: rgba(16, 185, 129, 0.08);' : '';
     let statutBadge = '';
@@ -1569,23 +1570,23 @@ function renderCotisationsRecapMois() {
 
     return `
       <tr style="${rowBg}">
-        <td>
-          <div style="font-weight: 700; font-size: 14px; color: ${isSelected ? 'var(--emerald-400)' : 'var(--text-main)'}; display: flex; align-items: center; gap: 6px;">
-            <span>📅</span> ${m.monthName}
+        <td style="white-space: nowrap;">
+          <div style="font-weight: 700; font-size: 14px; color: ${isSelected ? 'var(--emerald-400)' : 'var(--text-main)'}; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;">
+            <span>📅</span> <span>${m.monthName}</span>
             ${isSelected ? '<span class="badge badge-info" style="font-size: 9px;">Sélectionné</span>' : ''}
           </div>
         </td>
-        <td><strong style="color: var(--emerald-400); font-size: 15px;">${formatMoney(m.totalMontant, breakdown.currency)}</strong></td>
-        <td>
+        <td style="white-space: nowrap;"><strong style="color: var(--emerald-400); font-size: 15px;">${formatMoney(m.totalMontant, breakdown.currency)}</strong></td>
+        <td style="white-space: nowrap;">
           <strong style="color: #34d399;">${m.nbPaid} membre(s)</strong>
           <span style="font-size: 11px; color: var(--text-muted);"> (${m.versements.length} versement(s))</span>
         </td>
-        <td>
+        <td style="white-space: nowrap;">
           <span style="color: ${m.nbLate > 0 ? 'var(--rose-400)' : 'var(--text-muted)'}; font-weight: ${m.nbLate > 0 ? '600' : 'normal'};">
             ${m.nbLate > 0 ? `${m.nbLate} en attente` : 'Aucun retard'}
           </span>
         </td>
-        <td>
+        <td style="white-space: nowrap; min-width: 120px;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <div style="flex: 1; background: rgba(255,255,255,0.08); height: 6px; border-radius: 3px; min-width: 60px; overflow: hidden;">
               <div style="background: ${m.rate >= 80 ? 'var(--emerald-400)' : m.rate >= 40 ? '#f59e0b' : '#ef4444'}; height: 100%; width: ${Math.min(100, m.rate)}%;"></div>
@@ -1593,17 +1594,17 @@ function renderCotisationsRecapMois() {
             <span style="font-size: 12px; font-weight: 600;">${m.rate}%</span>
           </div>
         </td>
-        <td>${statutBadge}</td>
-        <td style="text-align: right;">
-          <div style="display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
-            <button class="btn btn-xs ${isSelected ? 'btn-primary' : 'btn-secondary'}" onclick="selectRecapMonth('${m.monthName}')" title="Voir la liste détaillée des membres">
+        <td style="white-space: nowrap;">${statutBadge}</td>
+        <td style="text-align: right; white-space: nowrap;">
+          <div style="display: inline-flex; gap: 6px; flex-wrap: nowrap; align-items: center; justify-content: flex-end;">
+            <button class="btn btn-xs ${isSelected ? 'btn-primary' : 'btn-secondary'}" onclick="selectRecapMonth('${m.monthName}')" title="Voir la liste détaillée des membres" style="white-space: nowrap;">
               👁️ Détails
             </button>
-            <button class="btn btn-xs btn-outline-success" onclick="printSelectedMonthReport('${m.monthName}', 'paid')" title="Imprimer les ${m.nbPaid} membres à jour pour ${m.monthName}" style="border: 1px solid var(--emerald-500); color: var(--emerald-400); font-weight: 600;">
+            <button class="btn btn-xs btn-outline-success" onclick="printSelectedMonthReport('${m.monthName}', 'paid')" title="Imprimer les ${m.nbPaid} membres à jour pour ${m.monthName}" style="border: 1px solid var(--emerald-500); color: var(--emerald-400); font-weight: 600; white-space: nowrap;">
               ✅ À Jour (${m.nbPaid})
             </button>
             ${m.nbLate > 0 ? `
-              <button class="btn btn-xs btn-outline-danger" onclick="printSelectedMonthLateReport('${m.monthName}')" title="Imprimer les ${m.nbLate} membres non à jour (en retard) pour ${m.monthName}" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 600;">
+              <button class="btn btn-xs btn-outline-danger" onclick="printSelectedMonthLateReport('${m.monthName}')" title="Imprimer les ${m.nbLate} membres non à jour (en retard) pour ${m.monthName}" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 600; white-space: nowrap;">
                 ⚠️ Non À Jour (${m.nbLate})
               </button>
             ` : ''}
