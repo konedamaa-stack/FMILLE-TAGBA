@@ -3332,6 +3332,22 @@ function bindFormSubmissions() {
           }
 
           const selectedEventId = cotType === 'Événement' ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
+
+          if (cotType === 'Événement') {
+            const activeEvtObj = (data.evenements || []).find(e => e.id === selectedEventId) || TAGBA_DB.getActiveEvenement();
+            const unitEventObj = Number(activeEvtObj?.montant || data.config?.cotisationEvenement || 4000);
+            const eventCots = (data.cotisations || []).filter(c => {
+              const isMem = (c.memberId === memberId || c.member_id === memberId);
+              if (!isMem) return false;
+              return (selectedEventId && (c.eventId === selectedEventId || c.evenementId === selectedEventId)) ||
+                (c.periode && activeEvtObj?.titre && c.periode.includes(activeEvtObj.titre));
+            });
+            const sumPaid = eventCots.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+            if (sumPaid >= unitEventObj) {
+              showToast(`⚠️ Ce membre a déjà réglé l'intégralité de sa cotisation pour cet événement (${formatMoney(sumPaid, data.config?.currency || 'FCFA')}). Chaque personne ne doit payer qu'une seule fois.`, 'warning');
+              return;
+            }
+          }
           const newCot = {
             memberId: memberId,
             memberName: mem ? mem.fullName : 'Membre',
@@ -6576,9 +6592,11 @@ function renderCotisationsEventsTracking() {
             <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${lastCot.id}')" title="Voir le Reçu Officiel">
               🧾 Reçu
             </button>
-            <button class="btn btn-sm btn-outline-primary" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Ajouter un autre versement">
-              ➕
-            </button>
+            ${isPartial ? `
+              <button class="btn btn-sm btn-outline-warning" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Compléter le versement (Reste ${formatMoney(unitEvent - totalPaidForMem, currency)})">
+                ➕ Compléter
+              </button>
+            ` : ''}
           </div>
         `;
       } else {
@@ -6626,6 +6644,20 @@ function quickPayMemberForEvent(memberId, eventId = null) {
     TAGBA_DB.save(data, true);
   }
   const activeEvt = TAGBA_DB.getActiveEvenement();
+  const unitEvent = Number(activeEvt?.montant || data.config?.cotisationEvenement || 4000);
+
+  // Vérifier si le membre a déjà réglé sa cotisation pour cet événement
+  const eventCots = (data.cotisations || []).filter(c => {
+    const isMem = (c.memberId === memberId || c.member_id === memberId);
+    if (!isMem) return false;
+    return (c.eventId && c.eventId === activeEvt.id) ||
+      (c.periode && activeEvt.titre && c.periode.includes(activeEvt.titre));
+  });
+  const sumPaid = eventCots.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+  if (sumPaid >= unitEvent) {
+    showToast(`Ce membre a déjà réglé l'intégralité de sa cotisation pour cet événement (${formatMoney(sumPaid, data.config?.currency || 'FCFA')}). Chaque personne ne doit payer qu'une seule fois.`, 'info');
+    return;
+  }
 
   openModal('modalAddCotisation');
   setVersementFormMode('individual', false);
@@ -6650,6 +6682,14 @@ function quickPayMemberForEvent(memberId, eventId = null) {
   const cotPeriodeInput = document.getElementById('cotPeriode');
   if (cotPeriodeInput) {
     cotPeriodeInput.value = activeEvt.titre;
+  }
+
+  // Si versement partiel existant, pré-remplir le reste exact à payer
+  if (sumPaid > 0 && sumPaid < unitEvent) {
+    const cotMontantInput = document.getElementById('cotMontant');
+    if (cotMontantInput) {
+      cotMontantInput.value = unitEvent - sumPaid;
+    }
   }
 
   const cotMontantInput = document.getElementById('cotMontant');

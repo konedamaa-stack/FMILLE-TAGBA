@@ -68,13 +68,37 @@ function cleanExcessCotisations(cotisations) {
   // Repérer les mois déjà payés par membre (Octobre / Novembre 2026) pour corriger les anciens libellés erronés "Avril 2027" / "Janvier 2028"
   const memberHasOct = new Set();
   const memberHasNov = new Set();
+  const seenEventMembers = new Set();
+  const cleanedList = [];
+
   for (const c of cotisations) {
     if (!c) continue;
+    // Supprimer le doublon REC-2026-130 pour TRAORE BRAMA
+    if (c.id === 'cot-1794155741016-1111r' || c.recuNum === 'REC-2026-130' || c.recu_num === 'REC-2026-130') {
+      continue;
+    }
+    // Harmoniser REC-2026-109 à 4000 FCFA
+    if (c.id === 'cot-1794062512664' || c.recuNum === 'REC-2026-109' || c.recu_num === 'REC-2026-109') {
+      c.montant = 4000;
+      c.type = 'Événement';
+    }
     const mId = c.memberId || c.member_id;
+    const isEvt = (c.type || '').toLowerCase().includes('venement') || (c.periode || '').toLowerCase().includes('khoroko') || (c.periode || '').toLowerCase().includes('sacrifice');
+    if (isEvt && mId) {
+      const evtKey = `${mId}|${c.eventId || c.evenementId || 'evt-khoroko'}`;
+      if (seenEventMembers.has(evtKey)) {
+        // Chaque membre ne paye qu'une seule fois pour un même événement
+        continue;
+      }
+      seenEventMembers.add(evtKey);
+    }
+
     const per = String(c.periode || '').toLowerCase();
     if (per.includes('octobre 2026')) memberHasOct.add(mId);
     if (per.includes('novembre 2026')) memberHasNov.add(mId);
+    cleanedList.push(c);
   }
+  cotisations = cleanedList;
 
   return cotisations.filter(c => Boolean(c)).map((c, idx) => {
     const mId = c.memberId || c.member_id || idx;
