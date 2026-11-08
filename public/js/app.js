@@ -1677,7 +1677,8 @@ function renderRecapMoisDetailTable() {
     const prevBtn = `<button type="button" class="btn btn-xs btn-secondary" ${prevMonth ? `onclick="selectRecapMonth('${prevMonth}')"` : 'disabled'} style="white-space: nowrap; opacity: ${prevMonth ? '1' : '0.4'};" title="${prevMonth ? 'Mois précédent : ' + prevMonth : ''}">◀ Mois préc.</button>`;
     const nextBtn = `<button type="button" class="btn btn-xs btn-secondary" ${nextMonth ? `onclick="selectRecapMonth('${nextMonth}')"` : 'disabled'} style="white-space: nowrap; opacity: ${nextMonth ? '1' : '0.4'};" title="${nextMonth ? 'Mois suivant : ' + nextMonth : ''}">Mois suiv. ▶</button>`;
 
-    const monthPills = breakdown.months.map(m => {
+    const quickMonths = breakdown.months.filter((m, idx) => m.nbPaid > 0 || idx < 4 || m.monthName === currentMonth.monthName);
+    const monthPills = quickMonths.map(m => {
       const active = m.monthName === currentMonth.monthName;
       const style = active
         ? 'background: var(--emerald-500); color: #fff; font-weight: 800; border: 1px solid var(--emerald-400); box-shadow: 0 2px 8px rgba(16,185,129,0.35);'
@@ -1687,7 +1688,7 @@ function renderRecapMoisDetailTable() {
       return `<button type="button" class="btn btn-xs" onclick="selectRecapMonth('${m.monthName}')" style="white-space: nowrap; border-radius: 999px; padding: 5px 11px; cursor: pointer; ${style}">📅 ${m.monthName} <span style="opacity: 0.85; font-size: 11px;">(${m.nbPaid})</span></button>`;
     }).join('');
 
-    quickSwitcherEl.innerHTML = `<span style="font-size: 12px; font-weight: 700; color: var(--text-muted); white-space: nowrap; margin-right: 4px;">Changer de mois :</span> ${prevBtn} ${monthPills} ${nextBtn}`;
+    quickSwitcherEl.innerHTML = `<span style="font-size: 12px; font-weight: 700; color: var(--text-muted); white-space: nowrap; margin-right: 4px;">Accès rapide :</span> ${prevBtn} ${monthPills} ${nextBtn}`;
   }
   if (subtitleEl) {
     subtitleEl.innerHTML = `Total collecté : <strong style="color: var(--emerald-400);">${formatMoney(currentMonth.totalMontant, breakdown.currency)}</strong> auprès de <strong>${currentMonth.nbPaid} membre(s)</strong> (${currentMonth.rate}% de recouvrement)`;
@@ -1700,22 +1701,33 @@ function renderRecapMoisDetailTable() {
   if (currentRecapMoisDetailMode === 'paid') {
     thead.innerHTML = `
       <tr>
-        <th>N° Reçu</th>
-        <th>Membre</th>
-        <th>Foyer / Famille</th>
-        <th>Montant Versé</th>
-        <th>Date Paiement</th>
-        <th>Mode</th>
-        <th style="text-align: right;">Action</th>
+        <th style="width: 115px;">N° Reçu</th>
+        <th style="width: 28%;">Membre</th>
+        <th style="width: 24%;">Foyer / Famille</th>
+        <th style="width: 115px;">Montant Versé</th>
+        <th style="width: 110px;">Date Paiement</th>
+        <th style="width: 85px;">Mode</th>
+        <th style="width: 95px; text-align: right;">Action</th>
       </tr>
     `;
 
-    let filteredCots = currentMonth.versements;
+    let filteredCots = [...currentMonth.versements];
+    // Tri alphabétique harmonisé par nom officiel du membre
+    filteredCots.sort((a, b) => {
+      const mA = data.members.find(m => m.id === (a.memberId || a.member_id));
+      const mB = data.members.find(m => m.id === (b.memberId || b.member_id));
+      const nameA = (mA ? mA.fullName : a.memberName) || '';
+      const nameB = (mB ? mB.fullName : b.memberName) || '';
+      return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
+    });
+
     if (query) {
       filteredCots = filteredCots.filter(c => {
-        const nom = (c.memberName || '').toLowerCase();
+        const mem = data.members.find(m => m.id === (c.memberId || c.member_id));
+        const nom = ((mem ? mem.fullName : c.memberName) || '').toLowerCase();
+        const mat = ((mem ? mem.matricule : c.matricule) || '').toLowerCase();
         const recu = (c.recuNum || '').toLowerCase();
-        return nom.includes(query) || recu.includes(query);
+        return nom.includes(query) || mat.includes(query) || recu.includes(query);
       });
     }
 
@@ -1736,23 +1748,25 @@ function renderRecapMoisDetailTable() {
           (c.memberName && m.fullName && m.fullName.trim().toLowerCase() === c.memberName.trim().toLowerCase())
         );
         const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
+        const displayName = mem ? mem.fullName : (c.memberName || '-');
         const memMat = mem ? mem.matricule : (c.matricule || '');
         const memTel = mem && mem.phone ? (mem.phone + (mem.phone2 ? ' / ' + mem.phone2 : '')) : (c.phone || '');
+        const famDisplay = fam ? fam.name : (c.payeurChef ? `FAMILLE ${c.payeurChef.toUpperCase()}` : '-');
         return `
           <tr>
-            <td><strong style="color: var(--emerald-400);">${c.recuNum}</strong></td>
+            <td style="white-space: nowrap;"><strong style="color: var(--emerald-400);">${c.recuNum}</strong></td>
             <td>
-              <strong style="color: var(--text-main);">${c.memberName}</strong>
+              <strong style="color: var(--text-main);">${displayName}</strong>
               ${memMat ? `<span style="font-size: 11px; color: var(--emerald-400); font-weight: 700; margin-left: 4px;">(${memMat})</span>` : ''}
               ${memTel ? `<div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">📞 ${memTel}</div>` : ''}
             </td>
             <td>
-              <span style="color: var(--gold-400); font-weight: 500;">${fam ? fam.name : (c.payeurChef ? `👑 Foyer ${c.payeurChef}` : '-')}</span>
+              <span style="color: var(--gold-400); font-weight: 600; font-size: 12px;">${famDisplay}</span>
             </td>
-            <td><strong style="color: var(--emerald-400); font-size: 14px;">${formatMoney(c.montant, breakdown.currency)}</strong></td>
-            <td style="color: var(--text-dim);">${c.datePaiement || '-'}</td>
-            <td><span class="badge badge-purple" style="font-size: 10px;">${c.modePaiement || 'Wave'}</span></td>
-            <td style="text-align: right;">
+            <td style="white-space: nowrap;"><strong style="color: var(--emerald-400); font-size: 14px;">${formatMoney(c.montant, breakdown.currency)}</strong></td>
+            <td style="white-space: nowrap; color: var(--text-dim); font-size: 12px;">${c.datePaiement || '-'}</td>
+            <td style="white-space: nowrap;"><span class="badge badge-purple" style="font-size: 10px;">${c.modePaiement || 'Wave'}</span></td>
+            <td style="text-align: right; white-space: nowrap;">
               <button class="btn btn-xs btn-secondary" onclick="openReceiptModal('${c.id}')" title="Voir le reçu officiel">🖨️ Reçu</button>
             </td>
           </tr>
@@ -1763,17 +1777,18 @@ function renderRecapMoisDetailTable() {
   } else {
     thead.innerHTML = `
       <tr>
-        <th>Matricule</th>
+        <th style="width: 85px;">Matricule</th>
         <th>Membre en Retard</th>
         <th>Foyer / Famille</th>
-        <th>Téléphone</th>
-        <th>Montant Échu</th>
-        <th>Statut</th>
-        <th style="text-align: right;">Action</th>
+        <th style="width: 120px;">Téléphone</th>
+        <th style="width: 110px;">Montant Échu</th>
+        <th style="width: 95px;">Statut</th>
+        <th style="width: 110px; text-align: right;">Action</th>
       </tr>
     `;
 
-    let filteredMembers = currentMonth.lateMembers;
+    let filteredMembers = [...currentMonth.lateMembers];
+    filteredMembers.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '', 'fr', { sensitivity: 'base' }));
     if (query) {
       filteredMembers = filteredMembers.filter(m => {
         const nom = (m.fullName || '').toLowerCase();
@@ -1796,13 +1811,13 @@ function renderRecapMoisDetailTable() {
         const fam = data.families.find(f => f.id === m.familyId);
         return `
           <tr>
-            <td><strong style="color: var(--emerald-400);">${m.matricule}</strong></td>
+            <td style="white-space: nowrap;"><strong style="color: var(--emerald-400);">${m.matricule}</strong></td>
             <td><strong style="color: var(--text-main);">${m.fullName}</strong></td>
-            <td><span style="color: var(--gold-400);">${fam ? fam.name : '-'}</span></td>
-            <td style="color: var(--text-muted);">${m.phone || '-'}</td>
-            <td><strong style="color: var(--rose-400);">${formatMoney(500, breakdown.currency)}</strong></td>
-            <td><span class="badge badge-danger">Non réglé</span></td>
-            <td style="text-align: right;">
+            <td><span style="color: var(--gold-400); font-weight: 600; font-size: 12px;">${fam ? fam.name : '-'}</span></td>
+            <td style="white-space: nowrap; color: var(--text-muted); font-size: 12px;">${m.phone || '-'}</td>
+            <td style="white-space: nowrap;"><strong style="color: var(--rose-400);">${formatMoney(500, breakdown.currency)}</strong></td>
+            <td style="white-space: nowrap;"><span class="badge badge-danger">Non réglé</span></td>
+            <td style="text-align: right; white-space: nowrap;">
               <button class="btn btn-xs btn-primary" onclick="quickPayMember('${m.id}', '${currentMonth.monthName}')" title="Encaisser la cotisation de ce membre pour ${currentMonth.monthName}">💳 Encaisser</button>
             </td>
           </tr>

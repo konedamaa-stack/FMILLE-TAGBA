@@ -217,6 +217,37 @@ const TAGBA_DB = {
             });
           }
 
+          // Harmonisation automatique des noms des familles (préfixe FAMILLE uniforme)
+          if (Array.isArray(parsed.families)) {
+            parsed.families.forEach(f => {
+              if (!f || !f.name) return;
+              const trimmed = f.name.trim().toUpperCase();
+              if (trimmed === 'LAMOUSSA') {
+                f.name = 'FAMILLE LAMOUSSA';
+              } else if (trimmed === 'ANONIM' || trimmed === 'ANONYME') {
+                f.name = 'FAMILLE ANONIM';
+              }
+            });
+          }
+
+          // Harmonisation automatique des noms et matricules dans toutes les cotisations à partir de la fiche membre officielle
+          if (Array.isArray(parsed.cotisations) && Array.isArray(parsed.members)) {
+            const memById = new Map(parsed.members.map(m => [m.id, m]));
+            parsed.cotisations.forEach(c => {
+              if (!c) return;
+              const mId = c.memberId || c.member_id;
+              const m = mId ? memById.get(mId) : null;
+              if (m) {
+                if (m.fullName && c.memberName !== m.fullName) {
+                  c.memberName = m.fullName;
+                }
+                if (m.matricule && c.matricule !== m.matricule) {
+                  c.matricule = m.matricule;
+                }
+              }
+            });
+          }
+
           // Tri alphabétique systématique de toutes les listes
           if (Array.isArray(parsed.members)) {
             parsed.members.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '', 'fr', { sensitivity: 'base' }));

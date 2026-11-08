@@ -767,7 +767,7 @@
               </div>
 
               <!-- Barre rapide de changement de mois -->
-              <div id="recapMoisQuickSwitcher" style="display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 10px 12px; margin-bottom: 12px; background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md);">
+              <div id="recapMoisQuickSwitcher" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; max-width: 100%; padding: 10px 12px; margin-bottom: 12px; background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: var(--radius-md);">
                 <!-- Boutons des mois remplis dynamiquement en JS -->
               </div>
 
@@ -3028,10 +3028,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261108-v44"></script>
-  <script src="js/supabase.js?v=20261108-v44"></script>
-  <script src="js/app.js?v=20261108-v44"></script>
-  <script src="js/print.js?v=20261108-v44"></script>
+  <script src="js/data.js?v=20261108-v45"></script>
+  <script src="js/supabase.js?v=20261108-v45"></script>
+  <script src="js/app.js?v=20261108-v45"></script>
+  <script src="js/print.js?v=20261108-v45"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3039,7 +3039,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v44') caches.delete(k);
+            if (k !== 'tagba-pwa-v45') caches.delete(k);
           });
         });
       }
@@ -3051,9 +3051,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261108-v44')
+        navigator.serviceWorker.register('/sw.js?v=20261108-v45')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v44) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v45) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

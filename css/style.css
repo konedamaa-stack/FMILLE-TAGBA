@@ -685,25 +685,30 @@ body.light-theme .hero-badge.highlight {
 /* Section Content Cards */
 .section-grid {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 24px;
   margin-bottom: 32px;
+  max-width: 100%;
 }
 
 .col-8 {
   grid-column: span 8;
+  min-width: 0;
 }
 
 .col-4 {
   grid-column: span 4;
+  min-width: 0;
 }
 
 .col-6 {
   grid-column: span 6;
+  min-width: 0;
 }
 
 .col-12 {
   grid-column: span 12;
+  min-width: 0;
 }
 
 @media (max-width: 1024px) {
@@ -719,11 +724,14 @@ body.light-theme .hero-badge.highlight {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
-  padding: 24px;
+  padding: 20px;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   position: relative;
   box-shadow: var(--shadow-sm);
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .card-header-flex {
@@ -864,6 +872,7 @@ body.light-theme .hero-badge.highlight {
 /* Tables */
 .table-responsive {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
@@ -874,6 +883,7 @@ body.light-theme .hero-badge.highlight {
   border-collapse: collapse;
   text-align: left;
   font-size: 13px;
+  table-layout: auto;
 }
 
 .modern-table thead {
@@ -882,16 +892,17 @@ body.light-theme .hero-badge.highlight {
 }
 
 .modern-table th {
-  padding: 14px 18px;
-  font-weight: 600;
+  padding: 11px 12px;
+  font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   font-size: 11px;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 .modern-table td {
-  padding: 14px 18px;
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   color: var(--text-main);
   vertical-align: middle;
