@@ -1598,12 +1598,12 @@ function renderCotisationsRecapMois() {
             <button class="btn btn-xs ${isSelected ? 'btn-primary' : 'btn-secondary'}" onclick="selectRecapMonth('${m.monthName}')" title="Voir la liste détaillée des membres">
               👁️ Détails
             </button>
-            <button class="btn btn-xs btn-secondary" onclick="printSelectedMonthReport('${m.monthName}')" title="Imprimer la fiche des versements de ce mois">
-              🖨️ Fiche
+            <button class="btn btn-xs btn-outline-success" onclick="printSelectedMonthReport('${m.monthName}', 'paid')" title="Imprimer les ${m.nbPaid} membres à jour pour ${m.monthName}" style="border: 1px solid var(--emerald-500); color: var(--emerald-400); font-weight: 600;">
+              ✅ À Jour (${m.nbPaid})
             </button>
             ${m.nbLate > 0 ? `
-              <button class="btn btn-xs btn-outline-danger" onclick="printSelectedMonthLateReport('${m.monthName}')" title="Imprimer les ${m.nbLate} membres en retard pour ${m.monthName}" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 600;">
-                ⚠️ Retards (${m.nbLate})
+              <button class="btn btn-xs btn-outline-danger" onclick="printSelectedMonthLateReport('${m.monthName}')" title="Imprimer les ${m.nbLate} membres non à jour (en retard) pour ${m.monthName}" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 600;">
+                ⚠️ Non À Jour (${m.nbLate})
               </button>
             ` : ''}
           </div>

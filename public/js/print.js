@@ -891,11 +891,21 @@
       };
     });
 
-    // Déterminer le mode de filtrage (retard uniquement ou tous)
-    const isRetardOnly = filterMode === 'retard' || filterMode === 'late';
+    // Déterminer le mode de filtrage (ajour/paid, retard/late, ou selon le sélecteur actif)
+    let effectiveMode = filterMode;
+    if (!effectiveMode || effectiveMode === 'auto') {
+      const sel = document.getElementById('filterEventStatusSelect');
+      if (sel && sel.value === 'LATE') effectiveMode = 'retard';
+      else if (sel && sel.value === 'PAID') effectiveMode = 'ajour';
+      else effectiveMode = 'all';
+    }
+    const isRetardOnly = effectiveMode === 'retard' || effectiveMode === 'late';
+    const isAjourOnly = effectiveMode === 'ajour' || effectiveMode === 'paid';
     const targetMembers = isRetardOnly
       ? evaluatedMembers.filter(item => !item.isPaye)
-      : evaluatedMembers;
+      : isAjourOnly
+        ? evaluatedMembers.filter(item => item.isPaye)
+        : evaluatedMembers;
 
     const totalResteSelection = targetMembers.reduce((s, item) => s + item.reste, 0);
     const totalVerseSelection = targetMembers.reduce((s, item) => s + item.montantPaye, 0);
@@ -941,20 +951,31 @@
 
     const objectifTotal = members.length * unitPrice;
     const docTitle = isRetardOnly
-      ? `État des Retards de Cotisation : ${activeEvt.titre}`
-      : `État des Cotisations : ${activeEvt.titre}`;
+      ? `État des Non À Jour (Retards) : ${activeEvt.titre}`
+      : isAjourOnly
+        ? `Liste des Membres À Jour : ${activeEvt.titre}`
+        : `État des Cotisations : ${activeEvt.titre}`;
     const docSubtitle = isRetardOnly
-      ? `Liste nominative officielle des membres en retard pour l'échéance de ${evtMonth} (Date limite : ${formatDate(activeEvt.dateLimite)})`
-      : (activeEvt.description || `Suivi nominatif du recouvrement - Échéance de ${evtMonth}`);
+      ? `Liste nominative officielle des membres non à jour pour l'échéance de ${evtMonth} (Date limite : ${formatDate(activeEvt.dateLimite)})`
+      : isAjourOnly
+        ? `Liste nominative officielle des membres ayant intégralement réglé leur cotisation (${evtMonth})`
+        : (activeEvt.description || `Suivi nominatif du recouvrement - Échéance de ${evtMonth}`);
 
     const meta = isRetardOnly ? [
       { label: 'Événement', value: activeEvt.titre },
       { label: 'Mois d\'Échéance', value: `📅 ${evtMonth}` },
       { label: 'Date Limite', value: formatDate(activeEvt.dateLimite) },
-      { label: 'Filtrage Sélectionné', value: '⚠️ Retards de Paiement' },
-      { label: 'Membres en Retard', value: `${targetMembers.length} sur ${members.length} adhérent(s)` },
+      { label: 'Filtrage Sélectionné', value: '⚠️ Non À Jour (Retards)' },
+      { label: 'Membres Non À Jour', value: `${targetMembers.length} sur ${members.length} adhérent(s)` },
       { label: 'Montant Restant Dû', value: formatMoney(totalResteSelection, curr) },
       { label: 'Cotisation Exigée', value: `${formatMoney(unitPrice, curr)} / membre` }
+    ] : isAjourOnly ? [
+      { label: 'Événement', value: activeEvt.titre },
+      { label: 'Mois d\'Échéance', value: `📅 ${evtMonth}` },
+      { label: 'Filtrage Sélectionné', value: '✅ Membres À Jour Uniquement' },
+      { label: 'Membres À Jour', value: `${targetMembers.length} sur ${members.length} adhérent(s)` },
+      { label: 'Total Encaissé Sélection', value: formatMoney(totalVerseSelection, curr) },
+      { label: 'Cotisation Fixée', value: `${formatMoney(unitPrice, curr)} / membre` }
     ] : [
       { label: 'Événement', value: activeEvt.titre },
       { label: 'Mois d\'Échéance', value: `📅 ${evtMonth}` },
@@ -988,14 +1009,14 @@
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="4" style="text-align: right; font-weight: 700;">TOTAL ${isRetardOnly ? 'RETARDS DE LA SÉLECTION' : 'GÉNÉRAL'} :</td>
-              <td style="text-align: right; font-weight: 800; color: #0f172a;">${formatMoney(isRetardOnly ? targetMembers.length * unitPrice : objectifTotal, curr)}</td>
+              <td colspan="4" style="text-align: right; font-weight: 700;">TOTAL ${isRetardOnly ? 'RETARDS DE LA SÉLECTION' : isAjourOnly ? 'MEMBRES À JOUR' : 'GÉNÉRAL'} :</td>
+              <td style="text-align: right; font-weight: 800; color: #0f172a;">${formatMoney((isRetardOnly || isAjourOnly) ? targetMembers.length * unitPrice : objectifTotal, curr)}</td>
               <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(totalVerseSelection, curr)}</td>
               <td style="text-align: right; font-weight: 800; color: ${totalResteSelection > 0 ? '#b91c1c' : '#047857'};">
                 ${totalResteSelection > 0 ? `-${formatMoney(totalResteSelection, curr)}` : '0 FCFA'}
               </td>
-              <td colspan="2" style="text-align: center; font-weight: 700; color: #b45309;">
-                ${isRetardOnly ? `${targetMembers.length} membre(s) à relancer` : `Reste : ${formatMoney(Math.max(0, objectifTotal - totalEncaise), curr)}`}
+              <td colspan="2" style="text-align: center; font-weight: 700; color: ${isAjourOnly ? '#047857' : '#b45309'};">
+                ${isRetardOnly ? `${targetMembers.length} membre(s) à relancer` : isAjourOnly ? `${targetMembers.length} membre(s) à jour` : `Reste : ${formatMoney(Math.max(0, objectifTotal - totalEncaise), curr)}`}
               </td>
             </tr>
           </tfoot>

@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261107-v41">
+  <link rel="stylesheet" href="css/style.css?v=20261108-v42">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -744,11 +744,11 @@
                   </div>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                  <button type="button" class="btn btn-secondary btn-sm" onclick="printSelectedMonthReport()" title="Imprimer la fiche officielle des versements de ce mois">
-                    🖨️ Imprimer la Fiche de ce Mois
+                  <button type="button" class="btn btn-sm btn-outline-success" onclick="printSelectedMonthReport(null, 'paid')" title="Imprimer uniquement les membres à jour pour ce mois" style="border: 1px solid var(--emerald-500); color: var(--emerald-400); font-weight: 700; background: rgba(16, 185, 129, 0.08); cursor: pointer;">
+                    ✅ Imprimer À Jour (ce Mois)
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="printSelectedMonthLateReport()" title="Imprimer uniquement les membres en retard de cotisation pour ce mois" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 700; background: rgba(244, 63, 94, 0.08); cursor: pointer;">
-                    ⚠️ Imprimer les Retards de ce Mois
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="printSelectedMonthLateReport()" title="Imprimer uniquement les membres non à jour (en retard) pour ce mois" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 700; background: rgba(244, 63, 94, 0.08); cursor: pointer;">
+                    ⚠️ Imprimer Non À Jour (ce Mois)
                   </button>
                 </div>
               </div>
@@ -1037,11 +1037,14 @@
                 </div>
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <button type="button" class="btn btn-sm btn-secondary" onclick="printEventCotisationsReport()" title="Imprimer l'état général complet de cet événement">
-                    🖨️ Imprimer l'État
+                  <button type="button" class="btn btn-sm btn-secondary" onclick="printEventCotisationsReport(null, 'all')" title="Imprimer l'état général complet de cet événement">
+                    🖨️ Imprimer Tout
                   </button>
-                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="printEventCotisationsReport(null, 'retard')" title="Imprimer uniquement la liste des membres en retard de paiement pour cet événement" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 700; background: rgba(244, 63, 94, 0.08); cursor: pointer;">
-                    ⚠️ Imprimer les Retards
+                  <button type="button" class="btn btn-sm btn-outline-success" onclick="printEventCotisationsReport(null, 'ajour')" title="Imprimer uniquement la liste des membres à jour pour cet événement" style="border: 1px solid var(--emerald-500); color: var(--emerald-400); font-weight: 700; background: rgba(16, 185, 129, 0.08); cursor: pointer;">
+                    ✅ Imprimer À Jour
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="printEventCotisationsReport(null, 'retard')" title="Imprimer uniquement la liste des membres non à jour (en retard) pour cet événement" style="border: 1px solid var(--rose-500); color: var(--rose-400); font-weight: 700; background: rgba(244, 63, 94, 0.08); cursor: pointer;">
+                    ⚠️ Imprimer Non À Jour
                   </button>
                   <button type="button" class="btn btn-sm btn-outline-warning" onclick="printAllEventsRecapReport()" title="Imprimer la synthèse générale de tous les événements et retards mois par mois" style="border: 1px solid var(--gold-500); color: var(--gold-400); font-weight: 700; background: rgba(217, 119, 6, 0.1); cursor: pointer;">
                     📊 Retards par Mois
@@ -3001,10 +3004,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261107-v41"></script>
-  <script src="js/supabase.js?v=20261107-v41"></script>
-  <script src="js/app.js?v=20261107-v41"></script>
-  <script src="js/print.js?v=20261107-v41"></script>
+  <script src="js/data.js?v=20261108-v42"></script>
+  <script src="js/supabase.js?v=20261108-v42"></script>
+  <script src="js/app.js?v=20261108-v42"></script>
+  <script src="js/print.js?v=20261108-v42"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3012,7 +3015,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v41') caches.delete(k);
+            if (k !== 'tagba-pwa-v42') caches.delete(k);
           });
         });
       }
@@ -3024,9 +3027,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261107-v41')
+        navigator.serviceWorker.register('/sw.js?v=20261108-v42')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v41) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v42) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));
