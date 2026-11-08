@@ -2080,6 +2080,19 @@
     }
   }
 
+  function printCotisationsByStatus(statusMode = 'ajour') {
+    const isRetard = statusMode === 'retard' || statusMode === 'late' || statusMode === 'EN_RETARD';
+    if (window.currentCotisSubTab === 'recap_mois') {
+      if (isRetard) {
+        printSelectedMonthLateReport();
+      } else {
+        printSelectedMonthReport(null, 'paid');
+      }
+    } else {
+      printMonthlyCotisationsReport(isRetard ? 'EN_RETARD' : 'A_JOUR');
+    }
+  }
+
   function printCeremoniesCurrentSubView() {
     const subCeremonies = document.getElementById('ceremoniesListView');
     const isCeremonies = subCeremonies && subCeremonies.style.display !== 'none';
@@ -2087,8 +2100,9 @@
       printCeremoniesReport();
     } else {
       const statusSelect = document.getElementById('filterEventStatusSelect');
-      const isLate = statusSelect && statusSelect.value === 'LATE';
-      printEventCotisationsReport(null, isLate ? 'retard' : 'all');
+      const val = statusSelect ? statusSelect.value : 'ALL';
+      const mode = val === 'LATE' ? 'retard' : (val === 'PAID' ? 'ajour' : 'all');
+      printEventCotisationsReport(null, mode);
     }
   }
 
@@ -2118,6 +2132,7 @@
   window.printAllMonthsRecapReport = printAllMonthsRecapReport;
   window.printMemberAudit = printMemberAudit;
   window.printCotisationsCurrentSubView = printCotisationsCurrentSubView;
+  window.printCotisationsByStatus = printCotisationsByStatus;
   window.printCeremoniesCurrentSubView = printCeremoniesCurrentSubView;
 
 })();

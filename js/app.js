@@ -1769,7 +1769,7 @@ function renderRecapMoisDetailTable() {
             <td><strong style="color: var(--rose-400);">${formatMoney(500, breakdown.currency)}</strong></td>
             <td><span class="badge badge-danger">Non réglé</span></td>
             <td style="text-align: right;">
-              <button class="btn btn-xs btn-primary" onclick="quickPayMember('${m.id}')" title="Encaisser la cotisation de ce membre">💳 Encaisser</button>
+              <button class="btn btn-xs btn-primary" onclick="quickPayMember('${m.id}', '${currentMonth.monthName}')" title="Encaisser la cotisation de ce membre pour ${currentMonth.monthName}">💳 Encaisser</button>
             </td>
           </tr>
         `;
@@ -2553,7 +2553,7 @@ function openReceiptModal(cotisationId) {
 }
 
 // Actions rapides
-function quickPayMember(memberId) {
+function quickPayMember(memberId, targetMonthName = null) {
   if (!assertPermission('write', 'l’encaissement rapide')) return;
   openModal('modalAddCotisation');
   setVersementFormMode('individual', false);
@@ -2562,6 +2562,12 @@ function quickPayMember(memberId) {
     select.value = memberId;
     currentAnticipationSelectedMonths = 1;
     onCotMemberSelected();
+    if (targetMonthName) {
+      const inputPeriode = document.getElementById('cotPeriode');
+      if (inputPeriode) {
+        inputPeriode.value = `${targetMonthName} (1 mois)`;
+      }
+    }
   }
 }
 
@@ -3200,7 +3206,21 @@ function bindFormSubmissions() {
             grandTotal += lineMontant;
             totalMonths += months;
 
-            const memberPeriode = isEventMode ? periode : (months === 1 ? periode : `${periode} (${months} mois)`);
+            let memberPeriode = isEventMode ? periode : (months === 1 ? periode : `${periode} (${months} mois)`);
+            if (!isEventMode && targetMemId) {
+              const memAudit = getMemberCotisationAudit(targetMemId);
+              if (memAudit && memAudit.timeline) {
+                const sIdx = memAudit.monthsPaidCount;
+                const tMonths = memAudit.timeline.slice(sIdx, sIdx + months);
+                if (tMonths.length > 0) {
+                  if (months === 1) {
+                    memberPeriode = `${tMonths[0].fullLabel} (1 mois)`;
+                  } else {
+                    memberPeriode = `${tMonths[0].shortLabel} à ${tMonths[tMonths.length - 1].shortLabel} (${months} mois)`;
+                  }
+                }
+              }
+            }
 
             const selectedEventId = isEventMode ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
             const cotRecord = {

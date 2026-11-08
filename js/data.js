@@ -64,6 +64,18 @@ function cleanExcessCotisations(cotisations) {
       if (!isNaN(n) && n > maxRecuNum) maxRecuNum = n;
     }
   }
+
+  // Repérer les mois déjà payés par membre (Octobre / Novembre 2026) pour corriger les anciens libellés erronés "Avril 2027" / "Janvier 2028"
+  const memberHasOct = new Set();
+  const memberHasNov = new Set();
+  for (const c of cotisations) {
+    if (!c) continue;
+    const mId = c.memberId || c.member_id;
+    const per = String(c.periode || '').toLowerCase();
+    if (per.includes('octobre 2026')) memberHasOct.add(mId);
+    if (per.includes('novembre 2026')) memberHasNov.add(mId);
+  }
+
   return cotisations.filter(c => Boolean(c)).map((c, idx) => {
     const mId = c.memberId || c.member_id || idx;
     let cid = c.id || `cot-${Date.now()}-${idx}`;
@@ -79,8 +91,20 @@ function cleanExcessCotisations(cotisations) {
     }
     usedRecus.add(rNum);
 
-    if (cid !== c.id || rNum !== c.recuNum) {
-      return { ...c, id: cid, recuNum: rNum };
+    let per = c.periode || '';
+    const perLow = per.toLowerCase();
+    if (Number(c.montant) === 500 && (perLow === 'avril 2027 (1 mois)' || perLow === 'janvier 2028 (1 mois)')) {
+      if (!memberHasOct.has(mId)) {
+        per = 'Octobre 2026 (1 mois)';
+        memberHasOct.add(mId);
+      } else if (!memberHasNov.has(mId)) {
+        per = 'Novembre 2026 (1 mois)';
+        memberHasNov.add(mId);
+      }
+    }
+
+    if (cid !== c.id || rNum !== c.recuNum || per !== c.periode) {
+      return { ...c, id: cid, recuNum: rNum, periode: per };
     }
     return c;
   });
