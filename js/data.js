@@ -10,6 +10,18 @@ try {
   if (typeof localStorage !== 'undefined') {
     localStorage.removeItem('TAGBA_MUTUELLE_DATA_V1');
     localStorage.removeItem('TAGBA_MUTUELLE_DATA_V2');
+    // Remise à zéro complète demandée des versements (cotisations & événements) pour repartir à zéro (v53)
+    const resetKey = 'TAGBA_RESET_COTISATIONS_V53';
+    if (!localStorage.getItem(resetKey)) {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.cotisations = [];
+        parsed.lastModified = Date.now();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      }
+      localStorage.setItem(resetKey, 'true');
+    }
   }
 } catch (e) { }
 
@@ -73,21 +85,12 @@ function cleanExcessCotisations(cotisations) {
 
   for (const c of cotisations) {
     if (!c) continue;
-    // Supprimer le doublon REC-2026-130 pour TRAORE BRAMA
-    if (c.id === 'cot-1794155741016-1111r' || c.recuNum === 'REC-2026-130' || c.recu_num === 'REC-2026-130') {
-      continue;
-    }
-    // Harmoniser REC-2026-109 à 3000 FCFA (Acompte TRAORE BRAMA TGB-023)
-    if (c.id === 'cot-1794062512664' || c.recuNum === 'REC-2026-109' || c.recu_num === 'REC-2026-109') {
-      c.montant = 3000;
-      c.type = 'Événement';
-    }
     const mId = c.memberId || c.member_id;
     const isEvt = (c.type || '').toLowerCase().includes('venement') || (c.periode || '').toLowerCase().includes('khoroko') || (c.periode || '').toLowerCase().includes('sacrifice');
     if (isEvt && mId) {
       const evtKey = `${mId}|${c.eventId || c.evenementId || 'evt-khoroko'}`;
       if (seenEventMembers.has(evtKey)) {
-        // Chaque membre ne paye qu'une seule fois pour un même événement
+        // Ignorer les doublons stricts pour un même événement
         continue;
       }
       seenEventMembers.add(evtKey);

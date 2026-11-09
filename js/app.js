@@ -3830,18 +3830,26 @@ function populateCotisationMembers(filterQuery = '') {
   if (!select) return;
 
   const currentVal = select.value;
-  const q = (filterQuery || '').trim().toLowerCase();
+  const rawQ = (filterQuery || '').trim();
+  const cleanQ = rawQ.replace(/["'()]/g, '').trim().toLowerCase();
+  const normalizedQ = cleanQ.replace(/[^a-z0-9]/g, '');
 
   const filteredMembers = data.members.filter(m => {
-    if (!q) return true;
-    const fam = data.families.find(f => f.id === m.familyId);
+    if (!cleanQ) return true;
+    const fam = (data.families || []).find(f => f.id === m.familyId);
     const famName = fam ? fam.name.toLowerCase() : '';
-    const famChef = fam ? fam.chefDeFamille.toLowerCase() : '';
-    return m.fullName.toLowerCase().includes(q) ||
-      (m.matricule && m.matricule.toLowerCase().includes(q)) ||
-      (m.relationToChef && m.relationToChef.toLowerCase().includes(q)) ||
-      famName.includes(q) ||
-      famChef.includes(q);
+    const famChef = fam ? (fam.chefDeFamille || '').toLowerCase() : '';
+    const memName = (m.fullName || '').toLowerCase();
+    const memMat = (m.matricule || '').toLowerCase();
+    const memMatNorm = memMat.replace(/[^a-z0-9]/g, '');
+    const memRel = (m.relationToChef || '').toLowerCase();
+
+    return memName.includes(cleanQ) ||
+      memMat.includes(cleanQ) ||
+      (normalizedQ && memMatNorm.includes(normalizedQ)) ||
+      memRel.includes(cleanQ) ||
+      famName.includes(cleanQ) ||
+      famChef.includes(cleanQ);
   });
 
   if (filteredMembers.length === 0) {
@@ -3854,7 +3862,7 @@ function populateCotisationMembers(filterQuery = '') {
   const others = [];
 
   filteredMembers.forEach(m => {
-    const fam = data.families.find(f => f.id === m.familyId);
+    const fam = (data.families || []).find(f => f.id === m.familyId);
     if (isMemberChefDeFamille(m, fam)) {
       chefs.push({ m, fam });
     } else {
@@ -3862,9 +3870,13 @@ function populateCotisationMembers(filterQuery = '') {
     }
   });
 
+  // Tri alphabétique systématique A-Z pour une navigation fluide
+  chefs.sort((a, b) => (a.m.fullName || '').localeCompare(b.m.fullName || '', 'fr', { sensitivity: 'base' }));
+  others.sort((a, b) => (a.m.fullName || '').localeCompare(b.m.fullName || '', 'fr', { sensitivity: 'base' }));
+
   let html = '';
   if (chefs.length > 0) {
-    html += '<optgroup label="👑 Chefs de Famille (Versement Groupé Familial Disponible)">';
+    html += '<optgroup label="👑 Chefs de Famille / Représentants Principaux">';
     chefs.forEach(({ m, fam }) => {
       html += `<option value="${m.id}">👑 [CHEF] ${m.fullName} (${m.matricule}) - Famille ${fam ? fam.name : ''}</option>`;
     });
@@ -3872,7 +3884,7 @@ function populateCotisationMembers(filterQuery = '') {
   }
 
   if (others.length > 0) {
-    html += '<optgroup label="👤 Membres Rattachés">';
+    html += '<optgroup label="👤 Membres de Famille">';
     others.forEach(({ m, fam }) => {
       html += `<option value="${m.id}">${m.fullName} (${m.matricule}) - [${m.relationToChef || 'Membre'}] ${fam ? fam.name : ''}</option>`;
     });
@@ -3941,7 +3953,7 @@ function setVersementFormMode(mode, triggerRender = true) {
   if (mode === 'group') {
     if (tabGroup) tabGroup.classList.add('active');
     if (tabIndiv) tabIndiv.classList.remove('active');
-    if (selectLabel) selectLabel.textContent = 'Chef de Famille ou Payeur Principal du Groupe *';
+    if (selectLabel) selectLabel.textContent = 'Membre Payeur / Représentant de la Famille *';
     if (modalContent) modalContent.classList.add('modal-content-wide');
     if (groupContainer) groupContainer.style.display = 'block';
 
@@ -3992,28 +4004,18 @@ function onCotMemberSelected() {
   // Si le mode Événement est sélectionné, préserver le mode sans forcer vers Mensuel
   const cotTypeSelect = document.getElementById('cotType');
   if (cotTypeSelect && cotTypeSelect.value === 'Événement') {
-    syncCotisationMontantField();
-    const data = TAGBA_DB.get();
-    const member = data.members.find(m => m.id === memberId);
-    if (!member) return;
-    const family = data.families.find(f => f.id === member.familyId);
-    const isChef = isMemberChefDeFamille(member, family);
-    if (isChef && currentGroupPaymentMode === 'group') {
+    if (currentGroupPaymentMode === 'group') {
       setVersementFormMode('group', true);
+    } else {
+      setVersementFormMode('individual', false);
     }
+    syncCotisationMontantField();
     return;
   }
 
   // Verrouiller en priorité le premier mois échu (1 mois par défaut)
   currentAnticipationSelectedMonths = 1;
   setAnticipationMonths(1);
-
-  const data = TAGBA_DB.get();
-  const member = data.members.find(m => m.id === memberId);
-  if (!member) return;
-
-  const family = data.families.find(f => f.id === member.familyId);
-  const isChef = isMemberChefDeFamille(member, family);
 
   // Si le mode groupé est activé par l'onglet ou le bouton dédié
   if (currentGroupPaymentMode === 'group') {
@@ -6684,17 +6686,14 @@ function quickPayMemberForEvent(memberId, eventId = null) {
     cotPeriodeInput.value = activeEvt.titre;
   }
 
-  // Si versement partiel existant, pré-remplir le reste exact à payer
-  if (sumPaid > 0 && sumPaid < unitEvent) {
-    const cotMontantInput = document.getElementById('cotMontant');
-    if (cotMontantInput) {
-      cotMontantInput.value = unitEvent - sumPaid;
-    }
-  }
-
+  // Si versement partiel existant, pré-remplir le reste exact à payer, sinon montant exigé
   const cotMontantInput = document.getElementById('cotMontant');
   if (cotMontantInput) {
-    cotMontantInput.value = activeEvt.montant;
+    if (sumPaid > 0 && sumPaid < unitEvent) {
+      cotMontantInput.value = unitEvent - sumPaid;
+    } else {
+      cotMontantInput.value = unitEvent;
+    }
   }
 }
 
