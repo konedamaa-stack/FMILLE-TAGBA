@@ -589,6 +589,9 @@
       return true;
     });
 
+    // Tri alphabétique systématique par nom officiel du membre
+    filtered.sort((a, b) => (a.member?.fullName || '').localeCompare(b.member?.fullName || '', 'fr', { sensitivity: 'base' }));
+
     // 4. Calcul des totaux sur la sélection filtrée
     let totalRecouvreSelection = 0;
     let totalArrieresSelection = 0;
@@ -916,6 +919,9 @@
         ? evaluatedMembers.filter(item => item.isPaye)
         : evaluatedMembers;
 
+    // Tri alphabétique systématique par nom du membre
+    targetMembers.sort((a, b) => (a.member?.fullName || '').localeCompare(b.member?.fullName || '', 'fr', { sensitivity: 'base' }));
+
     const totalResteSelection = targetMembers.reduce((s, item) => s + item.reste, 0);
     const totalVerseSelection = targetMembers.reduce((s, item) => s + item.montantPaye, 0);
 
@@ -1123,6 +1129,9 @@
           });
         }
       });
+
+      // Tri alphabétique systématique des membres en retard
+      lateMembers.sort((a, b) => (a.member?.fullName || '').localeCompare(b.member?.fullName || '', 'fr', { sensitivity: 'base' }));
 
       const totalAttendu = allMembers.length * unitPrice;
       const totalReste = Math.max(0, totalAttendu - totalEncaise);
@@ -1794,7 +1803,29 @@
     const dateTirage = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
     let rowsHtml = '';
-    m.versements.forEach((c, idx) => {
+    const sortedVersements = [...(m.versements || [])].sort((a, b) => {
+      const cMemIdA = a.memberId || a.member_id;
+      const memA = (data.members || []).find(mbr => {
+        if (cMemIdA) return mbr.id === cMemIdA;
+        if (a.matricule && mbr.matricule) return mbr.matricule === a.matricule;
+        if (a.memberName && mbr.fullName) return mbr.fullName.trim().toLowerCase() === a.memberName.trim().toLowerCase();
+        return false;
+      });
+      const nameA = (memA ? memA.fullName : a.memberName) || '';
+
+      const cMemIdB = b.memberId || b.member_id;
+      const memB = (data.members || []).find(mbr => {
+        if (cMemIdB) return mbr.id === cMemIdB;
+        if (b.matricule && mbr.matricule) return mbr.matricule === b.matricule;
+        if (b.memberName && mbr.fullName) return mbr.fullName.trim().toLowerCase() === b.memberName.trim().toLowerCase();
+        return false;
+      });
+      const nameB = (memB ? memB.fullName : b.memberName) || '';
+
+      return nameA.localeCompare(nameB, 'fr', { sensitivity: 'base' });
+    });
+
+    sortedVersements.forEach((c, idx) => {
       const cMemId = c.memberId || c.member_id;
       const mem = data.members.find(mbr => {
         if (cMemId) return mbr.id === cMemId;
@@ -1909,7 +1940,7 @@
     const dateTirage = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
 
     let rowsHtml = '';
-    const lateList = m.lateMembers || [];
+    const lateList = [...(m.lateMembers || [])].sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '', 'fr', { sensitivity: 'base' }));
     lateList.forEach((mem, idx) => {
       const fam = mem ? data.families.find(f => f.id === mem.familyId) : null;
       const memMatricule = mem.matricule || '-';

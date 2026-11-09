@@ -1481,8 +1481,8 @@ function getMonthlyCotisationsBreakdown() {
     const nbLate = Math.max(0, totalMembers - nbPaid);
     const rate = totalMembers > 0 ? Math.round((nbPaid / totalMembers) * 100) : 0;
 
-    const paidMembers = members.filter(m => obj.memberIds.has(m.id));
-    const lateMembers = members.filter(m => !obj.memberIds.has(m.id));
+    const paidMembers = members.filter(m => obj.memberIds.has(m.id)).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '', 'fr', { sensitivity: 'base' }));
+    const lateMembers = members.filter(m => !obj.memberIds.has(m.id)).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || '', 'fr', { sensitivity: 'base' }));
 
     months.push({
       monthName,
