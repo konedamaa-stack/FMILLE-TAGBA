@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261109-v53">
+  <link rel="stylesheet" href="css/style.css?v=20261109-v54">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -344,14 +344,14 @@
         </div>
 
         <div class="topbar-right">
-          <button class="quick-pill-btn" id="topbarPrintBtn" onclick="printCurrentTab()" title="Imprimer la vue active ou le rapport officiel (Ctrl+P)" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2);">
-            <span>🖨️</span> Imprimer
+          <button class="quick-pill-btn topbar-action-btn" id="topbarPrintBtn" onclick="printCurrentTab()" title="Imprimer la vue active ou le rapport officiel (Ctrl+P)" style="background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2);">
+            <span>🖨️</span> <span class="hide-on-mobile">Imprimer</span>
           </button>
-          <button class="logout-btn" id="topbarLogoutBtn" onclick="logoutAuthUser()" title="Se déconnecter de la mutuelle">
-            <span>🚪</span> Déconnexion
+          <button class="logout-btn topbar-action-btn" id="topbarLogoutBtn" onclick="logoutAuthUser()" title="Se déconnecter de la mutuelle">
+            <span>🚪</span> <span class="hide-on-mobile">Déconnexion</span>
           </button>
-          <button class="quick-pill-btn" id="topbarNewCotisationBtn" onclick="openModal('modalAddCotisation')">
-            <span>+</span> Nouveau Versement
+          <button class="quick-pill-btn topbar-action-btn" id="topbarNewCotisationBtn" onclick="openModal('modalAddCotisation')">
+            <span>+</span> <span class="hide-on-mobile">Nouveau </span>Versement
           </button>
           <button class="theme-toggle-btn" id="themeToggleBtn" title="Basculer thème clair/sombre">☀️</button>
         </div>
@@ -1839,6 +1839,30 @@
       </section>
     </main>
 
+    <!-- Navigation Mobile Inférieure Flottante (Touch-Optimized Bottom Nav) -->
+    <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Navigation Mobile">
+      <button type="button" class="mobile-bottom-nav-item active" data-tab="tab-dashboard" title="Tableau de bord">
+        <span class="mobile-nav-icon">📊</span>
+        <span class="mobile-nav-label">Accueil</span>
+      </button>
+      <button type="button" class="mobile-bottom-nav-item" data-tab="tab-familles" title="Familles & Membres">
+        <span class="mobile-nav-icon">👨‍👩‍👧‍👦</span>
+        <span class="mobile-nav-label">Familles</span>
+      </button>
+      <button type="button" class="mobile-bottom-nav-item" data-tab="tab-cotisations" title="Cotisations Mensuelles">
+        <span class="mobile-nav-icon">💳</span>
+        <span class="mobile-nav-label">Cotisations</span>
+      </button>
+      <button type="button" class="mobile-bottom-nav-item" data-tab="tab-ceremonies" title="Événements & Sacrifices">
+        <span class="mobile-nav-icon">🎯</span>
+        <span class="mobile-nav-label">Événements</span>
+      </button>
+      <button type="button" class="mobile-bottom-nav-item" id="mobileBottomNavMenuBtn" title="Menu & Autres Vues">
+        <span class="mobile-nav-icon">☰</span>
+        <span class="mobile-nav-label">Plus</span>
+      </button>
+    </nav>
+
   </div>
 
   <!-- ============================================================ -->
@@ -3028,10 +3052,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261109-v53"></script>
-  <script src="js/supabase.js?v=20261109-v53"></script>
-  <script src="js/app.js?v=20261109-v53"></script>
-  <script src="js/print.js?v=20261109-v53"></script>
+  <script src="js/data.js?v=20261109-v54"></script>
+  <script src="js/supabase.js?v=20261109-v54"></script>
+  <script src="js/app.js?v=20261109-v54"></script>
+  <script src="js/print.js?v=20261109-v54"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3039,7 +3063,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v53') caches.delete(k);
+            if (k !== 'tagba-pwa-v54') caches.delete(k);
           });
         });
       }
@@ -3051,9 +3075,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261109-v53')
+        navigator.serviceWorker.register('/sw.js?v=20261109-v54')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v53) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v54) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

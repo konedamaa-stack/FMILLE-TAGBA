@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tagba-pwa-v53';
+const CACHE_NAME = 'tagba-pwa-v54';
 
 const LOCAL_ASSETS = [
   '/',
@@ -24,7 +24,7 @@ self.addEventListener('install', (event) => {
       );
       try {
         await cache.add('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2');
-      } catch (_) {}
+      } catch (_) { }
     })
   );
 });

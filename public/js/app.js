@@ -678,6 +678,15 @@ function initNavigation() {
       const activePane = document.getElementById(targetId);
       if (activePane) activePane.classList.add('active');
 
+      // Mettre à jour l'élément actif dans la barre de navigation mobile inférieure
+      document.querySelectorAll('.mobile-bottom-nav-item').forEach(mItem => {
+        if (mItem.getAttribute('data-tab') === targetId) {
+          mItem.classList.add('active');
+        } else {
+          mItem.classList.remove('active');
+        }
+      });
+
       // Mettre à jour le titre du header
       if (pageTitle) pageTitle.textContent = btn.getAttribute('data-title') || 'TAGBA';
       if (pageSubtitle) pageSubtitle.textContent = btn.getAttribute('data-subtitle') || 'Tableau de bord de la mutuelle';
@@ -689,6 +698,31 @@ function initNavigation() {
       refreshCurrentTab(targetId);
     });
   });
+
+  // Navigation tactile inférieure mobile (Bottom Nav)
+  const bottomNavItems = document.querySelectorAll('.mobile-bottom-nav-item[data-tab]');
+  bottomNavItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const targetId = item.getAttribute('data-tab');
+      if (!targetId) return;
+      const targetNavBtn = document.querySelector(`.nav-btn[data-tab="${targetId}"]`);
+      if (targetNavBtn) {
+        targetNavBtn.click();
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  const bottomMenuBtn = document.getElementById('mobileBottomNavMenuBtn');
+  if (bottomMenuBtn) {
+    bottomMenuBtn.addEventListener('click', () => {
+      if (sidebar && sidebar.classList.contains('open')) {
+        closeMobileNav();
+      } else {
+        openMobileNav();
+      }
+    });
+  }
 }
 
 function refreshCurrentTab(tabId) {
@@ -1049,7 +1083,7 @@ function renderGroupedByChef(filterSearch = '', filterFamily = '') {
               <strong style="color: ${aJourPercent >= 75 ? 'var(--emerald-400)' : 'var(--gold-400)'};">${aJourPercent}% à jour</strong>
             </div>
 
-            <div style="display: flex; gap: 8px;">
+            <div class="family-header-actions" style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
               <button class="btn btn-sm btn-gold" onclick="openFamilyBatchPayModal('${fam.id}')" title="Ouvrir la plage de versement groupé pour toute la famille">
                 💳 Payer la Famille
               </button>
@@ -1597,7 +1631,7 @@ function renderCotisationsRecapMois() {
         </td>
         <td style="white-space: nowrap; padding: 6px 4px; text-align: center;">${statutBadge}</td>
         <td style="text-align: right; padding: 6px 8px;">
-          <div style="display: inline-flex; gap: 4px; flex-wrap: nowrap; align-items: center; justify-content: flex-end;">
+          <div style="display: inline-flex; gap: 4px; flex-wrap: wrap; align-items: center; justify-content: flex-end;">
             <button class="btn btn-xs ${isSelected ? 'btn-primary' : 'btn-secondary'}" onclick="selectRecapMonth('${m.monthName}')" title="Afficher la liste détaillée des membres" style="white-space: nowrap; padding: 3px 6px; font-size: 10.5px; border-radius: 5px;">
               👁️ Détails
             </button>
