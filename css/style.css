@@ -731,7 +731,7 @@ body.light-theme .hero-badge.highlight {
   min-width: 0;
 }
 
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
 
   .col-8,
   .col-4,
@@ -1672,37 +1672,6 @@ body.light-theme .statuts-doc h2 {
   margin-bottom: 16px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 860px) {
-  .sidebar {
-    transform: translateX(-100%);
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
-  }
-
-  .main-wrapper {
-    margin-left: 0;
-  }
-
-  .mobile-toggle-btn {
-    display: block;
-  }
-
-  .content-area {
-    padding: 20px;
-  }
-
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-
-  .topbar {
-    padding: 0 16px;
-  }
-}
-
 /* Authentification & Contrôle d'Accès (RBAC) */
 .auth-topbar-widget {
   display: flex;
@@ -2609,7 +2578,7 @@ body.light-theme .auth-fullscreen {
   -webkit-backdrop-filter: blur(4px);
   z-index: 45;
   opacity: 0;
-  display: none;
+  display: none !important;
   pointer-events: none;
   transition: opacity 0.3s ease;
 }
@@ -2621,7 +2590,7 @@ body.light-theme .auth-fullscreen {
 }
 
 .sidebar-mobile-close {
-  display: none;
+  display: none !important;
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -2637,75 +2606,90 @@ body.light-theme .auth-fullscreen {
 }
 
 /* ============================================================ */
-/* MEDIA QUERIES RESPONSIVE (TABLETTES & SMARTPHONES) */
+/* ÉLÉMENTS MOBILES : STRICTEMENT MASQUÉS SUR ORDINATEUR / PC   */
 /* ============================================================ */
+.mobile-bottom-nav {
+  display: none !important;
+}
 
-/* Tablette & Mobile (< 1024px) */
-@media (max-width: 1024px) {
-  .mobile-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border-color);
-    color: var(--text-main);
-    font-size: 20px;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: all 0.2s;
-  }
+.mobile-toggle-btn {
+  display: none !important;
+}
 
-  .mobile-toggle-btn:hover {
-    background: rgba(16, 185, 129, 0.15);
-    border-color: var(--emerald-500);
-  }
+.hide-on-mobile {
+  display: inline !important;
+}
 
-  .sidebar-mobile-close {
-    display: block;
+/* ============================================================ */
+/* ORDINATEURS PORTABLES / ÉCRANS MOYENS (769px à 1024px)       */
+/* La sidebar reste FIXE et TOUJOURS VISIBLE (Expérience PC)    */
+/* ============================================================ */
+@media (min-width: 769px) and (max-width: 1024px) {
+  :root {
+    --sidebar-width: 240px;
   }
 
   .sidebar {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    width: 280px;
-    max-width: 85vw;
-    z-index: 50;
-    transform: translateX(-100%);
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.6);
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .sidebar.open {
-    transform: translateX(0);
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 240px !important;
+    display: flex !important;
+    transform: none !important;
+    box-shadow: none !important;
+    padding: 20px 14px !important;
+    z-index: 40 !important;
   }
 
   .main-wrapper {
-    margin-left: 0 !important;
-    width: 100% !important;
+    margin-left: 240px !important;
+    width: calc(100% - 240px) !important;
+    max-width: calc(100vw - 240px) !important;
+  }
+
+  .mobile-toggle-btn {
+    display: none !important;
+  }
+
+  .sidebar-mobile-close {
+    display: none !important;
+  }
+
+  .sidebar-overlay {
+    display: none !important;
+  }
+
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  .hide-on-mobile {
+    display: inline !important;
   }
 
   .topbar {
-    padding: 10px 20px;
-    height: auto;
-    min-height: 64px;
+    padding: 12px 20px !important;
+    height: 64px !important;
+    min-height: 64px !important;
   }
 
   .content-area {
-    padding: 22px 18px;
+    padding: 20px 20px !important;
   }
 
   .bureau-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
   }
 }
 
-/* Écrans Moyens & Mobiles (< 860px) */
-@media (max-width: 860px) {
+/* Authentification Responsive (< 768px) */
+@media (max-width: 768px) {
   .auth-fullscreen {
     padding: 14px 10px;
     align-items: flex-start;
@@ -2809,7 +2793,58 @@ body.light-theme .auth-fullscreen {
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* 0. NAVIGATION MOBILE (SIDEBAR DRAWER & OVERLAY) */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    z-index: 50 !important;
+    transform: translateX(-100%) !important;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.7) !important;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  .sidebar.open {
+    transform: translateX(0) !important;
+  }
+
+  .sidebar-mobile-close {
+    display: block !important;
+  }
+
+  .sidebar-overlay.active {
+    display: block !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .mobile-toggle-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    font-size: 18px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+
+  .mobile-toggle-btn:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: var(--emerald-500);
+  }
+
   .main-wrapper {
+    margin-left: 0 !important;
+    width: 100% !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
     min-width: 0 !important;
@@ -3374,6 +3409,8 @@ body.light-theme .auth-fullscreen {
   /* 2. Règle générale pour l'impression normale / directe */
   .sidebar,
   .topbar,
+  .mobile-bottom-nav,
+  .mobile-toggle-btn,
   .btn,
   .toolbar-bar,
   .modal-close-btn,
