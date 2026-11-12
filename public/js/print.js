@@ -288,12 +288,18 @@
     const totalFamilles = (data.families || []).length;
     const fondsDepart = Number(cfg.fondsCaisse || 0);
 
+    const isEventCotis = (c) => {
+      const t = (c.type || '').toLowerCase();
+      const p = (c.periode || '').toLowerCase();
+      return !!c.eventId || !!c.evenementId || t.includes('venement') || t.includes('vènement') || p.includes('sacrifice') || p.includes('khoroko');
+    };
+
     const cotisMensuelles = (data.cotisations || [])
-      .filter(c => c.type !== 'Événement' && !c.evenementId)
+      .filter(c => !isEventCotis(c))
       .reduce((s, c) => s + Number(c.montant || 0), 0);
 
     const cotisEvenements = (data.cotisations || [])
-      .filter(c => c.type === 'Événement' || c.evenementId)
+      .filter(c => isEventCotis(c))
       .reduce((s, c) => s + Number(c.montant || 0), 0);
 
     const totalDons = (data.contributionsVolontaires || [])

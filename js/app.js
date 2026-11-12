@@ -3365,9 +3365,15 @@ function bindFormSubmissions() {
             return;
           }
 
-          const selectedEventId = cotType === 'Événement' ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
+          let selectedEventId = cotType === 'Événement' ? (document.getElementById('cotEventSelect')?.value || data.config?.activeEventId || null) : null;
+          if (!selectedEventId && (cotType === 'Événement' || cotType === 'Personnalisé') && (periode.toLowerCase().includes('sacrifice') || periode.toLowerCase().includes('khoroko'))) {
+            selectedEventId = data.config?.activeEventId || (data.evenements && data.evenements[0]?.id) || 'evt-1793537365392';
+          }
+          const finalCotType = (selectedEventId || periode.toLowerCase().includes('sacrifice') || periode.toLowerCase().includes('khoroko')) && (cotType === 'Personnalisé' || cotType === 'Événement')
+            ? 'Événement'
+            : cotType;
 
-          if (cotType === 'Événement') {
+          if (finalCotType === 'Événement') {
             const activeEvtObj = (data.evenements || []).find(e => e.id === selectedEventId) || TAGBA_DB.getActiveEvenement();
             const unitEventObj = Number(activeEvtObj?.montant || data.config?.cotisationEvenement || 4000);
             const eventCots = (data.cotisations || []).filter(c => {
@@ -3386,7 +3392,7 @@ function bindFormSubmissions() {
             memberId: memberId,
             memberName: mem ? mem.fullName : 'Membre',
             familyId: mem ? mem.familyId : 'fam-1',
-            type: cotType,
+            type: finalCotType,
             periode: periode,
             eventId: selectedEventId,
             montant: rawMontant,
@@ -6521,11 +6527,17 @@ function renderCotisationsEventsTracking() {
 
     // Trouver tous les versements pour cet événement spécifique
     const eventCotisations = (data.cotisations || []).filter(c => {
-      const isEvtType = c.type === 'Événement' || c.type === 'Evenement' || c.type === 'Évenement';
+      const t = (c.type || '').toLowerCase();
+      const p = (c.periode || '').toLowerCase();
+      const activeTitle = (eventTitle || '').toLowerCase();
+
       const matchesEvent = (c.eventId && c.eventId === activeEvt.id) ||
-        (c.periode && c.periode === eventTitle) ||
-        (c.periode && c.periode.includes(eventTitle));
-      return isEvtType && matchesEvent;
+        (c.evenement_id && c.evenement_id === activeEvt.id) ||
+        (activeTitle && p && (p === activeTitle || p.includes(activeTitle))) ||
+        p.includes('sacrifice') || p.includes('khoroko');
+
+      const isEvtType = t.includes('venement') || t.includes('vènement') || t.includes('personnalis');
+      return matchesEvent && (isEvtType || !!c.eventId || !!c.evenement_id || p.includes('sacrifice') || p.includes('khoroko'));
     });
 
     const totalMembers = (data.members || []).length;
@@ -6537,6 +6549,16 @@ function renderCotisationsEventsTracking() {
     const resteRecouvrer = Math.max(0, totalAttendu - totalEncaiss);
     const percentPaid = totalMembers > 0 ? Math.round((paidCount / totalMembers) * 100) : 0;
 
+    // Décompte détaillé (4 000 FCFA vs 3 000 FCFA)
+    const count4000 = eventCotisations.filter(c => Number(c.montant) === 4000).length;
+    const count3000 = eventCotisations.filter(c => Number(c.montant) === 3000).length;
+    const detailParts = [];
+    if (count4000 > 0) detailParts.push(`${count4000} de 4 000`);
+    if (count3000 > 0) detailParts.push(`${count3000} de 3 000`);
+    const otherCount = eventCotisations.length - count4000 - count3000;
+    if (otherCount > 0) detailParts.push(`${otherCount} autre(s)`);
+    const detailStr = detailParts.length > 0 ? ` (${detailParts.join(' • ')})` : '';
+
     // KPIs
     const kpiTotal = document.getElementById('kpiEventTotalEncaiss');
     const kpiPaidCountSub = document.getElementById('kpiEventPaidCountSub');
@@ -6547,7 +6569,7 @@ function renderCotisationsEventsTracking() {
     const kpiAttendu = document.getElementById('kpiEventTotalAttendu');
 
     if (kpiTotal) kpiTotal.textContent = formatMoney(totalEncaiss, currency);
-    if (kpiPaidCountSub) kpiPaidCountSub.textContent = `${eventCotisations.length} versement(s) reçu(s)`;
+    if (kpiPaidCountSub) kpiPaidCountSub.textContent = `${eventCotisations.length} versement(s) reçu(s)${detailStr}`;
     if (kpiPaidMembers) kpiPaidMembers.textContent = `${paidCount} / ${totalMembers}`;
     if (kpiPercentSub) kpiPercentSub.textContent = `${percentPaid}% de participation`;
     if (kpiReste) kpiReste.textContent = formatMoney(resteRecouvrer, currency);
