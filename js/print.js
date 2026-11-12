@@ -1054,9 +1054,9 @@
   }
 
   // ============================================================
-  // 6.c. ÉTAT OFFICIEL DE VÉRIFICATION NOMINATIVE (4 000 & 3 000 FCFA)
+  // 6.c. ÉTAT OFFICIEL DE VÉRIFICATION NOMINATIVE (MONTANTS SAISIS LIBREMENT)
   // ============================================================
-  function printEventVerificationReport() {
+  function printEventVerificationReport(targetAmount1 = null, targetAmount2 = null) {
     const data = getDbData();
     const curr = data.config?.currency || 'FCFA';
     let activeEvt = (typeof TAGBA_DB !== 'undefined' && typeof TAGBA_DB.getActiveEvenement === 'function')
@@ -1067,6 +1067,22 @@
     }
     const eventTitle = activeEvt ? (activeEvt.titre || 'Cotisation Sacrifice a Khoroko') : 'Cotisation Sacrifice a Khoroko';
     const activeEvtId = activeEvt ? activeEvt.id : 'evt-1793537365392';
+
+    // Résolution dynamique des montants demandés
+    let amt1 = targetAmount1 !== null ? Number(targetAmount1) : null;
+    let amt2 = targetAmount2 !== null ? Number(targetAmount2) : null;
+
+    if (amt1 === null) {
+      const inp1 = document.getElementById('customVerifyAmount1');
+      if (inp1 && inp1.value) amt1 = Number(inp1.value);
+    }
+    if (amt2 === null) {
+      const inp2 = document.getElementById('customVerifyAmount2');
+      if (inp2 && inp2.value) amt2 = Number(inp2.value);
+    }
+
+    if (amt1 === null || isNaN(amt1) || amt1 <= 0) amt1 = 4000;
+    if (amt2 !== null && (isNaN(amt2) || amt2 <= 0)) amt2 = null;
 
     // Récupérer tous les versements rattachés à cet événement
     const eventCotisations = (data.cotisations || []).filter(c => {
@@ -1087,8 +1103,8 @@
     const familiesMap = {};
     (data.families || []).forEach(f => { familiesMap[f.id] = f.name; });
 
-    const list4000 = [];
-    const list3000 = [];
+    const list1 = [];
+    const list2 = [];
     const listOther = [];
 
     eventCotisations.forEach(c => {
@@ -1107,38 +1123,47 @@
         datePaiement: c.datePaiement || c.date_paiement || '12/11/2026',
         modePaiement: c.modePaiement || c.mode_paiement || 'Wave'
       };
-      if (item.montant === 4000) {
-        list4000.push(item);
-      } else if (item.montant === 3000) {
-        list3000.push(item);
+      if (item.montant === amt1) {
+        list1.push(item);
+      } else if (amt2 !== null && item.montant === amt2) {
+        list2.push(item);
       } else {
         listOther.push(item);
       }
     });
 
     // Tri alphabétique A-Z systématique
-    list4000.sort((a, b) => a.fullName.localeCompare(b.fullName, 'fr', { sensitivity: 'base' }));
-    list3000.sort((a, b) => a.fullName.localeCompare(b.fullName, 'fr', { sensitivity: 'base' }));
+    list1.sort((a, b) => a.fullName.localeCompare(b.fullName, 'fr', { sensitivity: 'base' }));
+    list2.sort((a, b) => a.fullName.localeCompare(b.fullName, 'fr', { sensitivity: 'base' }));
     listOther.sort((a, b) => a.fullName.localeCompare(b.fullName, 'fr', { sensitivity: 'base' }));
 
-    const total4000 = list4000.reduce((s, x) => s + x.montant, 0);
-    const total3000 = list3000.reduce((s, x) => s + x.montant, 0);
+    const total1 = list1.reduce((s, x) => s + x.montant, 0);
+    const total2 = list2.reduce((s, x) => s + x.montant, 0);
     const totalOther = listOther.reduce((s, x) => s + x.montant, 0);
-    const grandTotal = total4000 + total3000 + totalOther;
-    const totalCount = list4000.length + list3000.length + listOther.length;
+    const grandTotal = total1 + total2 + totalOther;
+    const totalCount = list1.length + list2.length + listOther.length;
+
+    const amountsSubtitle = amt2 !== null
+      ? `Rapport nominatif officiel certifié pour les montants de ${formatMoney(amt1, curr)} et ${formatMoney(amt2, curr)} • Tri Alphabétique A-Z`
+      : `Rapport nominatif officiel certifié pour le montant de ${formatMoney(amt1, curr)} • Tri Alphabétique A-Z`;
 
     const docTitle = `État Officiel de Contrôle & Vérification : ${eventTitle}`;
-    const docSubtitle = `Rapport nominatif officiel certifié par montant de cotisation (4 000 FCFA & 3 000 FCFA) • Tri Alphabétique A-Z`;
+    const docSubtitle = amountsSubtitle;
 
     const meta = [
       { label: 'Événement', value: eventTitle },
       { label: 'Total Encaissé Certifié', value: formatMoney(grandTotal, curr) },
       { label: 'Nombre Total Cotisants', value: `${totalCount} membre(s)` },
-      { label: 'Cotisants à 4 000 FCFA', value: `${list4000.length} membre(s) (${formatMoney(total4000, curr)})` },
-      { label: 'Cotisants à 3 000 FCFA', value: `${list3000.length} membre(s) (${formatMoney(total3000, curr)})` },
-      { label: 'Mode Dominant', value: 'Wave' },
-      { label: 'Date d\'Édition', value: new Date().toLocaleDateString('fr-FR') }
+      { label: `Cotisants à ${formatMoney(amt1, curr)}`, value: `${list1.length} membre(s) (${formatMoney(total1, curr)})` }
     ];
+    if (amt2 !== null) {
+      meta.push({ label: `Cotisants à ${formatMoney(amt2, curr)}`, value: `${list2.length} membre(s) (${formatMoney(total2, curr)})` });
+    }
+    if (listOther.length > 0) {
+      meta.push({ label: 'Autres Montants', value: `${listOther.length} membre(s) (${formatMoney(totalOther, curr)})` });
+    }
+    meta.push({ label: 'Mode Dominant', value: 'Wave' });
+    meta.push({ label: 'Date d\'Édition', value: new Date().toLocaleDateString('fr-FR') });
 
     const header = getOfficialPrintHeader(docTitle, docSubtitle, meta);
 
@@ -1160,87 +1185,133 @@
       `).join('');
     };
 
+    let tablesHtml = `
+      <!-- Section 1 : amt1 -->
+      <div style="margin-top: 18px; margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 6px; padding: 8px 14px; margin-bottom: 8px;">
+          <div style="font-size: 13px; font-weight: 800; color: #065f46; text-transform: uppercase;">
+            1. Liste Officielle des Cotisants à ${formatMoney(amt1, curr)} (${list1.length} membre${list1.length > 1 ? 's' : ''})
+          </div>
+          <div style="font-size: 14px; font-weight: 800; color: #047857;">
+            Sous-total : ${formatMoney(total1, curr)}
+          </div>
+        </div>
+        <table class="tagba-print-table">
+          <thead>
+            <tr>
+              <th style="width: 35px; text-align: center;">N°</th>
+              <th style="text-align: center; width: 85px;">Matricule</th>
+              <th>Nom & Prénoms</th>
+              <th>Foyer / Famille</th>
+              <th style="text-align: center; width: 110px;">Réf. Reçu</th>
+              <th style="text-align: center; width: 85px;">Date</th>
+              <th style="text-align: center; width: 70px;">Mode</th>
+              <th style="text-align: right; width: 100px;">Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${renderTableRows(list1)}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="7" style="text-align: right; font-weight: 700;">SOUS-TOTAL (${formatMoney(amt1, curr)}) :</td>
+              <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(total1, curr)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    `;
+
+    if (amt2 !== null) {
+      tablesHtml += `
+        <!-- Section 2 : amt2 -->
+        <div style="margin-top: 18px; margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 6px; padding: 8px 14px; margin-bottom: 8px;">
+            <div style="font-size: 13px; font-weight: 800; color: #92400e; text-transform: uppercase;">
+              2. Liste Officielle des Cotisants à ${formatMoney(amt2, curr)} (${list2.length} membre${list2.length > 1 ? 's' : ''})
+            </div>
+            <div style="font-size: 14px; font-weight: 800; color: #b45309;">
+              Sous-total : ${formatMoney(total2, curr)}
+            </div>
+          </div>
+          <table class="tagba-print-table">
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">N°</th>
+                <th style="text-align: center; width: 85px;">Matricule</th>
+                <th>Nom & Prénoms</th>
+                <th>Foyer / Famille</th>
+                <th style="text-align: center; width: 110px;">Réf. Reçu</th>
+                <th style="text-align: center; width: 85px;">Date</th>
+                <th style="text-align: center; width: 70px;">Mode</th>
+                <th style="text-align: right; width: 100px;">Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${renderTableRows(list2)}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="7" style="text-align: right; font-weight: 700;">SOUS-TOTAL (${formatMoney(amt2, curr)}) :</td>
+                <td style="text-align: right; font-weight: 800; color: #b45309;">${formatMoney(total2, curr)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      `;
+    }
+
+    if (listOther.length > 0) {
+      tablesHtml += `
+        <!-- Section 3 : Autres Montants -->
+        <div style="margin-top: 18px; margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; padding: 8px 14px; margin-bottom: 8px;">
+            <div style="font-size: 13px; font-weight: 800; color: #334155; text-transform: uppercase;">
+              ${amt2 !== null ? '3' : '2'}. Autres Montants Versés (${listOther.length} membre${listOther.length > 1 ? 's' : ''})
+            </div>
+            <div style="font-size: 14px; font-weight: 800; color: #0f172a;">
+              Sous-total : ${formatMoney(totalOther, curr)}
+            </div>
+          </div>
+          <table class="tagba-print-table">
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">N°</th>
+                <th style="text-align: center; width: 85px;">Matricule</th>
+                <th>Nom & Prénoms</th>
+                <th>Foyer / Famille</th>
+                <th style="text-align: center; width: 110px;">Réf. Reçu</th>
+                <th style="text-align: center; width: 85px;">Date</th>
+                <th style="text-align: center; width: 70px;">Mode</th>
+                <th style="text-align: right; width: 100px;">Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${renderTableRows(listOther)}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="7" style="text-align: right; font-weight: 700;">SOUS-TOTAL (AUTRES MONTANTS) :</td>
+                <td style="text-align: right; font-weight: 800; color: #0f172a;">${formatMoney(totalOther, curr)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      `;
+    }
+
     const html = `
       ${printDocStyle}
       <div class="tagba-print-container">
         ${header}
-
-        <!-- Section 1 : 4 000 FCFA -->
-        <div style="margin-top: 18px; margin-bottom: 24px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 6px; padding: 8px 14px; margin-bottom: 8px;">
-            <div style="font-size: 13px; font-weight: 800; color: #065f46; text-transform: uppercase;">
-              1. Liste Officielle des Cotisants à 4 000 FCFA (${list4000.length} membres)
-            </div>
-            <div style="font-size: 14px; font-weight: 800; color: #047857;">
-              Sous-total : ${formatMoney(total4000, curr)}
-            </div>
-          </div>
-          <table class="tagba-print-table">
-            <thead>
-              <tr>
-                <th style="width: 35px; text-align: center;">N°</th>
-                <th style="text-align: center; width: 85px;">Matricule</th>
-                <th>Nom & Prénoms</th>
-                <th>Foyer / Famille</th>
-                <th style="text-align: center; width: 110px;">Réf. Reçu</th>
-                <th style="text-align: center; width: 85px;">Date</th>
-                <th style="text-align: center; width: 70px;">Mode</th>
-                <th style="text-align: right; width: 100px;">Montant</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${renderTableRows(list4000)}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="7" style="text-align: right; font-weight: 700;">SOUS-TOTAL (4 000 FCFA) :</td>
-                <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(total4000, curr)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        <!-- Section 2 : 3 000 FCFA -->
-        <div style="margin-top: 18px; margin-bottom: 24px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 6px; padding: 8px 14px; margin-bottom: 8px;">
-            <div style="font-size: 13px; font-weight: 800; color: #92400e; text-transform: uppercase;">
-              2. Liste Officielle des Cotisants à 3 000 FCFA (${list3000.length} membres)
-            </div>
-            <div style="font-size: 14px; font-weight: 800; color: #b45309;">
-              Sous-total : ${formatMoney(total3000, curr)}
-            </div>
-          </div>
-          <table class="tagba-print-table">
-            <thead>
-              <tr>
-                <th style="width: 35px; text-align: center;">N°</th>
-                <th style="text-align: center; width: 85px;">Matricule</th>
-                <th>Nom & Prénoms</th>
-                <th>Foyer / Famille</th>
-                <th style="text-align: center; width: 110px;">Réf. Reçu</th>
-                <th style="text-align: center; width: 85px;">Date</th>
-                <th style="text-align: center; width: 70px;">Mode</th>
-                <th style="text-align: right; width: 100px;">Montant</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${renderTableRows(list3000)}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="7" style="text-align: right; font-weight: 700;">SOUS-TOTAL (3 000 FCFA) :</td>
-                <td style="text-align: right; font-weight: 800; color: #b45309;">${formatMoney(total3000, curr)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        ${tablesHtml}
 
         <!-- Récapitulatif Final & Signatures -->
         <div style="background: #f8fafc; border: 2px solid #0f172a; border-radius: 8px; padding: 12px 18px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <div style="font-size: 11px; text-transform: uppercase; color: #475569; font-weight: 700;">RÉCAPITULATIF GÉNÉRAL CERTIFIÉ CONFORME</div>
             <div style="font-size: 12px; color: #0f172a; margin-top: 2px;">
-              ${list4000.length} membres à 4 000 FCFA + ${list3000.length} membres à 3 000 FCFA = <strong>${totalCount} versements reçus</strong>
+              ${list1.length} membre(s) à ${formatMoney(amt1, curr)}${amt2 !== null ? ` + ${list2.length} membre(s) à ${formatMoney(amt2, curr)}` : ''}${listOther.length > 0 ? ` + ${listOther.length} autre(s)` : ''} = <strong>${totalCount} versements vérifiés</strong>
             </div>
           </div>
           <div style="text-align: right;">

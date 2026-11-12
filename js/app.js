@@ -6585,6 +6585,8 @@ function renderCotisationsEventsTracking() {
     const filterStatus = statusSelect ? statusSelect.value : 'ALL';
     const searchInput = document.getElementById('filterEventMemberSearch');
     const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    const amountInput = document.getElementById('filterEventExactAmount');
+    const exactAmountFilter = (amountInput && amountInput.value && !isNaN(Number(amountInput.value))) ? Number(amountInput.value) : null;
 
     let membersToDisplay = (data.members || []);
     if (filterStatus === 'LATE') {
@@ -6597,7 +6599,15 @@ function renderCotisationsEventsTracking() {
       membersToDisplay = membersToDisplay.filter(m => {
         const cots = eventCotisations.filter(c => (c.memberId === m.id || c.member_id === m.id));
         const paid = cots.reduce((s, c) => s + (Number(c.montant) || 0), 0);
-        return paid >= unitEvent;
+        return paid >= 3000; // Tous ceux ayant cotisé pour l'événement (3000, 4000, etc.)
+      });
+    }
+
+    if (exactAmountFilter !== null && exactAmountFilter > 0) {
+      membersToDisplay = membersToDisplay.filter(m => {
+        const cots = eventCotisations.filter(c => (c.memberId === m.id || c.member_id === m.id));
+        const paid = cots.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+        return paid === exactAmountFilter || cots.some(c => Number(c.montant) === exactAmountFilter);
       });
     }
 
@@ -6871,9 +6881,192 @@ function onPlageMemberEventAmountChange(memberId) {
 }
 
 // ============================================================
+// CONTRÔLE & VÉRIFICATION PERSONNALISÉE PAR MONTANTS SAISIS (MODAL & PDF)
+// ============================================================
+function openModalEventCustomVerification() {
+  const data = (typeof TAGBA_DB !== 'undefined') ? TAGBA_DB.get() : {};
+  const curr = data.config?.currency || 'FCFA';
+  const activeEvt = (typeof TAGBA_DB !== 'undefined' && typeof TAGBA_DB.getActiveEvenement === 'function')
+    ? TAGBA_DB.getActiveEvenement() : null;
+
+  const titleEl = document.getElementById('customVerificationModalTitle');
+  if (titleEl) {
+    titleEl.textContent = activeEvt ? `Vérification : ${activeEvt.titre}` : 'Vérification des Versements par Montant';
+  }
+
+  // Filtrer les cotisations de cet événement
+  const eventCotisations = (data.cotisations || []).filter(c => {
+    const t = (c.type || '').toLowerCase();
+    const isEvtType = t === 'événement' || t === 'evenement';
+    const isEvtId = c.eventId && activeEvt && (c.eventId === activeEvt.id);
+    const isEvtTitle = activeEvt && activeEvt.titre && c.periode && c.periode.includes(activeEvt.titre);
+    return isEvtId || (isEvtType && isEvtTitle) || (isEvtType && !c.eventId);
+  });
+
+  // Détecter les montants présents
+  const counts = {};
+  eventCotisations.forEach(c => {
+    const m = Number(c.montant) || 0;
+    if (m > 0) counts[m] = (counts[m] || 0) + 1;
+  });
+
+  const sortedAmounts = Object.keys(counts).map(Number).sort((a, b) => b - a);
+
+  // Générer les pilules cliquables
+  const pillsContainer = document.getElementById('customVerificationDetectedPills');
+  if (pillsContainer) {
+    if (sortedAmounts.length === 0) {
+      pillsContainer.innerHTML = '<span style="font-size: 12px; color: var(--text-muted);">Aucun versement enregistré pour le moment.</span>';
+    } else {
+      pillsContainer.innerHTML = sortedAmounts.map(amt => `
+        <button type="button" class="btn btn-sm" onclick="selectDetectedVerificationAmount(${amt})" style="border: 1px solid var(--emerald-500); background: rgba(16, 185, 129, 0.15); color: #34d399; font-weight: 700; padding: 4px 10px; border-radius: 20px; font-size: 12px; cursor: pointer;" title="Cliquer pour injecter ce montant dans les champs">
+          📌 ${formatMoney(amt, curr)} (${counts[amt]} membre${counts[amt] > 1 ? 's' : ''})
+        </button>
+      `).join('');
+    }
+  }
+
+  // Préremplissage par défaut : top 2 montants ou 4000 & 3000
+  const inp1 = document.getElementById('customVerifyAmount1');
+  const inp2 = document.getElementById('customVerifyAmount2');
+  if (inp1 && !inp1.value) {
+    inp1.value = sortedAmounts[0] || 4000;
+  }
+  if (inp2 && !inp2.value && sortedAmounts.length > 1) {
+    inp2.value = sortedAmounts[1] || '';
+  }
+
+  updateCustomVerificationPreview();
+  openModal('modalEventCustomVerification');
+}
+
+function selectDetectedVerificationAmount(amt) {
+  const inp1 = document.getElementById('customVerifyAmount1');
+  const inp2 = document.getElementById('customVerifyAmount2');
+  if (!inp1) return;
+
+  if (!inp1.value || Number(inp1.value) === amt) {
+    inp1.value = amt;
+  } else if (inp2) {
+    inp2.value = amt;
+  } else {
+    inp1.value = amt;
+  }
+  updateCustomVerificationPreview();
+}
+
+function updateCustomVerificationPreview() {
+  const preview = document.getElementById('customVerificationLivePreview');
+  if (!preview) return;
+
+  const data = (typeof TAGBA_DB !== 'undefined') ? TAGBA_DB.get() : {};
+  const curr = data.config?.currency || 'FCFA';
+  const activeEvt = (typeof TAGBA_DB !== 'undefined' && typeof TAGBA_DB.getActiveEvenement === 'function')
+    ? TAGBA_DB.getActiveEvenement() : null;
+
+  const inp1 = document.getElementById('customVerifyAmount1');
+  const inp2 = document.getElementById('customVerifyAmount2');
+
+  const amt1 = (inp1 && inp1.value && !isNaN(Number(inp1.value))) ? Number(inp1.value) : null;
+  const amt2 = (inp2 && inp2.value && !isNaN(Number(inp2.value))) ? Number(inp2.value) : null;
+
+  const eventCotisations = (data.cotisations || []).filter(c => {
+    const t = (c.type || '').toLowerCase();
+    const isEvtType = t === 'événement' || t === 'evenement';
+    const isEvtId = c.eventId && activeEvt && (c.eventId === activeEvt.id);
+    const isEvtTitle = activeEvt && activeEvt.titre && c.periode && c.periode.includes(activeEvt.titre);
+    return isEvtId || (isEvtType && isEvtTitle) || (isEvtType && !c.eventId);
+  });
+
+  const list1 = amt1 !== null ? eventCotisations.filter(c => Number(c.montant) === amt1) : [];
+  const list2 = amt2 !== null ? eventCotisations.filter(c => Number(c.montant) === amt2) : [];
+  const listOther = eventCotisations.filter(c => {
+    const m = Number(c.montant);
+    return m !== amt1 && (amt2 === null || m !== amt2);
+  });
+
+  const tot1 = list1.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+  const tot2 = list2.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+  const totOther = listOther.reduce((s, c) => s + (Number(c.montant) || 0), 0);
+  const grandTotal = tot1 + tot2 + totOther;
+  const totalCount = eventCotisations.length;
+
+  preview.innerHTML = `
+    <div style="font-size: 12px; font-weight: 700; color: var(--emerald-400); text-transform: uppercase; margin-bottom: 8px;">
+      📊 Résultat du Recalcul en Temps Réel :
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 10px;">
+      <div style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 8px 12px;">
+        <div style="font-size: 11px; color: var(--text-muted);">Montant 1 : ${amt1 ? formatMoney(amt1, curr) : 'Non défini'}</div>
+        <div style="font-size: 16px; font-weight: 800; color: #34d399;">${list1.length} membre${list1.length > 1 ? 's' : ''}</div>
+        <div style="font-size: 12px; font-weight: 700; color: #10b981;">${formatMoney(tot1, curr)}</div>
+      </div>
+      ${amt2 ? `
+      <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 8px 12px;">
+        <div style="font-size: 11px; color: var(--text-muted);">Montant 2 : ${formatMoney(amt2, curr)}</div>
+        <div style="font-size: 16px; font-weight: 800; color: #fbbf24;">${list2.length} membre${list2.length > 1 ? 's' : ''}</div>
+        <div style="font-size: 12px; font-weight: 700; color: #f59e0b;">${formatMoney(tot2, curr)}</div>
+      </div>
+      ` : ''}
+      <div style="background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; padding: 8px 12px;">
+        <div style="font-size: 11px; color: var(--text-muted);">Total Tous Versements</div>
+        <div style="font-size: 16px; font-weight: 800; color: #60a5fa;">${totalCount} versement${totalCount > 1 ? 's' : ''}</div>
+        <div style="font-size: 12px; font-weight: 800; color: #3b82f6;">${formatMoney(grandTotal, curr)}</div>
+      </div>
+    </div>
+    ${listOther.length > 0 ? `
+      <div style="font-size: 11px; color: #f87171; background: rgba(239, 68, 68, 0.1); border-radius: 4px; padding: 4px 8px;">
+        ⚠️ ${listOther.length} autre(s) versement(s) avec des montants différents détecté(s) (${formatMoney(totOther, curr)}).
+      </div>
+    ` : `
+      <div style="font-size: 11px; color: #34d399;">
+        ✅ Tous les versements correspondent exactement aux montants spécifiés !
+      </div>
+    `}
+  `;
+}
+
+function generateCustomVerificationPDF() {
+  const inp1 = document.getElementById('customVerifyAmount1');
+  const inp2 = document.getElementById('customVerifyAmount2');
+  const amt1 = (inp1 && inp1.value && !isNaN(Number(inp1.value))) ? Number(inp1.value) : 4000;
+  const amt2 = (inp2 && inp2.value && !isNaN(Number(inp2.value))) ? Number(inp2.value) : null;
+
+  closeModal('modalEventCustomVerification');
+
+  if (typeof printEventVerificationReport === 'function') {
+    printEventVerificationReport(amt1, amt2);
+  } else if (typeof window.printEventVerificationReport === 'function') {
+    window.printEventVerificationReport(amt1, amt2);
+  } else {
+    showToast('Le module d\'impression n\'est pas encore chargé.', 'warning');
+  }
+}
+
+function applyCustomVerificationFilterToTable() {
+  const inp1 = document.getElementById('customVerifyAmount1');
+  const amt1 = (inp1 && inp1.value && !isNaN(Number(inp1.value))) ? Number(inp1.value) : null;
+
+  const tableFilterInp = document.getElementById('filterEventExactAmount');
+  if (tableFilterInp && amt1) {
+    tableFilterInp.value = amt1;
+  }
+  closeModal('modalEventCustomVerification');
+  renderCotisationsEventsTracking();
+  if (typeof showToast === 'function' && amt1) {
+    showToast(`Tableau filtré sur les versements de ${amt1} FCFA.`, 'info');
+  }
+}
+
+// ============================================================
 // EXPOSITION GLOBALE EXPLICITE SUR WINDOW (Garantie Anti-ReferenceError)
 // ============================================================
 if (typeof window !== 'undefined') {
+  window.openModalEventCustomVerification = openModalEventCustomVerification;
+  window.selectDetectedVerificationAmount = selectDetectedVerificationAmount;
+  window.updateCustomVerificationPreview = updateCustomVerificationPreview;
+  window.generateCustomVerificationPDF = generateCustomVerificationPDF;
+  window.applyCustomVerificationFilterToTable = applyCustomVerificationFilterToTable;
   window.enableCustomCotisationAmount = enableCustomCotisationAmount;
   window.onCotMontantInput = onCotMontantInput;
   window.setEventPaymentMontant = setEventPaymentMontant;

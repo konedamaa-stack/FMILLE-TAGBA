@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261112-v57">
+  <link rel="stylesheet" href="css/style.css?v=20261112-v58">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -1055,8 +1055,8 @@
                 </div>
 
                 <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <button type="button" class="btn btn-sm btn-outline-warning" onclick="printEventVerificationReport()" title="Générer l'état officiel PDF de vérification nominative des 4 000 FCFA et 3 000 FCFA" style="border: 1.5px solid #10b981; color: #34d399; font-weight: 700; background: rgba(16, 185, 129, 0.12); cursor: pointer;">
-                    📑 PDF Vérification (4 000 & 3 000)
+                  <button type="button" class="btn btn-sm btn-gold" onclick="openModalEventCustomVerification()" title="Saisir librement le ou les montants à vérifier et générer le PDF officiel" style="font-weight: 700; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35); cursor: pointer;">
+                    🔍 Vérifier par Montant Saisi (PDF)
                   </button>
                   <button type="button" class="btn btn-sm btn-secondary" onclick="printEventCotisationsReport(null, 'all')" title="Imprimer l'état général complet de cet événement">
                     🖨️ Imprimer Tout
@@ -1137,7 +1137,8 @@
                     <option value="LATE">⚠️ En retard uniquement</option>
                     <option value="PAID">✅ À jour uniquement</option>
                   </select>
-                  <input type="text" class="form-control" id="filterEventMemberSearch" placeholder="🔍 Filtrer un membre..." style="width: 200px; font-size: 12px;" oninput="renderCotisationsEventsTracking()">
+                  <input type="number" class="form-control" id="filterEventExactAmount" placeholder="💰 Montant (ex: 4000)..." style="width: 170px; font-size: 12px; border-color: rgba(16, 185, 129, 0.4);" oninput="renderCotisationsEventsTracking()" title="Saisir un montant exact pour filtrer instantanément le tableau (ex: 4000 ou 3000)">
+                  <input type="text" class="form-control" id="filterEventMemberSearch" placeholder="🔍 Filtrer un membre..." style="width: 190px; font-size: 12px;" oninput="renderCotisationsEventsTracking()">
                 </div>
               </div>
 
@@ -3048,6 +3049,68 @@
     </div>
   </div>
 
+  <!-- Modal 12 : Contrôle & Vérification Personnalisée par Montants Saisis -->
+  <div class="modal-overlay" id="modalEventCustomVerification">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 22px;">🔍</span>
+          <h3 id="customVerificationModalTitle">Vérification des Versements par Montant</h3>
+        </div>
+        <button type="button" class="modal-close-btn" aria-label="Fermer" onclick="closeModal('modalEventCustomVerification')">&times;</button>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Saisissez librement les montants que vous souhaitez vérifier pour cet événement. Le système recalcule automatiquement les membres concernés et génère l'état officiel PDF correspondant.
+        </p>
+
+        <!-- Montants détectés dans la base pour cet événement -->
+        <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+          <div style="font-size: 11px; font-weight: 700; color: var(--emerald-400); text-transform: uppercase; margin-bottom: 6px;">
+            ⚡ Montants réels détectés dans les versements (Cliquer pour injecter) :
+          </div>
+          <div id="customVerificationDetectedPills" style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <!-- Rempli dynamiquement -->
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 700; color: #10b981;">
+              Premier Montant à Vérifier (<span class="cfgCurrencySuffix">FCFA</span>) *
+            </label>
+            <input type="number" class="form-control" id="customVerifyAmount1" step="500" min="0" placeholder="Ex: 4000" style="font-size: 16px; font-weight: 700; color: #34d399;" oninput="updateCustomVerificationPreview()">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" style="font-weight: 700; color: #f59e0b;">
+              Deuxième Montant (Optionnel) (<span class="cfgCurrencySuffix">FCFA</span>)
+            </label>
+            <input type="number" class="form-control" id="customVerifyAmount2" step="500" min="0" placeholder="Ex: 3000 (ou laisser vide)" style="font-size: 16px; font-weight: 700; color: #fbbf24;" oninput="updateCustomVerificationPreview()">
+          </div>
+        </div>
+
+        <!-- Aperçu en direct du recalcul -->
+        <div id="customVerificationLivePreview" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 12px 14px; margin-top: 14px;">
+          <!-- Dynamique -->
+        </div>
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modalEventCustomVerification')">Fermer</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" class="btn btn-outline-success" onclick="applyCustomVerificationFilterToTable()" style="border: 1px solid var(--emerald-500); color: var(--emerald-400);">
+            👁️ Afficher dans le Tableau
+          </button>
+          <button type="button" class="btn btn-gold" onclick="generateCustomVerificationPDF()" style="font-weight: 700;">
+            🖨️ Générer le PDF Officiel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Zone d'impression universelle pour tous les états et rapports officiels -->
   <div id="tagbaPrintArea" class="tagba-print-container" style="display: none;"></div>
 
@@ -3056,10 +3119,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261112-v57"></script>
-  <script src="js/supabase.js?v=20261112-v57"></script>
-  <script src="js/app.js?v=20261112-v57"></script>
-  <script src="js/print.js?v=20261112-v57"></script>
+  <script src="js/data.js?v=20261112-v58"></script>
+  <script src="js/supabase.js?v=20261112-v58"></script>
+  <script src="js/app.js?v=20261112-v58"></script>
+  <script src="js/print.js?v=20261112-v58"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3067,7 +3130,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v57') caches.delete(k);
+            if (k !== 'tagba-pwa-v58') caches.delete(k);
           });
         });
       }
@@ -3079,9 +3142,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261112-v57')
+        navigator.serviceWorker.register('/sw.js?v=20261112-v58')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v57) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v58) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));
