@@ -946,6 +946,14 @@ body.light-theme .hero-badge.highlight {
   vertical-align: middle;
 }
 
+.modern-table th:last-child,
+.modern-table td:last-child {
+  text-align: right;
+  white-space: nowrap;
+  min-width: 140px;
+  padding-right: 14px;
+}
+
 .modern-table tbody tr {
   transition: background var(--transition-fast);
 }
@@ -3149,25 +3157,38 @@ body.light-theme .auth-fullscreen {
 
   .modern-table {
     width: 100% !important;
-    min-width: 520px !important;
+    min-width: 680px !important;
   }
 
   .modern-table th {
-    padding: 8px 6px !important;
-    font-size: 10.5px !important;
+    padding: 8px 8px !important;
+    font-size: 11px !important;
+    white-space: nowrap !important;
   }
 
   .modern-table td {
-    padding: 7px 6px !important;
-    font-size: 11.5px !important;
+    padding: 8px 8px !important;
+    font-size: 12px !important;
+  }
+
+  .modern-table th:last-child,
+  .modern-table td:last-child {
+    text-align: right !important;
+    white-space: nowrap !important;
+    min-width: 145px !important;
+    padding-right: 14px !important;
   }
 
   .modern-table .btn,
   .modern-table .btn-sm,
   .modern-table .btn-xs {
-    padding: 3px 6px !important;
-    font-size: 10.5px !important;
-    border-radius: 5px !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
   }
 
   /* 9. CARTES DE FAMILLES ET FOYERS */

@@ -6656,12 +6656,12 @@ function renderCotisationsEventsTracking() {
         `;
         modeCell = `<span class="badge badge-purple" style="font-size: 10px;">${lastCot.modePaiement || lastCot.mode_paiement}</span>`;
         actionBtn = `
-          <div style="display: inline-flex; gap: 4px;">
-            <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${lastCot.id}')" title="Voir le Reçu Officiel">
+          <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; white-space: nowrap;">
+            <button class="btn btn-sm btn-secondary" onclick="openReceiptModal('${lastCot.id}')" title="Voir le Reçu Officiel" style="white-space: nowrap; padding: 4px 8px; font-weight: 600;">
               🧾 Reçu
             </button>
             ${isPartial ? `
-              <button class="btn btn-sm btn-outline-warning" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Compléter le versement (Reste ${formatMoney(unitEvent - totalPaidForMem, currency)})">
+              <button class="btn btn-sm btn-outline-warning" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Compléter le versement (Reste ${formatMoney(unitEvent - totalPaidForMem, currency)})" style="white-space: nowrap; padding: 4px 8px; border: 1px solid #f59e0b; color: #fbbf24; background: rgba(245, 158, 11, 0.12); font-weight: 700;">
                 ➕ Compléter
               </button>
             ` : ''}
@@ -6672,7 +6672,7 @@ function renderCotisationsEventsTracking() {
         dateRecuCell = `<span style="color: var(--text-dim);">-</span>`;
         modeCell = `<span style="color: var(--text-dim);">-</span>`;
         actionBtn = `
-          <button class="btn btn-sm btn-primary" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Encaisser la cotisation pour ${activeEvt.titre}">
+          <button class="btn btn-sm btn-primary" onclick="quickPayMemberForEvent('${m.id}', '${activeEvt.id}')" title="Encaisser la cotisation pour ${activeEvt.titre}" style="white-space: nowrap; padding: 5px 12px; font-weight: 600;">
             💳 Encaisser
           </button>
         `;
@@ -6681,7 +6681,7 @@ function renderCotisationsEventsTracking() {
       return `
         <tr>
           <td><strong style="color: var(--emerald-400);">${m.matricule}</strong></td>
-          <td>
+          <td style="min-width: 170px;">
             <div style="font-weight: 700; color: var(--text-main); font-size: 13px;">
               ${m.fullName}
             </div>
@@ -6689,13 +6689,13 @@ function renderCotisationsEventsTracking() {
               👑 ${famName} • 📞 ${m.phone}
             </div>
           </td>
-          <td>
+          <td style="white-space: nowrap;">
             <strong style="color: var(--gold-400);">${formatMoney(unitEvent, currency)}</strong>
           </td>
-          <td>${statutBadge}</td>
-          <td>${dateRecuCell}</td>
-          <td>${modeCell}</td>
-          <td style="text-align: right;">${actionBtn}</td>
+          <td style="white-space: nowrap;">${statutBadge}</td>
+          <td style="white-space: nowrap;">${dateRecuCell}</td>
+          <td style="white-space: nowrap;">${modeCell}</td>
+          <td style="text-align: right; white-space: nowrap; min-width: 145px; padding-right: 14px;">${actionBtn}</td>
         </tr>
       `;
     }).join('');

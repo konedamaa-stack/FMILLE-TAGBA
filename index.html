@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261112-v58">
+  <link rel="stylesheet" href="css/style.css?v=20261112-v59">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -1143,16 +1143,16 @@
               </div>
 
               <div class="table-responsive">
-                <table class="modern-table">
+                <table class="modern-table" id="tableCotisationsEvents">
                   <thead>
                     <tr>
-                      <th>Matricule</th>
-                      <th>Membre & Branche Familiale</th>
-                      <th>Montant Fixé</th>
-                      <th>Statut du Versement</th>
-                      <th>Date / Reçu N°</th>
-                      <th>Mode</th>
-                      <th style="text-align: right;">Action</th>
+                      <th style="min-width: 75px;">Matricule</th>
+                      <th style="min-width: 170px;">Membre & Branche Familiale</th>
+                      <th style="min-width: 85px;">Montant Fixé</th>
+                      <th style="min-width: 120px;">Statut du Versement</th>
+                      <th style="min-width: 100px;">Date / Reçu N°</th>
+                      <th style="min-width: 70px;">Mode</th>
+                      <th style="text-align: right; min-width: 145px; white-space: nowrap; padding-right: 14px;">Action</th>
                     </tr>
                   </thead>
                   <tbody id="tableCotisationsEventsBody">
@@ -3119,10 +3119,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261112-v58"></script>
-  <script src="js/supabase.js?v=20261112-v58"></script>
-  <script src="js/app.js?v=20261112-v58"></script>
-  <script src="js/print.js?v=20261112-v58"></script>
+  <script src="js/data.js?v=20261112-v59"></script>
+  <script src="js/supabase.js?v=20261112-v59"></script>
+  <script src="js/app.js?v=20261112-v59"></script>
+  <script src="js/print.js?v=20261112-v59"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3130,7 +3130,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v58') caches.delete(k);
+            if (k !== 'tagba-pwa-v59') caches.delete(k);
           });
         });
       }
@@ -3142,9 +3142,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261112-v58')
+        navigator.serviceWorker.register('/sw.js?v=20261112-v59')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v58) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v59) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));
