@@ -1054,6 +1054,209 @@
   }
 
   // ============================================================
+  // 6.c. ÉTAT OFFICIEL DE VÉRIFICATION NOMINATIVE (4 000 & 3 000 FCFA)
+  // ============================================================
+  function printEventVerificationReport() {
+    const data = getDbData();
+    const curr = data.config?.currency || 'FCFA';
+    let activeEvt = (typeof TAGBA_DB !== 'undefined' && typeof TAGBA_DB.getActiveEvenement === 'function')
+      ? TAGBA_DB.getActiveEvenement()
+      : null;
+    if (!activeEvt && Array.isArray(data.evenements) && data.evenements.length > 0) {
+      activeEvt = data.evenements[0];
+    }
+    const eventTitle = activeEvt ? (activeEvt.titre || 'Cotisation Sacrifice a Khoroko') : 'Cotisation Sacrifice a Khoroko';
+    const activeEvtId = activeEvt ? activeEvt.id : 'evt-1793537365392';
+
+    // Récupérer tous les versements rattachés à cet événement
+    const eventCotisations = (data.cotisations || []).filter(c => {
+      const t = (c.type || '').toLowerCase();
+      const p = (c.periode || '').toLowerCase();
+      const activeTitle = eventTitle.toLowerCase();
+      const matchesEvent = (c.eventId && c.eventId === activeEvtId) ||
+        (c.evenement_id && c.evenement_id === activeEvtId) ||
+        (c.evenementId && c.evenementId === activeEvtId) ||
+        (activeTitle && p && (p === activeTitle || p.includes(activeTitle))) ||
+        p.includes('sacrifice') || p.includes('khoroko');
+      const isEvtType = t.includes('venement') || t.includes('vènement') || t.includes('personnalis');
+      return matchesEvent && (isEvtType || !!c.eventId || !!c.evenement_id || p.includes('sacrifice') || p.includes('khoroko'));
+    });
+
+    const membersMap = {};
+    (data.members || []).forEach(m => { membersMap[m.id] = m; });
+    const familiesMap = {};
+    (data.families || []).forEach(f => { familiesMap[f.id] = f.name; });
+
+    const list4000 = [];
+    const list3000 = [];
+    const listOther = [];
+
+    eventCotisations.forEach(c => {
+      const m = membersMap[c.memberId || c.member_id];
+      const mName = m ? m.fullName : (c.memberName || 'Membre Inconnu');
+      const mMat = m ? (m.matricule || 'N/A') : 'N/A';
+      const mFam = (m && familiesMap[m.familyId]) ? familiesMap[m.familyId] : 'Famille TAGBA';
+      const item = {
+        cotisation: c,
+        member: m,
+        fullName: mName,
+        matricule: mMat,
+        family: mFam,
+        montant: Number(c.montant || 0),
+        recuNum: c.recuNum || c.recu_num || 'N/A',
+        datePaiement: c.datePaiement || c.date_paiement || '12/11/2026',
+        modePaiement: c.modePaiement || c.mode_paiement || 'Wave'
+      };
+      if (item.montant === 4000) {
+        list4000.push(item);
+      } else if (item.montant === 3000) {
+        list3000.push(item);
+      } else {
+        listOther.push(item);
+      }
+    });
+
+    // Tri alphabétique A-Z systématique
+    list4000.sort((a, b) => a.fullName.localeCompare(b.fullName, 'fr', { sensitivity: 'base' }));
+    list3000.sort((a, b) => a.fullName.localeCompare(b.fullName, 'fr', { sensitivity: 'base' }));
+    listOther.sort((a, b) => a.fullName.localeCompare(b.fullName, 'fr', { sensitivity: 'base' }));
+
+    const total4000 = list4000.reduce((s, x) => s + x.montant, 0);
+    const total3000 = list3000.reduce((s, x) => s + x.montant, 0);
+    const totalOther = listOther.reduce((s, x) => s + x.montant, 0);
+    const grandTotal = total4000 + total3000 + totalOther;
+    const totalCount = list4000.length + list3000.length + listOther.length;
+
+    const docTitle = `État Officiel de Contrôle & Vérification : ${eventTitle}`;
+    const docSubtitle = `Rapport nominatif officiel certifié par montant de cotisation (4 000 FCFA & 3 000 FCFA) • Tri Alphabétique A-Z`;
+
+    const meta = [
+      { label: 'Événement', value: eventTitle },
+      { label: 'Total Encaissé Certifié', value: formatMoney(grandTotal, curr) },
+      { label: 'Nombre Total Cotisants', value: `${totalCount} membre(s)` },
+      { label: 'Cotisants à 4 000 FCFA', value: `${list4000.length} membre(s) (${formatMoney(total4000, curr)})` },
+      { label: 'Cotisants à 3 000 FCFA', value: `${list3000.length} membre(s) (${formatMoney(total3000, curr)})` },
+      { label: 'Mode Dominant', value: 'Wave' },
+      { label: 'Date d\'Édition', value: new Date().toLocaleDateString('fr-FR') }
+    ];
+
+    const header = getOfficialPrintHeader(docTitle, docSubtitle, meta);
+
+    const renderTableRows = (list) => {
+      if (list.length === 0) {
+        return `<tr><td colspan="8" style="text-align: center; padding: 12px; color: #64748b;">Aucun versement dans cette catégorie.</td></tr>`;
+      }
+      return list.map((item, idx) => `
+        <tr>
+          <td style="text-align: center; font-weight: 600; width: 35px;">${idx + 1}</td>
+          <td style="text-align: center; font-weight: 700; color: #047857; width: 85px;">${item.matricule}</td>
+          <td style="font-weight: 600; color: #0f172a;">${item.fullName}</td>
+          <td style="color: #475569;">${item.family}</td>
+          <td style="text-align: center; font-family: monospace; font-size: 11px; width: 110px;">${item.recuNum}</td>
+          <td style="text-align: center; font-size: 11px; width: 85px;">${formatDate(item.datePaiement)}</td>
+          <td style="text-align: center; width: 70px;"><span class="print-badge print-badge-success">${item.modePaiement}</span></td>
+          <td style="text-align: right; font-weight: 800; color: #047857; width: 100px;">${formatMoney(item.montant, curr)}</td>
+        </tr>
+      `).join('');
+    };
+
+    const html = `
+      ${printDocStyle}
+      <div class="tagba-print-container">
+        ${header}
+
+        <!-- Section 1 : 4 000 FCFA -->
+        <div style="margin-top: 18px; margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #ecfdf5; border: 1.5px solid #10b981; border-radius: 6px; padding: 8px 14px; margin-bottom: 8px;">
+            <div style="font-size: 13px; font-weight: 800; color: #065f46; text-transform: uppercase;">
+              1. Liste Officielle des Cotisants à 4 000 FCFA (${list4000.length} membres)
+            </div>
+            <div style="font-size: 14px; font-weight: 800; color: #047857;">
+              Sous-total : ${formatMoney(total4000, curr)}
+            </div>
+          </div>
+          <table class="tagba-print-table">
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">N°</th>
+                <th style="text-align: center; width: 85px;">Matricule</th>
+                <th>Nom & Prénoms</th>
+                <th>Foyer / Famille</th>
+                <th style="text-align: center; width: 110px;">Réf. Reçu</th>
+                <th style="text-align: center; width: 85px;">Date</th>
+                <th style="text-align: center; width: 70px;">Mode</th>
+                <th style="text-align: right; width: 100px;">Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${renderTableRows(list4000)}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="7" style="text-align: right; font-weight: 700;">SOUS-TOTAL (4 000 FCFA) :</td>
+                <td style="text-align: right; font-weight: 800; color: #047857;">${formatMoney(total4000, curr)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Section 2 : 3 000 FCFA -->
+        <div style="margin-top: 18px; margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 6px; padding: 8px 14px; margin-bottom: 8px;">
+            <div style="font-size: 13px; font-weight: 800; color: #92400e; text-transform: uppercase;">
+              2. Liste Officielle des Cotisants à 3 000 FCFA (${list3000.length} membres)
+            </div>
+            <div style="font-size: 14px; font-weight: 800; color: #b45309;">
+              Sous-total : ${formatMoney(total3000, curr)}
+            </div>
+          </div>
+          <table class="tagba-print-table">
+            <thead>
+              <tr>
+                <th style="width: 35px; text-align: center;">N°</th>
+                <th style="text-align: center; width: 85px;">Matricule</th>
+                <th>Nom & Prénoms</th>
+                <th>Foyer / Famille</th>
+                <th style="text-align: center; width: 110px;">Réf. Reçu</th>
+                <th style="text-align: center; width: 85px;">Date</th>
+                <th style="text-align: center; width: 70px;">Mode</th>
+                <th style="text-align: right; width: 100px;">Montant</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${renderTableRows(list3000)}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="7" style="text-align: right; font-weight: 700;">SOUS-TOTAL (3 000 FCFA) :</td>
+                <td style="text-align: right; font-weight: 800; color: #b45309;">${formatMoney(total3000, curr)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Récapitulatif Final & Signatures -->
+        <div style="background: #f8fafc; border: 2px solid #0f172a; border-radius: 8px; padding: 12px 18px; margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 11px; text-transform: uppercase; color: #475569; font-weight: 700;">RÉCAPITULATIF GÉNÉRAL CERTIFIÉ CONFORME</div>
+            <div style="font-size: 12px; color: #0f172a; margin-top: 2px;">
+              ${list4000.length} membres à 4 000 FCFA + ${list3000.length} membres à 3 000 FCFA = <strong>${totalCount} versements reçus</strong>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700;">TOTAL GÉNÉRAL ENCAISSÉ</div>
+            <div style="font-size: 20px; font-weight: 900; color: #047857;">${formatMoney(grandTotal, curr)}</div>
+          </div>
+        </div>
+
+        ${getOfficialPrintSignatures()}
+      </div>
+    `;
+
+    executeTagbaPrint(html, `TAGBA_Verification_Evenement_${grandTotal}_FCFA`);
+  }
+
+  // ============================================================
   // 6.b. SYNTHÈSE DES COTISATIONS & RETARDS PAR ÉVÉNEMENT PAR MOIS
   // ============================================================
   function printAllEventsRecapReport() {
@@ -2178,6 +2381,7 @@
   window.printMonthlyCotisationsReport = printMonthlyCotisationsReport;
   window.printReceiptsJournal = printReceiptsJournal;
   window.printEventCotisationsReport = printEventCotisationsReport;
+  window.printEventVerificationReport = printEventVerificationReport;
   window.printAllEventsRecapReport = printAllEventsRecapReport;
   window.printCeremoniesReport = printCeremoniesReport;
   window.printFinancesReport = printFinancesReport;
