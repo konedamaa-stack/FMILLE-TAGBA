@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261112-v59">
+  <link rel="stylesheet" href="css/style.css?v=20261113-v60">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -50,12 +50,9 @@
       z-index: -1 !important;
     }
     .action-locked-btn {
-      opacity: 1 !important;
-      cursor: pointer !important;
-      pointer-events: auto !important;
-    }
-    .action-locked-btn::after {
-      content: '' !important;
+      opacity: 0.45 !important;
+      cursor: not-allowed !important;
+      filter: grayscale(0.4);
     }
   </style>
 
@@ -117,7 +114,7 @@
   <!-- ============================================================ -->
   <!-- ÉCRAN DE CONNEXION PRINCIPAL (DESIGN 2 COLONNES INSPIRÉ DU MODÈLE) -->
   <!-- ============================================================ -->
-  <div class="auth-fullscreen hidden" id="authFullscreenScreen">
+  <div class="auth-fullscreen" id="authFullscreenScreen">
     <div class="auth-split-card">
       
       <!-- Colonne Gauche : Panneau Visuel Vert -->
@@ -187,27 +184,24 @@
           <!-- Champ Identifiant -->
           <label class="auth-field-label" for="loginIdentifier">identifiant / login ou mail</label>
           <div class="auth-custom-input-box">
-            <input type="text" class="auth-custom-input" id="loginIdentifier" placeholder="camara" value="commissaire" required autocomplete="username">
+            <input type="text" class="auth-custom-input" id="loginIdentifier" placeholder="commissaire" value="commissaire" required autocomplete="username">
           </div>
 
           <!-- Champ Mot de Passe -->
-          <label class="auth-field-label" for="loginPassword">mot de passe</label>
+          <label class="auth-field-label" for="loginPassword">mot de passe / code PIN</label>
           <div class="auth-custom-input-box">
-            <input type="password" class="auth-custom-input" id="loginPassword" placeholder="••••••••" value="1234" required autocomplete="current-password">
+            <input type="password" class="auth-custom-input" id="loginPassword" placeholder="Entrez votre code d'accès" value="" required autocomplete="current-password">
             <button type="button" class="auth-toggle-pwd-btn" id="btnTogglePassword" onclick="togglePasswordVisibility()" title="Afficher / Masquer">👁️</button>
           </div>
 
           <!-- Bouton Connexion -->
-                    <button type="submit" class="auth-submit-green" id="btnSubmitLogin">
-            Se connecter
-          </button>
-          <button type="button" class="btn btn-outline" style="width: 100%; margin-top: 8px; justify-content: center; font-size: 13px;" onclick="switchAuthUser(''usr-commissaire''); hideAuthFullscreen(); showToast(''AccÃ¨s dÃ©bloquÃ© en mode Administration'');">
-            âš¡ DÃ©bloquer & AccÃ©der Directement (Administrateur)
+          <button type="submit" class="auth-submit-green" id="btnSubmitLogin">
+            🔒 Se connecter en toute sécurité
           </button>
 
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 11px; color: #64748b;">
-            <span>Code PIN universel démo : <strong style="color: #10b981;">1234</strong></span>
-            <span style="opacity: 0.8;">Plateforme SaaS v1.0</span>
+            <span>🛡️ Accès protégé • Chiffrement & Contrôle RBAC</span>
+            <span style="opacity: 0.8;">Plateforme SaaS v2.0</span>
           </div>
         </form>
 
@@ -220,14 +214,17 @@
     (function() {
       try {
         var isAuth = localStorage.getItem('tagba_session_authenticated');
+        var expiresAt = parseInt(localStorage.getItem('tagba_session_expires_at') || '0', 10);
+        var validSession = (isAuth === 'true' && expiresAt > Date.now());
         var screen = document.getElementById('authFullscreenScreen');
         if (screen) {
-          if (isAuth === 'false') {
-            screen.classList.remove('hidden');
-            screen.style.display = 'flex';
-          } else {
+          if (validSession) {
             screen.classList.add('hidden');
             screen.style.display = 'none';
+          } else {
+            localStorage.setItem('tagba_session_authenticated', 'false');
+            screen.classList.remove('hidden');
+            screen.style.display = 'flex';
           }
         }
       } catch(e) {}
@@ -1816,8 +1813,8 @@
           </div>
 
           <!-- Formulaire de Connexion Directe -->
-          <div class="card-panel" style="max-width: 600px; margin: 0 auto;">
-            <h3 style="font-size: 16px; margin-bottom: 16px; text-align: center;">🔑 Connexion avec Identifiant & Code d'Accès</h3>
+          <div class="card-panel" style="max-width: 600px; margin: 0 auto 24px auto;">
+            <h3 style="font-size: 16px; margin-bottom: 16px; text-align: center;">🔑 Authentification & Changement de Compte</h3>
             <form id="formManualAuth" onsubmit="return handleManualLogin(event);">
               <div class="form-group">
                 <label class="form-label">Sélectionner votre Compte / Fonction *</label>
@@ -1825,15 +1822,52 @@
                   <option value="usr-commissaire">Drissa Ouattara — Commissaire aux Comptes (Niveau 1 : Tous Droits)</option>
                   <option value="usr-porteparole">Salif Koné — Porte-Parole (Niveau 2 : Cérémonies)</option>
                   <option value="usr-president">BAMBA Mamadou — Président (Niveau 3 : Lecture Seule)</option>
+                  <option value="usr-membre">Parent / Adhérent Famille (Niveau 3 : Lecture Seule)</option>
                 </select>
               </div>
               <div class="form-group">
-                <label class="form-label">Code d'Accès PIN *</label>
-                <input type="password" class="form-control" id="loginPasswordInput" placeholder="Ex: 1234 (code universel démo)" value="1234" required>
-                <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">ℹ️ Code d'accès démo par défaut : <strong>1234</strong></span>
+                <label class="form-label">Mot de Passe / Code PIN *</label>
+                <input type="password" class="form-control" id="loginPasswordInput" placeholder="Entrez le mot de passe du compte sélectionné" value="" required autocomplete="current-password">
+                <span style="font-size: 11px; color: var(--text-muted); display: block; margin-top: 4px;">🔒 Mot de passe requis pour activer les privilèges de ce rôle.</span>
               </div>
-              <div style="display: flex; justify-content: center; margin-top: 20px;">
-                <button type="submit" class="btn btn-primary" style="padding: 10px 32px;">Se Connecter à la Mutuelle</button>
+              <div style="display: flex; justify-content: center; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+                <button type="submit" class="btn btn-primary" style="padding: 10px 28px;">🔑 Vérifier & Activer ce Rôle</button>
+                <button type="button" class="btn btn-danger" style="padding: 10px 20px;" onclick="logoutAuthUser()">🔒 Verrouiller la Session</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Panneau Administration : Gestion des Mots de Passe (Réservé au Niveau 1) -->
+          <div class="card-panel" id="adminSecurityCardPanel" style="max-width: 680px; margin: 0 auto; border: 1.5px solid rgba(16, 185, 129, 0.35);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
+              <div>
+                <h3 style="font-size: 16px; color: var(--emerald-400); margin: 0;">🛡️ Sécurité & Gestion des Mots de Passe (Admin Niveau 1)</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Modifiez les mots de passe ou codes PIN d'accès pour chaque niveau. Synchronisé avec Supabase Cloud.</p>
+              </div>
+              <span class="badge badge-success">ADMINISTRATION</span>
+            </div>
+            <form id="formChangePasswords" onsubmit="return saveCustomPasswords(event);">
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label class="form-label" style="font-size: 12px;">🔑 Niveau 1 — Administration (commissaire)</label>
+                  <input type="password" class="form-control" id="pwdChangeAdmin" placeholder="Nouveau mot de passe Admin (laisser vide = inchangé)" autocomplete="new-password">
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label class="form-label" style="font-size: 12px;">📢 Niveau 2 — Porte-Parole (porteparole)</label>
+                  <input type="password" class="form-control" id="pwdChangeSpeaker" placeholder="Nouveau mot de passe Porte-Parole" autocomplete="new-password">
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label class="form-label" style="font-size: 12px;">🏛️ Niveau 3 — Président (president)</label>
+                  <input type="password" class="form-control" id="pwdChangePresident" placeholder="Nouveau mot de passe Président" autocomplete="new-password">
+                </div>
+                <div class="form-group" style="margin-bottom: 8px;">
+                  <label class="form-label" style="font-size: 12px;">👥 Niveau 3 — Parent / Membre (membre)</label>
+                  <input type="password" class="form-control" id="pwdChangeMember" placeholder="Nouveau mot de passe Membre" autocomplete="new-password">
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; flex-wrap: wrap; gap: 10px;">
+                <span style="font-size: 11px; color: var(--text-muted);">💡 Minimum 4 caractères. Si vous définissez un nouveau mot de passe, l'ancien code par défaut sera désactivé pour ce rôle.</span>
+                <button type="submit" class="btn btn-primary">💾 Enregistrer les Nouveaux Mots de Passe</button>
               </div>
             </form>
           </div>
@@ -3119,10 +3153,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261112-v59"></script>
-  <script src="js/supabase.js?v=20261112-v59"></script>
-  <script src="js/app.js?v=20261112-v59"></script>
-  <script src="js/print.js?v=20261112-v59"></script>
+  <script src="js/data.js?v=20261113-v60"></script>
+  <script src="js/supabase.js?v=20261113-v60"></script>
+  <script src="js/app.js?v=20261113-v60"></script>
+  <script src="js/print.js?v=20261113-v60"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3130,7 +3164,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v59') caches.delete(k);
+            if (k !== 'tagba-pwa-v60') caches.delete(k);
           });
         });
       }
@@ -3142,9 +3176,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261112-v59')
+        navigator.serviceWorker.register('/sw.js?v=20261113-v60')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v59) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v60) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

@@ -203,10 +203,10 @@ const AUTH_USERS = {
     name: 'Salif Koné',
     initials: 'SK',
     title: 'Porte-Parole',
-    level: 1,
-    levelName: 'Porte-Parole (Tous Droits)',
+    level: 2,
+    levelName: 'Porte-Parole (Cérémonies)',
     passwords: ['1234', 'porteparole123', 'tagba2026'],
-    canWriteAll: true,
+    canWriteAll: false,
     canCreateCeremonies: true
   },
   'usr-president': {
@@ -217,11 +217,11 @@ const AUTH_USERS = {
     name: 'BAMBA Mamadou',
     initials: 'BM',
     title: 'Président du Bureau',
-    level: 1,
-    levelName: 'Président du Bureau (Tous Droits)',
+    level: 3,
+    levelName: 'Président du Bureau (Lecture Seule)',
     passwords: ['1234', 'president123', 'tagba2026'],
-    canWriteAll: true,
-    canCreateCeremonies: true
+    canWriteAll: false,
+    canCreateCeremonies: false
   },
   'usr-membre': {
     id: 'usr-membre',
@@ -229,14 +229,80 @@ const AUTH_USERS = {
     email: 'adherent@tagba.ci',
     matricule: 'TAGBA-2026-099',
     name: 'Parent / Adhérent Famille',
+    initials: 'PA',
     title: 'Parent & Membre Adhérent',
-    level: 1,
-    levelName: 'Parent / Adhérent (Tous Droits)',
+    level: 3,
+    levelName: 'Parent / Adhérent (Lecture Seule)',
     passwords: ['1234', 'membre123', 'tagba2026'],
-    canWriteAll: true,
-    canCreateCeremonies: true
+    canWriteAll: false,
+    canCreateCeremonies: false
   }
 };
+
+const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 heures de validité de session
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 30 * 1000; // 30 secondes de verrouillage anti-force brute
+
+function getCustomAuthPasswords() {
+  try {
+    const data = TAGBA_DB.get();
+    if (data && data.config && data.config.authPasswords && typeof data.config.authPasswords === 'object') {
+      return data.config.authPasswords;
+    }
+  } catch (_) {}
+  return {};
+}
+
+function verifyUserPassword(user, password) {
+  if (!user || !password) return false;
+  const trimmed = String(password).trim();
+  if (!trimmed) return false;
+  const customMap = getCustomAuthPasswords();
+  const customPwd = customMap[user.id];
+  if (customPwd && String(customPwd).trim().length >= 4) {
+    // Si l'administrateur a défini un mot de passe personnalisé pour ce rôle, seul ce mot de passe est accepté
+    return trimmed === String(customPwd).trim();
+  }
+  return user.passwords.includes(trimmed);
+}
+
+function checkLoginLockout() {
+  const lockUntil = parseInt(localStorage.getItem('tagba_login_lock_until') || '0', 10);
+  if (lockUntil > Date.now()) {
+    const remainingSec = Math.ceil((lockUntil - Date.now()) / 1000);
+    return { locked: true, remainingSec };
+  }
+  return { locked: false, remainingSec: 0 };
+}
+
+function recordFailedLoginAttempt() {
+  const attempts = parseInt(localStorage.getItem('tagba_login_attempts') || '0', 10) + 1;
+  localStorage.setItem('tagba_login_attempts', String(attempts));
+  if (attempts >= MAX_LOGIN_ATTEMPTS) {
+    localStorage.setItem('tagba_login_lock_until', String(Date.now() + LOCKOUT_DURATION_MS));
+    localStorage.setItem('tagba_login_attempts', '0');
+    return { locked: true, remainingSec: Math.ceil(LOCKOUT_DURATION_MS / 1000), attempts };
+  }
+  return { locked: false, remainingAttempts: MAX_LOGIN_ATTEMPTS - attempts, attempts };
+}
+
+function clearFailedLoginAttempts() {
+  localStorage.removeItem('tagba_login_attempts');
+  localStorage.removeItem('tagba_login_lock_until');
+}
+
+function isSessionAuthenticated() {
+  const isAuth = localStorage.getItem('tagba_session_authenticated') === 'true';
+  const expiresAt = parseInt(localStorage.getItem('tagba_session_expires_at') || '0', 10);
+  return isAuth && expiresAt > Date.now();
+}
+
+function establishAuthenticatedSession(userId) {
+  localStorage.setItem('tagba_auth_user', userId);
+  localStorage.setItem('tagba_session_authenticated', 'true');
+  localStorage.setItem('tagba_session_expires_at', String(Date.now() + SESSION_DURATION_MS));
+  clearFailedLoginAttempts();
+}
 
 function getActiveAuthUser() {
   const savedId = localStorage.getItem('tagba_auth_user') || 'usr-commissaire';
@@ -246,6 +312,7 @@ function getActiveAuthUser() {
 function findUserByIdentifier(identifier) {
   if (!identifier) return null;
   const idLower = identifier.trim().toLowerCase();
+  if (idLower === 'admin' || idLower === 'administration') return AUTH_USERS['usr-commissaire'];
   for (const key in AUTH_USERS) {
     const u = AUTH_USERS[key];
     if (
@@ -272,6 +339,12 @@ function handleFullscreenLogin(e) {
     errBox.textContent = '';
   }
 
+  const lockState = checkLoginLockout();
+  if (lockState.locked) {
+    showLoginError(`⏳ Trop de tentatives échouées. Veuillez patienter ${lockState.remainingSec}s avant de réessayer.`);
+    return false;
+  }
+
   const identifier = identInput ? identInput.value.trim() : '';
   const password = pwdInput ? pwdInput.value.trim() : '';
 
@@ -279,36 +352,50 @@ function handleFullscreenLogin(e) {
     showLoginError('Veuillez entrer votre identifiant de connexion.');
     return false;
   }
-
-  const user = findUserByIdentifier(identifier);
-  if (!user) {
-    showLoginError(`Identifiant "${identifier}" introuvable. Utilisez: commissaire, porteparole ou president.`);
+  if (!password) {
+    showLoginError('Veuillez saisir votre mot de passe ou code PIN.');
     return false;
   }
 
-  // Vérification mot de passe
-  const isValidPwd = user.passwords.includes(password) || password === '1234';
-  if (!isValidPwd) {
-    showLoginError('Mot de passe incorrect. Le code d\'accès par défaut est : 1234');
+  const user = findUserByIdentifier(identifier);
+  if (!user) {
+    const fail = recordFailedLoginAttempt();
+    if (fail.locked) {
+      showLoginError(`🔒 Accès temporairement bloqué (${fail.remainingSec}s) après ${MAX_LOGIN_ATTEMPTS} échecs.`);
+    } else {
+      showLoginError(`Identifiant "${identifier}" introuvable. Utilisez: commissaire, porteparole, president ou membre.`);
+    }
+    return false;
+  }
+
+  if (!verifyUserPassword(user, password)) {
+    const fail = recordFailedLoginAttempt();
+    if (fail.locked) {
+      showLoginError(`🔒 Trop de tentatives incorrectes. Connexion verrouillée pendant ${fail.remainingSec} secondes.`);
+    } else {
+      showLoginError(`Mot de passe incorrect (${fail.remainingAttempts} essai(s) restant(s)).`);
+    }
     return false;
   }
 
   // Connexion réussie !
-  localStorage.setItem('tagba_auth_user', user.id);
-  localStorage.setItem('tagba_session_authenticated', 'true');
+  establishAuthenticatedSession(user.id);
+  if (pwdInput) pwdInput.value = '';
 
   hideAuthFullscreen();
   applyActiveUserUI();
-  showToast(`✅ Connexion réussie ! Bienvenue ${user.name} (${user.title}).`);
+  showToast(`✅ Connexion sécurisée réussie ! Bienvenue ${user.name} (${user.title}).`);
   return false;
 }
 
-function quickFillAndLogin(loginName, pwd = '1234') {
+function quickFillAndLogin(loginName) {
   const identInput = document.getElementById('loginIdentifier');
   const pwdInput = document.getElementById('loginPassword');
   if (identInput) identInput.value = loginName;
-  if (pwdInput) pwdInput.value = pwd;
-  handleFullscreenLogin(new Event('submit'));
+  if (pwdInput) {
+    pwdInput.value = '';
+    pwdInput.focus();
+  }
 }
 
 function showLoginError(msg) {
@@ -348,12 +435,15 @@ function showAuthFullscreen() {
     screen.classList.remove('hidden');
     screen.style.display = 'flex';
   }
+  const pwdInput = document.getElementById('loginPassword');
+  if (pwdInput) pwdInput.value = '';
 }
 
 function logoutAuthUser() {
   localStorage.setItem('tagba_session_authenticated', 'false');
+  localStorage.removeItem('tagba_session_expires_at');
   showAuthFullscreen();
-  showToast('Vous avez été déconnecté de la mutuelle.');
+  showToast('🔒 Session verrouillée. Veuillez vous reconnecter.');
 }
 
 function selectRoleTab(roleKey) {
@@ -423,52 +513,143 @@ function selectRoleTab(roleKey) {
   if (sectionTitle) sectionTitle.textContent = cfg.sectionTitle;
   if (sectionDesc) sectionDesc.textContent = cfg.sectionDesc;
   if (identInput) identInput.value = cfg.defaultLogin;
-  if (pwdInput && !pwdInput.value) pwdInput.value = '1234';
+  if (pwdInput) {
+    pwdInput.value = '';
+    pwdInput.focus();
+  }
 }
 
 function initSessionState() {
-  const isAuth = localStorage.getItem('tagba_session_authenticated');
-  if (isAuth === 'false') {
+  if (!isSessionAuthenticated()) {
+    localStorage.setItem('tagba_session_authenticated', 'false');
     showAuthFullscreen();
     selectRoleTab('admin');
   } else {
-    localStorage.setItem('tagba_session_authenticated', 'true');
+    // Prolonger la session active
+    localStorage.setItem('tagba_session_expires_at', String(Date.now() + SESSION_DURATION_MS));
     hideAuthFullscreen();
   }
 }
 
-function switchAuthUser(userId) {
-  if (!AUTH_USERS[userId]) return;
-  localStorage.setItem('tagba_auth_user', userId);
-  localStorage.setItem('tagba_session_authenticated', 'true');
+function switchAuthUser(userId, verified = false) {
+  const targetUser = AUTH_USERS[userId];
+  if (!targetUser) return;
+
+  const currentUser = getActiveAuthUser();
+  const isCurrentAdmin = isSessionAuthenticated() && currentUser && currentUser.level === 1;
+
+  // Si on demande un niveau plus élevé (ou Niveau 1/2) sans être déjà Admin Niveau 1 ni avoir vérifié le mot de passe, exiger le mot de passe
+  if (!verified && !isCurrentAdmin && targetUser.level < (currentUser ? currentUser.level : 99)) {
+    const roleMap = {
+      'usr-commissaire': 'admin',
+      'usr-porteparole': 'speaker',
+      'usr-president': 'president',
+      'usr-membre': 'member'
+    };
+    showAuthFullscreen();
+    selectRoleTab(roleMap[userId] || 'admin');
+    showToast(`🔒 Veuillez saisir le mot de passe pour accéder au rôle "${targetUser.title}".`, 'warning');
+    return;
+  }
+
+  establishAuthenticatedSession(userId);
   hideAuthFullscreen();
-  const user = AUTH_USERS[userId];
   applyActiveUserUI();
-  showToast(`Connecté en tant que ${user.name} (${user.title}) — ${user.levelName}`);
+  showToast(`🔑 Connecté en tant que ${targetUser.name} (${targetUser.title}) — ${targetUser.levelName}`);
 }
 
 function handleManualLogin(e) {
   if (e && e.preventDefault) e.preventDefault();
-  const select = document.getElementById('loginUserSelect');
-  const pwd = document.getElementById('loginPasswordInput');
-  const userId = select ? select.value : 'usr-commissaire';
-
-  if (pwd && pwd.value.trim() !== '1234') {
-    showToast('Code d\'accès PIN incorrect (Code démo par défaut : 1234)', 'error');
+  const lockState = checkLoginLockout();
+  if (lockState.locked) {
+    showToast(`⏳ Trop d'essais. Réessayez dans ${lockState.remainingSec}s.`, 'error');
     return false;
   }
 
-  switchAuthUser(userId);
-  showToast('Authentification réussie !');
+  const select = document.getElementById('loginUserSelect');
+  const pwd = document.getElementById('loginPasswordInput');
+  const userId = select ? select.value : 'usr-commissaire';
+  const targetUser = AUTH_USERS[userId];
+  const password = pwd ? pwd.value.trim() : '';
+
+  if (!verifyUserPassword(targetUser, password)) {
+    const fail = recordFailedLoginAttempt();
+    if (fail.locked) {
+      showToast(`🔒 Trop de tentatives incorrectes. Verrouillé pour ${fail.remainingSec}s.`, 'error');
+    } else {
+      showToast(`Mot de passe incorrect pour ${targetUser.title} (${fail.remainingAttempts} essai(s) restant(s)).`, 'error');
+    }
+    return false;
+  }
+
+  if (pwd) pwd.value = '';
+  switchAuthUser(userId, true);
+  return false;
+}
+
+function saveCustomPasswords(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  if (!assertPermission('write', 'la modification des mots de passe')) return false;
+
+  const fields = [
+    { id: 'pwdChangeAdmin', userKey: 'usr-commissaire', label: 'Administration (Niveau 1)' },
+    { id: 'pwdChangeSpeaker', userKey: 'usr-porteparole', label: 'Porte-Parole (Niveau 2)' },
+    { id: 'pwdChangePresident', userKey: 'usr-president', label: 'Président (Niveau 3)' },
+    { id: 'pwdChangeMember', userKey: 'usr-membre', label: 'Parent / Membre (Niveau 3)' }
+  ];
+
+  const data = TAGBA_DB.get();
+  if (!data.config) data.config = {};
+  if (!data.config.authPasswords || typeof data.config.authPasswords !== 'object') {
+    data.config.authPasswords = {};
+  }
+
+  let updatedCount = 0;
+  for (const f of fields) {
+    const input = document.getElementById(f.id);
+    if (!input) continue;
+    const val = input.value.trim();
+    if (!val) continue;
+    if (val.length < 4) {
+      showToast(`⚠️ Le mot de passe pour ${f.label} doit contenir au moins 4 caractères.`, 'warning');
+      return false;
+    }
+    data.config.authPasswords[f.userKey] = val;
+    input.value = '';
+    updatedCount++;
+  }
+
+  if (updatedCount === 0) {
+    showToast('ℹ️ Aucun nouveau mot de passe saisi. Les mots de passe actuels restent inchangés.');
+    return false;
+  }
+
+  TAGBA_DB.save(data);
+  showToast(`✅ ${updatedCount} mot(s) de passe mis à jour et synchronisé(s) avec succès !`);
   return false;
 }
 
 function canUserPerform(actionType) {
-  return true; // Tous les droits actifs et opérationnels sans restriction
+  if (!isSessionAuthenticated()) return false;
+  const user = getActiveAuthUser();
+  if (!user) return false;
+  if (user.level === 1 || user.canWriteAll) return true;
+  if ((actionType === 'ceremonies' || actionType === 'evenements') && (user.level === 2 || user.canCreateCeremonies)) {
+    return true;
+  }
+  return false;
 }
 
 function assertPermission(actionType, actionLabel = 'cette action') {
-  return true; // Accès total garanti pour tous les utilisateurs
+  if (!isSessionAuthenticated()) {
+    showAuthFullscreen();
+    showToast('🔒 Votre session a expiré. Veuillez vous reconnecter.', 'warning');
+    return false;
+  }
+  if (canUserPerform(actionType)) return true;
+  const user = getActiveAuthUser();
+  showToast(`🔒 Accès refusé : Votre profil "${user ? user.title : 'Lecture seule'}" n'est pas autorisé à effectuer ${actionLabel}.`, 'error');
+  return false;
 }
 
 function applyActiveUserUI() {
@@ -483,7 +664,7 @@ function applyActiveUserUI() {
 
   if (sbName) sbName.textContent = user.name;
   if (sbRole) sbRole.textContent = `${user.title} (${user.level === 1 ? 'Tous droits' : (user.level === 2 ? 'Cérémonies' : 'Lecture seule')})`;
-  if (sbAvatar) sbAvatar.textContent = user.initials;
+  if (sbAvatar) sbAvatar.textContent = user.initials || 'TB';
   if (sbBadge) {
     sbBadge.textContent = `Niv. ${user.level}`;
     if (user.level === 1) {
@@ -541,50 +722,43 @@ function applyActiveUserUI() {
     }
   });
 
-  // 4. Déverrouillage visuel total et garanti de tous les boutons
-  document.querySelectorAll('.action-locked-btn').forEach(btn => {
-    btn.classList.remove('action-locked-btn');
+  // 4. Contrôle d'accès visuel RBAC sur les boutons d'écriture et panneaux sensibles
+  const canWrite = canUserPerform('write');
+  const canCeremonies = canUserPerform('ceremonies');
+
+  const writeButtons = [
+    'topbarNewCotisationBtn',
+    'btnPlageVersementMain',
+    'btnNouveauVersementMain',
+    'btnNouveauChefMain',
+    'btnNouveauMembreMain',
+    'btnAddEntraideMain',
+    'btnSaveConfig'
+  ];
+
+  writeButtons.forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.classList.toggle('action-locked-btn', !canWrite);
+      if (!canWrite) {
+        btn.title = '🔒 Action réservée au Commissaire aux Comptes (Niveau 1)';
+      }
+    }
   });
 
-  const topbarCotBtn = document.getElementById('topbarNewCotisationBtn');
-  if (topbarCotBtn) {
-    topbarCotBtn.classList.remove('action-locked-btn');
-    topbarCotBtn.title = 'Nouveau Versement';
-  }
-  const btnPlage = document.getElementById('btnPlageVersementMain');
-  if (btnPlage) {
-    btnPlage.classList.remove('action-locked-btn');
-    btnPlage.title = 'Enregistrement groupé par famille';
-  }
-  const btnNouvCot = document.getElementById('btnNouveauVersementMain');
-  if (btnNouvCot) {
-    btnNouvCot.classList.remove('action-locked-btn');
-    btnNouvCot.title = 'Enregistrer un nouveau versement';
-  }
-  const btnChef = document.getElementById('btnNouveauChefMain');
-  if (btnChef) {
-    btnChef.classList.remove('action-locked-btn');
-    btnChef.title = 'Créer une nouvelle famille';
-  }
-  const btnMem = document.getElementById('btnNouveauMembreMain');
-  if (btnMem) {
-    btnMem.classList.remove('action-locked-btn');
-    btnMem.title = 'Ajouter un nouveau membre';
-  }
   const btnCer = document.getElementById('btnAddCeremonieMain');
   if (btnCer) {
-    btnCer.classList.remove('action-locked-btn');
-    btnCer.title = 'Programmer une nouvelle cérémonie';
+    btnCer.classList.toggle('action-locked-btn', !canCeremonies);
+    btnCer.title = canCeremonies ? 'Programmer une nouvelle cérémonie' : '🔒 Action réservée aux Niveaux 1 et 2';
   }
-  const btnEntraide = document.getElementById('btnAddEntraideMain');
-  if (btnEntraide) {
-    btnEntraide.classList.remove('action-locked-btn');
-    btnEntraide.title = 'Demande d’entraide financière';
+
+  const adminSecurityPanel = document.getElementById('adminSecurityCardPanel');
+  if (adminSecurityPanel) {
+    adminSecurityPanel.style.display = canWrite ? 'block' : 'none';
   }
-  const btnSaveCfg = document.getElementById('btnSaveConfig');
-  if (btnSaveCfg) {
-    btnSaveCfg.classList.remove('action-locked-btn');
-    btnSaveCfg.title = 'Sauvegarder les paramètres';
+  const supabasePanel = document.getElementById('supabaseCardPanel');
+  if (supabasePanel) {
+    supabasePanel.style.display = canWrite ? 'block' : 'none';
   }
 }
 
@@ -5269,12 +5443,24 @@ function importerFichierJSON(event) {
 
 function resetDemoData() {
   if (!assertPermission('write', 'la réinitialisation des données')) return;
-  if (confirm('Voulez-vous réinitialiser toutes les données avec les données de démonstration officielles de la Mutuelle TAGBA ?')) {
-    TAGBA_DB.resetToDefault();
-    showToast('Données réinitialisées avec succès');
-    renderAllViews();
-    loadConfigForm();
+  const adminUser = AUTH_USERS['usr-commissaire'];
+  const enteredPwd = prompt('⚠️ SÉCURITÉ CRITIQUE : Entrez le mot de passe Administrateur (Niveau 1) pour autoriser la réinitialisation :');
+  if (!enteredPwd || !verifyUserPassword(adminUser, enteredPwd)) {
+    showToast('🔒 Mot de passe Administrateur incorrect. Réinitialisation annulée.', 'error');
+    return;
   }
+  const confirmWord = prompt('⚠️ Pour éviter toute perte accidentelle, une sauvegarde JSON va être téléchargée automatiquement.\nTapez exactement CONFIRMER pour réinitialiser la base locale :');
+  if (confirmWord !== 'CONFIRMER') {
+    showToast('Réinitialisation annulée.', 'warning');
+    return;
+  }
+  try {
+    exporterDonnees();
+  } catch (_) {}
+  TAGBA_DB.resetToDefault();
+  showToast('Données locales réinitialisées (une sauvegarde JSON a été téléchargée par sécurité).');
+  renderAllViews();
+  loadConfigForm();
 }
 
 // ============================================================================
