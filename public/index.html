@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261113-v60">
+  <link rel="stylesheet" href="css/style.css?v=20261113-v61">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -3153,10 +3153,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261113-v60"></script>
-  <script src="js/supabase.js?v=20261113-v60"></script>
-  <script src="js/app.js?v=20261113-v60"></script>
-  <script src="js/print.js?v=20261113-v60"></script>
+  <script src="js/data.js?v=20261113-v61"></script>
+  <script src="js/supabase.js?v=20261113-v61"></script>
+  <script src="js/app.js?v=20261113-v61"></script>
+  <script src="js/print.js?v=20261113-v61"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3164,7 +3164,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v60') caches.delete(k);
+            if (k !== 'tagba-pwa-v61') caches.delete(k);
           });
         });
       }
@@ -3176,9 +3176,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261113-v60')
+        navigator.serviceWorker.register('/sw.js?v=20261113-v61')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v60) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v61) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

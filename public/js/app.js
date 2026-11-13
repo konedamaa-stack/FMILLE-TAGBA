@@ -191,7 +191,7 @@ const AUTH_USERS = {
     title: 'Commissaire aux Comptes',
     level: 1,
     levelName: 'Commissaire aux Comptes (Tous Droits)',
-    passwords: ['1234', 'commissaire123', 'tagba2026'],
+    passwords: ['Madouu1966'],
     canWriteAll: true,
     canCreateCeremonies: true
   },
@@ -205,7 +205,7 @@ const AUTH_USERS = {
     title: 'Porte-Parole',
     level: 2,
     levelName: 'Porte-Parole (Cérémonies)',
-    passwords: ['1234', 'porteparole123', 'tagba2026'],
+    passwords: ['Madouu1966'],
     canWriteAll: false,
     canCreateCeremonies: true
   },
@@ -219,7 +219,7 @@ const AUTH_USERS = {
     title: 'Président du Bureau',
     level: 3,
     levelName: 'Président du Bureau (Lecture Seule)',
-    passwords: ['1234', 'president123', 'tagba2026'],
+    passwords: ['Madouu1966'],
     canWriteAll: false,
     canCreateCeremonies: false
   },
@@ -233,7 +233,7 @@ const AUTH_USERS = {
     title: 'Parent & Membre Adhérent',
     level: 3,
     levelName: 'Parent / Adhérent (Lecture Seule)',
-    passwords: ['1234', 'membre123', 'tagba2026'],
+    passwords: ['Madouu1966'],
     canWriteAll: false,
     canCreateCeremonies: false
   }
