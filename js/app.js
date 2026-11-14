@@ -1,4 +1,4 @@
-// Contrôle en direct et instantané de l'unicité des numéros de téléphone
+﻿// Contrôle en direct et instantané de l'unicité des numéros de téléphone
 function checkPhoneLiveFeedback(inputEl, errorDivId, excludeId = null, siblingInputId = null) {
   if (!inputEl) return true;
   const errorEl = document.getElementById(errorDivId);
@@ -307,6 +307,21 @@ function establishAuthenticatedSession(userId) {
 function getActiveAuthUser() {
   const savedId = localStorage.getItem('tagba_auth_user') || 'usr-commissaire';
   return AUTH_USERS[savedId] || AUTH_USERS['usr-commissaire'];
+}
+
+function getCurrentUser() {
+  const u = getActiveAuthUser();
+  if (u) {
+    if (!u.nom && u.name) u.nom = u.name;
+    return u;
+  }
+  return {
+    id: 'usr-tresorier',
+    name: 'Seydou Coulibaly',
+    nom: 'Seydou Coulibaly',
+    title: 'Trésorier Général',
+    level: 2
+  };
 }
 
 function findUserByIdentifier(identifier) {
@@ -6247,13 +6262,25 @@ function setupFinanceEventListeners() {
     });
   }
 
-  function submitContributionVolontaireForm(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!assertPermission('write', 'l\'enregistrement d\'un don')) return;
+  const formDon = document.getElementById('formAddContributionVolontaire');
+  if (formDon) {
+    formDon.addEventListener('submit', function (e) {
+      submitContributionVolontaireForm(e);
+    });
+  }
+}
+
+function submitContributionVolontaireForm(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  try {
+    if (typeof assertPermission === 'function' && !assertPermission('write', 'l''enregistrement d''un don')) {
+      return false;
+    }
 
     const formDon = document.getElementById('formAddContributionVolontaire');
-    const originType = document.querySelector('input[name="donOriginType"]:checked')?.value || 'membre';
-    const data = TAGBA_DB.get();
+    const originRadio = document.querySelector('input[name="donOriginType"]:checked');
+    const originType = originRadio ? originRadio.value : 'membre';
+    const data = (typeof TAGBA_DB !== 'undefined' && typeof TAGBA_DB.get === 'function') ? TAGBA_DB.get() : {};
 
     let memberId = null;
     let memberName = '';
@@ -6266,30 +6293,29 @@ function setupFinanceEventListeners() {
       const nomExt = extNomInput ? extNomInput.value.trim() : '';
       const contactExt = extContactInput ? extContactInput.value.trim() : '';
 
-      if (!nomExt) {
-        showToast('âš ï¸ Veuillez saisir le nom de l\'2organisation ou du donateur externe en haut du formulaire', 'error');
-        if (extNomInput) {
-          extNomInput.focus();
-          extNomInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        return;
+      // Fallback intelligent : si le nom n'est pas rempli mais le contact l'est
+      let finalNom = nomExt;
+      if (!finalNom && contactExt) {
+        finalNom = 'Donateur Extérieur (' + contactExt + ')';
+      } else if (!finalNom) {
+        finalNom = 'Bienfaiteur Extérieur Partenaire';
       }
 
       memberId = 'EXT-' + Date.now();
-      memberName = nomExt;
+      memberName = finalNom;
       familyId = null;
-      familyChef = contactExt ? `Contact : ${contactExt}` : 'Autre Association / Partenaire Externe';
+      familyChef = contactExt ? ('Contact : ' + contactExt) : 'Autre Association / Partenaire Externe';
     } else {
       memberId = document.getElementById('donMemberSelect')?.value;
       const member = (data.members || []).find(m => m.id === memberId);
       if (!member) {
-        showToast('âš ï¸ Veuillez sÃ©lectionner le membre donateur dans la liste (ou cochez "Autre Association / Donateur Externe" si le don provient d\'un tiers)', 'error');
+        showToast('⚠️ Veuillez sélectionner le membre donateur dans la liste (ou cochez "Autre Association / Donateur Externe")', 'error');
         const memSel = document.getElementById('donMemberSelect');
         if (memSel) {
           memSel.focus();
           memSel.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        return;
+        return false;
       }
       memberName = member.fullName;
       familyId = member.familyId;
@@ -6297,30 +6323,26 @@ function setupFinanceEventListeners() {
       familyChef = family ? (family.chefFamille || family.chefDeFamille) : 'Famille TAGBA';
     }
 
-    const cibleType = document.getElementById('donCibleType')?.value || 'Caisse SolidaritÃ©';
+    const cibleType = document.getElementById('donCibleType')?.value || 'Caisse Solidarité';
     const cibleRaw = document.getElementById('donCibleSelect')?.value;
-    let cibleId = '';
-    let cibleTitre = '';
+    let cibleId = 'caisse-solidarite';
+    let cibleTitre = 'Caisse Générale de Secours';
 
     if (cibleRaw) {
       const parts = cibleRaw.split('|');
-      cibleId = parts[0] || '';
-      cibleTitre = parts[1] || '';
-    }
-    if (!cibleId || !cibleTitre) {
-      cibleId = 'caisse-solidarite';
-      cibleTitre = 'Caisse de SolidaritÃ© GÃ©nÃ©rale';
+      cibleId = parts[0] || cibleId;
+      cibleTitre = parts[1] || cibleTitre;
     }
 
     const montantInput = document.getElementById('donMontant');
     const montant = Number(montantInput ? montantInput.value : 0);
     if (!montant || montant <= 0 || isNaN(montant)) {
-      showToast('âš ï¸ Veuillez saisir un montant de don valide (supÃ©rieur Ã  0 FCFA)', 'error');
+      showToast('⚠️ Veuillez saisir un montant de don valide (supérieur à 0 FCFA)', 'error');
       if (montantInput) {
         montantInput.focus();
         montantInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
-      return;
+      return false;
     }
 
     const dateInput = document.getElementById('donDate');
@@ -6330,9 +6352,10 @@ function setupFinanceEventListeners() {
       if (dateInput) dateInput.value = datePaiement;
     }
 
-    const modePaiement = document.getElementById('donMode')?.value || 'EspÃ¨ces';
+    const modePaiement = document.getElementById('donMode')?.value || 'Wave';
     const note = (document.getElementById('donNote')?.value || '').trim();
-    const currentUser = getCurrentUser();
+    const currentUser = (typeof getCurrentUser === 'function') ? getCurrentUser() : (typeof getActiveAuthUser === 'function' ? getActiveAuthUser() : { name: 'Trésorier Général' });
+    const agentName = currentUser.name || currentUser.nom || 'Trésorier Général';
 
     const don = {
       memberId: memberId,
@@ -6346,39 +6369,48 @@ function setupFinanceEventListeners() {
       modePaiement: modePaiement,
       datePaiement: datePaiement,
       note: note,
-      agent: currentUser.name || currentUser.nom || 'TrÃ©sorier'
+      agent: agentName
     };
 
     const newDon = TAGBA_DB.addContributionVolontaire(don);
-    const iconSuccess = originType === 'externe' ? 'ðŸ¢' : 'â¤ï¸';
-    showToast(`${iconSuccess} Don de ${formatMoney(montant, 'FCFA')} de "${memberName}" enregistrÃ© avec succÃ¨s !`, 'success');
+    const iconSuccess = originType === 'externe' ? '🏢' : '❤️';
+    showToast(iconSuccess + ' Don de ' + formatMoney(montant, 'FCFA') + ' de "' + memberName + '" enregistré avec succès !', 'success');
+
     closeModal('modalAddContributionVolontaire');
     if (formDon) formDon.reset();
 
-    // RÃ©initialiser les sections du formulaire
-    toggleDonOriginType('membre');
+    // Réinitialiser les sections du formulaire
+    if (typeof toggleDonOriginType === 'function') {
+      toggleDonOriginType('membre');
+    }
 
-    renderFinances();
-    renderDashboard();
-    renderEntraide();
-    renderCeremonies();
+    if (typeof renderFinances === 'function') renderFinances();
+    if (typeof renderDashboard === 'function') renderDashboard();
+    if (typeof renderEntraide === 'function') renderEntraide();
+    if (typeof renderCeremonies === 'function') renderCeremonies();
 
-    // Ouvrir le reÃ§u nominatif officiel pour impression immÃ©diate
+    // Déclencher la synchronisation Supabase Cloud en arrière-plan
+    if (typeof triggerAutoSyncToCloud === 'function') {
+      triggerAutoSyncToCloud();
+    }
+
+    // Ouvrir le reçu nominatif officiel pour impression immédiate
     if (newDon && newDon.id) {
       setTimeout(() => {
         openReceiptDonationModal(newDon.id);
       }, 300);
     }
+    return true;
+  } catch (err) {
+    console.error('Erreur submitContributionVolontaireForm:', err);
+    showToast('Erreur lors de l''enregistrement du don : ' + err.message, 'error');
+    return false;
   }
+}
 
+if (typeof window !== 'undefined') {
   window.submitContributionVolontaireForm = submitContributionVolontaireForm;
-
-  const formDon = document.getElementById('formAddContributionVolontaire');
-  if (formDon) {
-    formDon.addEventListener('submit', function (e) {
-      submitContributionVolontaireForm(e);
-    });
-  }
+  window.getCurrentUser = getCurrentUser;
 }
 
 // Initialiser les écouteurs financiers dès le chargement du script

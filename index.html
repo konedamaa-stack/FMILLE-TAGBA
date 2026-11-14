@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261113-v61">
+  <link rel="stylesheet" href="css/style.css?v=20261114-v62">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -2740,7 +2740,7 @@
         </div>
         <button class="modal-close-btn" aria-label="Fermer" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">&times;</button>
       </div>
-      <form id="formAddContributionVolontaire" novalidate>
+      <form id="formAddContributionVolontaire" onsubmit="event.preventDefault(); submitContributionVolontaireForm(event);" novalidate>
         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
           Enregistrez les dons et contributions des membres, ou les fonds et subventions reçus d'une autre association ou partenaire extérieur.
         </p>
@@ -2831,7 +2831,7 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary modal-cancel-btn" onclick="var m = this.closest('.modal-overlay'); if (m) { m.classList.remove('active'); m.style.display='none'; } document.querySelectorAll('.modal-overlay').forEach(function(el){ el.classList.remove('active'); el.style.display='none'; });">Annuler</button>
-          <button type="submit" id="btnSubmitDon" class="btn btn-gold" onclick="if (typeof submitContributionVolontaireForm === 'function') { submitContributionVolontaireForm(); return false; }">❤️ Valider le Don & Émettre Reçu</button>
+          <button type="button" id="btnSubmitDon" class="btn btn-gold" onclick="submitContributionVolontaireForm(event)" style="font-weight: 700; box-shadow: 0 4px 14px rgba(217, 119, 6, 0.4); cursor: pointer;">❤️ Valider le Don & Émettre Reçu</button>
         </div>
       </form>
     </div>
@@ -3153,10 +3153,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261113-v61"></script>
-  <script src="js/supabase.js?v=20261113-v61"></script>
-  <script src="js/app.js?v=20261113-v61"></script>
-  <script src="js/print.js?v=20261113-v61"></script>
+  <script src="js/data.js?v=20261114-v62"></script>
+  <script src="js/supabase.js?v=20261114-v62"></script>
+  <script src="js/app.js?v=20261114-v62"></script>
+  <script src="js/print.js?v=20261114-v62"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3164,7 +3164,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v61') caches.delete(k);
+            if (k !== 'tagba-pwa-v62') caches.delete(k);
           });
         });
       }
@@ -3176,9 +3176,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261113-v61')
+        navigator.serviceWorker.register('/sw.js?v=20261114-v62')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v61) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v62) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));
