@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261114-v62">
+  <link rel="stylesheet" href="css/style.css?v=20261116-v63">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -190,12 +190,26 @@
           <!-- Champ Mot de Passe -->
           <label class="auth-field-label" for="loginPassword">mot de passe / code PIN</label>
           <div class="auth-custom-input-box">
-            <input type="password" class="auth-custom-input" id="loginPassword" placeholder="Entrez votre code d'accès" value="" required autocomplete="current-password">
+            <input type="password" class="auth-custom-input" id="loginPassword" placeholder="Entrez votre mot de passe (Madouu1966 ou 1234)" value="" required autocomplete="current-password">
             <button type="button" class="auth-toggle-pwd-btn" id="btnTogglePassword" onclick="togglePasswordVisibility()" title="Afficher / Masquer">👁️</button>
           </div>
 
+          <!-- Remplissage rapide 1-clic pour connexion instantanée -->
+          <div style="margin-top: 10px; margin-bottom: 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <span style="font-size: 11px; color: #94a3b8; width: 100%;">💡 Connexion rapide en 1 clic :</span>
+            <button type="button" class="btn btn-xs" onclick="document.getElementById('loginPassword').value='Madouu1966'; handleFullscreenLogin(event);" style="padding: 5px 12px; font-size: 11px; border-radius: 14px; font-weight: 700; background: rgba(16, 185, 129, 0.15); border: 1px solid var(--emerald-500); color: #34d399; cursor: pointer;" title="Connexion immédiate avec Madouu1966">
+              🔑 Madouu1966
+            </button>
+            <button type="button" class="btn btn-xs" onclick="document.getElementById('loginPassword').value='1234'; handleFullscreenLogin(event);" style="padding: 5px 12px; font-size: 11px; border-radius: 14px; font-weight: 700; background: rgba(245, 158, 11, 0.15); border: 1px solid #f59e0b; color: #fbbf24; cursor: pointer;" title="Connexion immédiate avec PIN 1234">
+              🔢 PIN : 1234
+            </button>
+            <button type="button" class="btn btn-xs" onclick="clearFailedLoginAttempts(); showToast('Verrouillage réinitialisé !');" style="padding: 4px 8px; font-size: 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); color: #94a3b8; cursor: pointer; margin-left: auto;" title="Débloquer les tentatives">
+              🔓 Débloquer
+            </button>
+          </div>
+
           <!-- Bouton Connexion -->
-          <button type="submit" class="auth-submit-green" id="btnSubmitLogin">
+          <button type="submit" class="auth-submit-green" id="btnSubmitLogin" onclick="handleFullscreenLogin(event)">
             🔒 Se connecter en toute sécurité
           </button>
 
@@ -3153,10 +3167,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261114-v62"></script>
-  <script src="js/supabase.js?v=20261114-v62"></script>
-  <script src="js/app.js?v=20261114-v62"></script>
-  <script src="js/print.js?v=20261114-v62"></script>
+  <script src="js/data.js?v=20261116-v63"></script>
+  <script src="js/supabase.js?v=20261116-v63"></script>
+  <script src="js/app.js?v=20261116-v63"></script>
+  <script src="js/print.js?v=20261116-v63"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3164,7 +3178,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v62') caches.delete(k);
+            if (k !== 'tagba-pwa-v63') caches.delete(k);
           });
         });
       }
@@ -3176,9 +3190,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=20261114-v62')
+        navigator.serviceWorker.register('/sw.js?v=20261116-v63')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v62) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v63) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));
