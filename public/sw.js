@@ -1,15 +1,15 @@
-const CACHE_NAME = 'tagba-pwa-v63';
+const CACHE_NAME = 'tagba-pwa-v64';
 
 const LOCAL_ASSETS = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/js/data.js',
-  '/js/supabase.js',
-  '/js/app.js',
-  '/js/print.js',
-  '/manifest.json',
-  '/icon.svg'
+  './',
+  './index.html',
+  './css/style.css',
+  './js/data.js',
+  './js/supabase.js',
+  './js/app.js',
+  './js/print.js',
+  './manifest.json',
+  './icon.svg'
 ];
 
 // Installation : Mise en cache fichier par fichier
