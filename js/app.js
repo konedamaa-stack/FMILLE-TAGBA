@@ -413,6 +413,11 @@ function handleFullscreenLogin(e) {
   } catch (err) {
     console.warn('applyActiveUserUI warning:', err);
   }
+  try {
+    renderAllViews();
+  } catch (err) {
+    console.warn('renderAllViews warning:', err);
+  }
   showToast(`✅ Connexion réussie ! Bienvenue ${user.name} (${user.title}).`);
   return false;
 }
@@ -6288,7 +6293,7 @@ function setupFinanceEventListeners() {
 function submitContributionVolontaireForm(e) {
   if (e && e.preventDefault) e.preventDefault();
   try {
-    if (typeof assertPermission === 'function' && !assertPermission('write', 'l''enregistrement d''un don')) {
+    if (typeof assertPermission === 'function' && !assertPermission('write', "l'enregistrement d'un don")) {
       return false;
     }
 
@@ -6418,7 +6423,7 @@ function submitContributionVolontaireForm(e) {
     return true;
   } catch (err) {
     console.error('Erreur submitContributionVolontaireForm:', err);
-    showToast('Erreur lors de l''enregistrement du don : ' + err.message, 'error');
+    showToast("Erreur lors de l'enregistrement du don : " + err.message, 'error');
     return false;
   }
 }
