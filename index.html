@@ -15,7 +15,7 @@
   <meta name="format-detection" content="telephone=no">
 
   <!-- Icons & Manifest -->
-  <link rel="stylesheet" href="css/style.css?v=20261119-v65">
+  <link rel="stylesheet" href="css/style.css?v=20261119-v66">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -249,11 +249,23 @@
         document.body.classList.remove('auth-locked');
       };
 
+      window.showAuthFullscreen = function() {
+        var screen = document.getElementById('authFullscreenScreen');
+        if (screen) {
+          screen.classList.remove('hidden');
+          screen.removeAttribute('style');
+          screen.style.display = 'flex';
+        }
+        document.body.classList.add('auth-locked');
+        var pwdInput = document.getElementById('loginPassword');
+        if (pwdInput) pwdInput.value = '';
+      };
+
       window.unlockTagbaImmediately = function() {
         try {
           localStorage.setItem('tagba_auth_user', 'usr-commissaire');
           localStorage.setItem('tagba_session_authenticated', 'true');
-          localStorage.setItem('tagba_session_expires_at', String(Date.now() + 30 * 24 * 3600 * 1000));
+          localStorage.setItem('tagba_session_expires_at', String(Date.now() + 365 * 24 * 3600 * 1000));
           localStorage.removeItem('tagba_failed_login_attempts');
           localStorage.removeItem('tagba_login_lock_until');
         } catch (e) {}
@@ -284,7 +296,7 @@
         try {
           localStorage.setItem('tagba_auth_user', 'usr-commissaire');
           localStorage.setItem('tagba_session_authenticated', 'true');
-          localStorage.setItem('tagba_session_expires_at', String(Date.now() + 30 * 24 * 3600 * 1000));
+          localStorage.setItem('tagba_session_expires_at', String(Date.now() + 365 * 24 * 3600 * 1000));
           localStorage.removeItem('tagba_failed_login_attempts');
           localStorage.removeItem('tagba_login_lock_until');
         } catch (err) {}
@@ -3246,10 +3258,10 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/data.js?v=20261119-v65"></script>
-  <script src="js/supabase.js?v=20261119-v65"></script>
-  <script src="js/app.js?v=20261119-v65"></script>
-  <script src="js/print.js?v=20261119-v65"></script>
+  <script src="js/data.js?v=20261119-v66"></script>
+  <script src="js/supabase.js?v=20261119-v66"></script>
+  <script src="js/app.js?v=20261119-v66"></script>
+  <script src="js/print.js?v=20261119-v66"></script>
 
   <!-- Enregistrement Service Worker & Mode Hors-Ligne Automatique -->
   <script>
@@ -3257,7 +3269,7 @@
       if (window.caches) {
         caches.keys().then((keys) => {
           keys.forEach((k) => {
-            if (k !== 'tagba-pwa-v65') caches.delete(k);
+            if (k !== 'tagba-pwa-v66') caches.delete(k);
           });
         });
       }
@@ -3269,9 +3281,9 @@
         }
       });
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js?v=20261119-v65')
+        navigator.serviceWorker.register('sw.js?v=20261119-v66')
           .then((reg) => {
-            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v65) :', reg.scope);
+            console.log('✅ ServiceWorker actif (Mode Hors-Ligne v66) :', reg.scope);
             if (reg.update) reg.update();
           })
           .catch((err) => console.warn('⚠️ Enregistrement ServiceWorker :', err));

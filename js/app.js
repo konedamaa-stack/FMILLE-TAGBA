@@ -239,7 +239,7 @@ const AUTH_USERS = {
   }
 };
 
-const SESSION_DURATION_MS = 8 * 60 * 60 * 1000; // 8 heures de validité de session
+const SESSION_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 an : Session permanente pour éviter les déconnexions intempestives
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_DURATION_MS = 15 * 1000; // 15 secondes de temporisation en cas d'échecs répétés
 
@@ -468,8 +468,10 @@ function showAuthFullscreen() {
   const screen = document.getElementById('authFullscreenScreen');
   if (screen) {
     screen.classList.remove('hidden');
+    screen.removeAttribute('style');
     screen.style.display = 'flex';
   }
+  document.body.classList.add('auth-locked');
   const pwdInput = document.getElementById('loginPassword');
   if (pwdInput) pwdInput.value = '';
 }
